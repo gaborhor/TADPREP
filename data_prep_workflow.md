@@ -24,7 +24,7 @@
 ### Function 3: Allow User to 'Trim' the File
 - Ask if the user wants to delete all rows with *any* missing values
 - Ask if the user wants to delete any columns/features
-- Ask if the user wants to reduce the number of rows by deleting a user-supplied percentage of rows at random (i.e. Sub-setting the data)
+- Ask if the user wants to reduce the number of rows by deleting a user-supplied percentage of rows at random (i.e. sub-setting the data)
 
 ### Function 4: Allow User to Rename Columns/Features
 - Print the names of each field and allow the user to rename specified features
