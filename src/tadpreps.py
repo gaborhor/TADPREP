@@ -89,8 +89,10 @@ def print_file_info(df_full: pd.DataFrame) -> None:
         None. This is a void function.
     """
     # Print number of rows (instances) in file
+    logger.info(f'The unaltered file has {df_full.shape[0]} rows/instances.')
 
     # Print number of columns (features) in file
+    logger.info(f'The unaltered file has {df_full.shape[1]} columns/features.')
 
     # Print names and datatypes of columns/features in file
 
