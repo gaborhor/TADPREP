@@ -78,3 +78,22 @@ def load_file() -> pd.DataFrame:
     except Exception as exc:
         logger.error(f'An unexpected error occurred: {exc}')
         sys.exit(1)
+
+
+def print_file_info(df_full: pd.DataFrame) -> None:
+    """
+    This function prints and logs use information about the full, unaltered datafile for the user.
+    Args:
+        df_full (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
+    Returns:
+        None. This is a void function.
+    """
+    # Print number of rows (instances) in file
+
+    # Print number of columns (features) in file
+
+    # Print names and datatypes of columns/features in file
+
+    # Print # of instances/rows with missing values at the feature level - total count and '% rows with missing values'
+
+    pass
