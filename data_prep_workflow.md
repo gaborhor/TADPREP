@@ -18,7 +18,7 @@
 - Print number of rows (instances) in file
 - Print number of columns (features) in file
 - Print names and datatypes of columns/features in file
-- Print number of instances/rows with missing values at the feature level - both total count and '% rows with missing values'
+- Print number of instances/rows with any missing values
 
 ### Function 3: Allow User to 'Trim' the File
 - Ask if the user wants to delete all instances/rows with *any* missing values
