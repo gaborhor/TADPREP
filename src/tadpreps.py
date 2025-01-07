@@ -89,13 +89,122 @@ def print_file_info(df_full: pd.DataFrame) -> None:
         None. This is a void function.
     """
     # Print number of rows (instances) in file
-    logger.info(f'The unaltered file has {df_full.shape[0]} rows/instances.')
+    logger.info(f'The unaltered file has {df_full.shape[0]} rows/instances.')  # [0] is rows
 
     # Print number of columns (features) in file
-    logger.info(f'The unaltered file has {df_full.shape[1]} columns/features.')
+    logger.info(f'The unaltered file has {df_full.shape[1]} columns/features.')  # [1] is columns
 
     # Print names and datatypes of columns/features in file
+    logger.info('Names and datatypes of columns/features:')
+    logger.info(df_full.info(memory_usage=False, show_counts=False))  # Limit information printed since it's logged
 
-    # Print # of instances/rows with missing values at the feature level - total count and '% rows with missing values'
+    # Print # of instances/rows with missing values
+    row_missing_cnt = df_full.isnull().any(axis=1).sum()  # Compute count
+    row_missing_rate = (row_missing_cnt / len(df_full) * 100).round(2)  # Compute rate
+    logger.info(f'\n{row_missing_cnt} rows/instances ({row_missing_rate}%) contain at least one missing value.')
+
+
+def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
+    """
+    This function allows the user to delete instances with any missing values, to drop columns/features from the
+    dataset, and to sub-set the data by deleting a specified proportion of the instances at random.
+    Args:
+        df_full (pd.DataFrame): The original, unaltered dataset.
+    Returns:
+        df_trimmed (pd.DataFrame): The dataset after trimming/sub-setting.
+    """
+    df_trimmed = df_full.copy(deep=True)
+    # Ask if the user wants to delete *all* instances with any missing values
+    user_drop_na = input('Do you want to drop all rows/instances with *any* missing values? (Y/N): ')
+    if user_drop_na.lower() == 'y':
+        df_trimmed = df_trimmed.dropna()
+        logger.info(f'After deletion of instances with missing values, {len(df_trimmed)} instances remain.')
+
+    # Ask if the user wants to drop any of the columns/features in the dataset
+    user_drop_cols = input('Do you want to drop any of the columns/features in the dataset? (Y/N): ')
+    if user_drop_cols.lower() == 'y':
+        print('The full set of columns/features in the dataset is:')
+        for col_idx, column in enumerate(df_trimmed.columns, 1):  # Create enumerated list of features starting at 1
+            print(f'{col_idx}. {column}')
+
+        while True:  # We can justify 'while True' because we have a cancel-out input option
+            try:
+                drop_cols_input = input('\nEnter the index integers of the columns/features you wish to drop '
+                                     '(comma-separated) or enter "C" to cancel: ')
+
+                # Check for user cancellation
+                if drop_cols_input == 'c':  # If user entered cancel-out input
+                    logger.info('Column/feature deletion cancelled.')  # Log the cancellation
+                    break  # Exit the while loop
+
+                # Create list of column indices to drop
+                drop_cols_idx = [int(idx.strip()) for idx in drop_cols_input.split(',')]  # Splitting on comma
+
+                # Verify that all index numbers of columns to be dropped are valid/in range
+                if not all(1 <= idx <= len(df_trimmed.columns) for idx in drop_cols_idx):  # Using a generator
+                    raise ValueError('Some column/feature index integers entered are out of range/invalid.')
+
+                # Convert specified column numbers to actual column names
+                drop_cols_names = [df_trimmed.columns[idx-1] for idx in drop_cols_idx]  # Subtracting 1 from indices
+
+                # Drop the columns
+                df_trimmed.drop(columns=drop_cols_names, inplace=True)
+                logger.info(f'Dropped columns/features: {",".join(drop_cols_names)}')  # Log the dropped columns
+                break  # Exit the while loop
+
+            # Catch invalid user input
+            except ValueError:
+                logger.error('Invalid input. Please enter valid column/index integers separated by commas.')
+                continue  # Restart the loop
+
+    # Ask if the user wants to sub-set the data by deleting a specified proportion of the instances at random
+    user_subset = input('Do you want to sub-set the data by randomly deleting a specified proportion of '
+                        'rows/instances? (Y/N): ')
+    if user_subset.lower() == 'y':
+        while True:  # We can justify 'while True' because we have a cancel-out input option
+            try:
+                subset_input = input('Enter the proportion of rows/instances to DROP (0.0-1.0) or '
+                                     'enter "C" to cancel: ')
+
+                # Check for user cancellation
+                if subset_input.lower() == 'c':  # If user entered cancel-out input
+                    logger.info('Random sub-setting cancelled.')  # Log the cancellation
+                    break  # Exit the while loop
+
+                subset_rate = float(subset_input)  # Convert string input to float
+                if 0 < subset_rate < 1:  # If the float is valid (i.e. between 0 and 1)
+                    retain_rate = 1 - subset_rate  # Compute retention rate
+                    retain_row_cnt = int(len(df_trimmed) * retain_rate)  # Select count of rows to keep in subset
+
+                    df_trimmed = df_trimmed.sample(n=retain_row_cnt)  # No random state set b/c we want true randomness
+                    logger.info(f'Randomly dropped {subset_rate}% of rows/instances. {retain_row_cnt} rows/instances '
+                                f'remain.')  # Log sub-setting information/outcome
+                    break  # Exit while loop
+
+                # Catch user input error for invalid/out-of-range float
+                else:
+                    logger.error('Enter a value between 0.0 and 1.0.')
+
+            # Catch outer-level user input errors
+            except ValueError:
+                logger.error('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
+                continue  # Restart the loop
+
+    return df_trimmed  # Return the trimmed dataframe
+
+
+def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
+    """
+    #TODO: Write DocString
+    """
+    # Ask if user wants to rename any columns
+
+    # Print enumerated list of columns with indices starting at 1 (Can reproduce essence from last function)
+
+    # Set up indefinite iteration: column to rename, rename that column, do you want to rename another, etc.
+
+    # Ask if user wants to append '_ord' to any known ordinal features
+
+    # Ask if user wants to append '_target' to any known target features
 
     pass
