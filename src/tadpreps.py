@@ -245,73 +245,91 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
             except ValueError as exc:
                 logger.error(f'Invalid input: {exc}')
 
-    # Ask if user wants to append '_ord' to any known ordinal features
-    user_mark_ord = input('Do you want to mark any features as ordinal by appending "_ord"? (Y/N): ')
-    if user_mark_ord.lower() == 'y':
-        while True:
-            print('\nCurrent columns:')
-            for col_idx, column in enumerate(df_renamed.columns, 1):
-                print(f'{col_idx}. {column}')
+    # Ask if user wants to perform batch-level appending of '_ord' tag to ordinal features
+    user_tag_ord = input('Do you want to tag any columns/features as ordinal by appending the "_ord" suffix '
+                              'to their names? (Y/N): ')
 
-            ord_input = input('\nEnter the index integer of the ordinal feature or "C" to cancel: ')
+    if user_tag_ord.lower() == 'y':
+        print('\nCurrent column/feature list:')
+        for col_idx, column in enumerate(df_renamed.columns, 1):
+            print(f'{col_idx}. {column}')
 
-            if ord_input.lower() == 'c':
+        while True:  # We can justify 'while True' because we have a cancel-out input option
+            try:
+                ord_input = input('\nEnter the index integers of ordinal features (comma-separated) '
+                                  'or enter "C" to cancel: ')
+
+                if ord_input.lower() == 'c':  # If user cancels
+                    logger.info('Ordinal feature tagging cancelled.')  # Log the cancellation
+                    break  # And exit the while loop
+
+                ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
+
+                # Validate that all entered index integers are in range
+                if not all(1 <= idx <= len(df_renamed.columns) for idx in ord_idx_list):  # Using a generator again
+                    raise ValueError('Some column/feature indices are out of range.')
+
+                ord_names_pretag = [df_renamed.columns[idx - 1] for idx in ord_idx_list]  # Create list of pretag names
+
+                # Generate mapper for renaming columns with '_ord' suffix
+                ord_rename_map = {name: f'{name}_ord' for name in ord_names_pretag if not name.endswith('_ord')}
+
+                # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
+                if not ord_rename_map:  # If the mapper is empty
+                    logger.warning('All selected columns/features are already tagged as ordinal.')  # Warn the user
+                    break  # And exit the while loop
+
+                df_renamed.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
+                logger.info(f'Tagged the following columns/features as ordinal: {", ".join(ord_rename_map.keys())}')
                 break
 
+            # Catch invalid input
+            except ValueError as exc:
+                logger.error(f'Invalid input: {exc}')
+                continue  # Restart the loop
+
+    # Ask if user wants to perform batch-level appending of '_target' tag to target features
+    user_tag_target = input('Do you want to tag any columns/features as targets by appending the "_target" suffix '
+                            'to their names? (Y/N): ')
+
+    if user_tag_target.lower() == 'y':
+        print('\nCurrent columns:')
+        for col_idx, column in enumerate(df_renamed.columns, 1):
+            print(f'{col_idx}. {column}')
+
+        while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                ord_idx = int(ord_input)
-                if not 1 <= ord_idx <= len(df_renamed.columns):
-                    raise ValueError('Column index is out of range')
+                target_input = input('\nEnter the index integers of target features (comma-separated) '
+                                     'or enter "C" to cancel: ')
 
-                old_name = df_renamed.columns[ord_idx - 1]
-                if old_name.endswith('_ord'):
-                    logger.warning(f'Column "{old_name}" is already marked as ordinal')
-                    continue
+                if target_input.lower() == 'c':  # If user cancels
+                    logger.info('Target feature tagging cancelled.')  # Log the cancellation
+                    break  # And exit the while loop
 
-                new_name = f'{old_name}_ord'
-                df_renamed.rename(columns={old_name: new_name}, inplace=True)
-                logger.info(f'Marked column "{old_name}" as ordinal: "{new_name}"')
+                target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
 
-                if input('Do you want to mark another feature as ordinal? (Y/N): ').lower() != 'y':
-                    break
+                # Validate that all entered index integers are in range
+                if not all(1 <= idx <= len(df_renamed.columns) for idx in target_idx_list):  # Using a generator again
+                    raise ValueError('Some column/feature indices are out of range.')
 
-            except ValueError as e:
-                logger.error(f'Invalid input: {str(e)}')
-                continue
+                target_names_pretag = [df_renamed.columns[idx - 1] for idx in target_idx_list]  # List of pretag names
 
-    # Handle target features
-    user_mark_target = input('Do you want to mark any features as targets by appending "_target"? (Y/N): ')
-    if user_mark_target.lower() == 'y':
-        while True:
-            print('\nCurrent columns:')
-            for col_idx, column in enumerate(df_renamed.columns, 1):
-                print(f'{col_idx}. {column}')
+                # Generate mapper for renaming columns with '_target' suffix
+                target_rename_map = {name: f'{name}_target' for name in target_names_pretag if
+                                     not name.endswith('_target')}
 
-            target_input = input('\nEnter the index integer of the target feature or "C" to cancel: ')
+                # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
+                if not target_rename_map:  # If the mapper is empty
+                    logger.warning('All selected columns/features are already tagged as targets.')  # Warn the user
+                    break  # And exit the while loop
 
-            if target_input.lower() == 'c':
+                df_renamed.rename(columns=target_rename_map, inplace=True)  # Perform tagging
+                logger.info(f'Tagged the following columns/features as targets: {", ".join(target_rename_map.keys())}')
                 break
 
-            try:
-                target_idx = int(target_input)
-                if not 1 <= target_idx <= len(df_renamed.columns):
-                    raise ValueError('Column index is out of range')
+            # Catch invalid input
+            except ValueError as exc:
+                logger.error(f'Invalid input: {exc}')
+                continue  # Restart the loop
 
-                old_name = df_renamed.columns[target_idx - 1]
-                if old_name.endswith('_target'):
-                    logger.warning(f'Column "{old_name}" is already marked as target')
-                    continue
-
-                new_name = f'{old_name}_target'
-                df_renamed.rename(columns={old_name: new_name}, inplace=True)
-                logger.info(f'Marked column "{old_name}" as target: "{new_name}"')
-
-                if input('Do you want to mark another feature as target? (Y/N): ').lower() != 'y':
-                    break
-
-            except ValueError as e:
-                logger.error(f'Invalid input: {str(e)}')
-                continue
-
-    return df_renamed
-    # Ask if user wants to append '_target' to any known target features
+    return df_renamed  # Return dataframe with renamed and tagged columns
