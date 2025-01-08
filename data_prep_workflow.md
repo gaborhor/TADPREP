@@ -35,10 +35,12 @@
   - Generate and store a list of the categorical features (Do not include any target features)
   - Display feature names (i.e. "The categorical features are: ...")
   - Display count and rate of missing values for each categorical feature
+  - Display value counts, mean, median, and mode for each categorical feature
 - For the numerical features:
   - Generate and store a list of the numerical features (Do not include any target features)
   - Display feature name and type (i.e. "The numerical features are: ...")
   - Display count and rate of missing values for each numerical feature
+  - Display mean, median, and mode for each numerical feature
 
 ### Function 6: Impute Missing Values (If Desired)
 - For each feature:
