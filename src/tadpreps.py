@@ -7,15 +7,19 @@ runtime) and the logging file will be created in the same working directory as t
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from datetime import datetime
 import seaborn as sns
 import logging
 import sys
 
-# Set up error logging
+# Fetch current runtime timestamp in a readable format
+timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+
+# Set up error logging with time-at-execution
 # We persist with "%-type" formatting to preserve backward compatibility
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler('tadpreps_runtime_log.log'), logging.StreamHandler(sys.stdout)]
+    handlers=[logging.FileHandler(f'tadpreps_runtime_log_{timestamp}.log'), logging.StreamHandler(sys.stdout)]
 )
 
 logger = logging.getLogger(__name__)
@@ -333,3 +337,71 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                 continue  # Restart the loop
 
     return df_renamed  # Return dataframe with renamed and tagged columns
+
+
+def print_feature_stats(df_renamed: pd.DataFrame) -> None:
+    """
+    This function isolates the non-target features and prints top-level missingness and descriptive statistics
+    information for the categorical features, then the numerical features.
+    Args:
+        df_renamed (pd.DataFrame): The renamed/tagged dataframe created by rename_features().
+    Returns:
+        None. This is a void function.
+    """
+    logger.info('Displaying top-level information for columns/features in dataset...')
+
+    # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
+    cat_cols = [column for column in df_renamed.columns
+                if df_renamed[column].dtype == 'object'
+                and not column.endswith('_ord')
+                and not column.endswith('_target')
+                ]
+
+    # Create a list of ordinal columns (i.e. having the '_ord') suffix if any are present
+    # NOTE: The ordinal columns must NOT have the '_target' suffix - they must not be target features
+    ord_cols = [column for column in df_renamed.columns
+                if column.endswith('_ord')
+                and not column.endswith('_target')
+                ]
+
+    # Create a list of columns which are numerical, not ordinal, and do NOT have the '_target' suffix
+    num_cols = [column for column in df_renamed.columns
+                if pd.api.types.is_numeric_dtype(df_renamed[column])  # Use pandas' built-in numeric type checking
+                and not column.endswith('_target')
+                and not column.endswith('_ord')]
+
+    # Print a notification of whether there are any ordinal-tagged features in the dataset
+    if ord_cols:
+        logger.info(f'NOTE: {len(ord_cols)} ordinal columns/features are present in the dataset.')
+    else:
+        logger.info('NOTE: No ordinal columns/features are tagged in the dataset.')
+
+    # Print and log the names of the categorical features
+    if cat_cols:
+        logger.info('\nThe categorical non-target columns/features are:')
+        logger.info(', '.join(cat_cols))
+    else:
+        logger.info('No categorical non-target columns/features were found in the dataset.')
+
+    # Print and log the names of the ordinal features (if present)
+    if ord_cols:
+        logger.info('\nThe ordinal non-target columns/features are:')
+        logger.info(', '.join(ord_cols))
+
+    # Print and log the names of the numerical features ('The numerical non-target features are:')
+    if num_cols:
+        logger.info('\nThe numerical non-target columns/features are:')
+        logger.info(', '.join(num_cols))
+    else:
+        logger.info('No numerical non-target columns/features were found in the dataset.')
+
+    # Then, for each categorical non-target feature, print (but do not log) its value counts, mean, median, and mode, and the number of missing values, both as a count and as a '% missing' metric
+
+    # Then, do the same for each ordinal non-target feature
+
+    # Then, print (but do not log) the mean, median, and mode of each numerical feature along with the number of missing values, both as a count and as a '% missing' metric
+
+    # Log some form of efficient unified descriptive statistics table for each feature type using Pandas' built-in methods
+    # Notify the user that those tables have been logged
+
+    # Finally, list the target feature(s), and print and log mean, median, mode, and missingness for each
