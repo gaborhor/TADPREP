@@ -133,7 +133,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
                                      '(comma-separated) or enter "C" to cancel: ')
 
                 # Check for user cancellation
-                if drop_cols_input == 'c':  # If user entered cancel-out input
+                if drop_cols_input.lower() == 'c':  # If user entered cancel-out input
                     logger.info('Column/feature deletion cancelled.')  # Log the cancellation
                     break  # Exit the while loop
 
@@ -195,16 +195,123 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
 def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
     """
-    #TODO: Write DocString
+    This function allows the user to rename columns/features and to append the '_ord' and/or '_target' suffixes
+    to ordinal or target columns.
+    Args:
+        df_trimmed (pd.DataFrame): The 'trimmed' dataset created by trim_file().
+    Returns:
+        df_renamed (pd.DataFrame): The dataset with renamed columns.
     """
+    df_renamed = df_trimmed.copy(deep=True)  # Create copy of trimmed dataset
+
     # Ask if user wants to rename any columns
+    user_rename_cols = input('Do you want to rename any of the columns/features in the dataset? (Y/N): ')
+    if user_rename_cols.lower() == 'y':
+        print('The list of columns/features currently in the dataset is:')
+        for col_idx, column in enumerate(df_renamed.columns, 1):  # Create enumerated list of features starting at 1
+            print(f'{col_idx}. {column}')
 
-    # Print enumerated list of columns with indices starting at 1 (Can reproduce essence from last function)
+        while True:  # We can justify 'while True' because we have a cancel-out input option
+            try:
+                rename_cols_input = input('\nEnter the index integer of the column/feature you wish to rename '
+                                     'or enter "C" to cancel: ')
 
-    # Set up indefinite iteration: column to rename, rename that column, do you want to rename another, etc.
+                # Check for user cancellation
+                if rename_cols_input.lower() == 'c':  # If user entered cancel-out input
+                    logger.info('Column/feature renaming cancelled.')  # Log the cancellation
+                    break  # Exit the while loop
+
+                col_idx = int(rename_cols_input)  # Convert input to integer
+                if not 1 <= col_idx <= len(df_renamed.columns):  # Validate entry
+                    raise ValueError('Column index is out of range.')
+
+                # Get new name for the column from user
+                col_name_old = df_renamed.columns[col_idx - 1]
+                col_name_new = input(f'Enter new name for column "{col_name_old}": ').strip()
+
+                # Validate name to make sure it doesn't already exist in the dataset
+                if col_name_new in df_renamed.columns:
+                    logger.error(f'Column name "{col_name_new}" already exists. Choose a different name.')
+                    continue  # Restart the loop
+
+                # Rename column in-place
+                df_renamed.rename(columns={col_name_old: col_name_new}, inplace=True)
+                logger.info(f'Renamed column "{col_name_old}" to "{col_name_new}".')
+
+                # Ask if user wants to rename another column
+                if input('Do you want to rename another column? (Y/N): ').lower() != 'y':
+                    break  # If not, exit the while loop
+
+            except ValueError as exc:
+                logger.error(f'Invalid input: {exc}')
 
     # Ask if user wants to append '_ord' to any known ordinal features
+    user_mark_ord = input('Do you want to mark any features as ordinal by appending "_ord"? (Y/N): ')
+    if user_mark_ord.lower() == 'y':
+        while True:
+            print('\nCurrent columns:')
+            for col_idx, column in enumerate(df_renamed.columns, 1):
+                print(f'{col_idx}. {column}')
 
+            ord_input = input('\nEnter the index integer of the ordinal feature or "C" to cancel: ')
+
+            if ord_input.lower() == 'c':
+                break
+
+            try:
+                ord_idx = int(ord_input)
+                if not 1 <= ord_idx <= len(df_renamed.columns):
+                    raise ValueError('Column index is out of range')
+
+                old_name = df_renamed.columns[ord_idx - 1]
+                if old_name.endswith('_ord'):
+                    logger.warning(f'Column "{old_name}" is already marked as ordinal')
+                    continue
+
+                new_name = f'{old_name}_ord'
+                df_renamed.rename(columns={old_name: new_name}, inplace=True)
+                logger.info(f'Marked column "{old_name}" as ordinal: "{new_name}"')
+
+                if input('Do you want to mark another feature as ordinal? (Y/N): ').lower() != 'y':
+                    break
+
+            except ValueError as e:
+                logger.error(f'Invalid input: {str(e)}')
+                continue
+
+    # Handle target features
+    user_mark_target = input('Do you want to mark any features as targets by appending "_target"? (Y/N): ')
+    if user_mark_target.lower() == 'y':
+        while True:
+            print('\nCurrent columns:')
+            for col_idx, column in enumerate(df_renamed.columns, 1):
+                print(f'{col_idx}. {column}')
+
+            target_input = input('\nEnter the index integer of the target feature or "C" to cancel: ')
+
+            if target_input.lower() == 'c':
+                break
+
+            try:
+                target_idx = int(target_input)
+                if not 1 <= target_idx <= len(df_renamed.columns):
+                    raise ValueError('Column index is out of range')
+
+                old_name = df_renamed.columns[target_idx - 1]
+                if old_name.endswith('_target'):
+                    logger.warning(f'Column "{old_name}" is already marked as target')
+                    continue
+
+                new_name = f'{old_name}_target'
+                df_renamed.rename(columns={old_name: new_name}, inplace=True)
+                logger.info(f'Marked column "{old_name}" as target: "{new_name}"')
+
+                if input('Do you want to mark another feature as target? (Y/N): ').lower() != 'y':
+                    break
+
+            except ValueError as e:
+                logger.error(f'Invalid input: {str(e)}')
+                continue
+
+    return df_renamed
     # Ask if user wants to append '_target' to any known target features
-
-    pass
