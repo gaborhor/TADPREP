@@ -341,14 +341,16 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
 def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     """
-    This function isolates the non-target features and prints top-level missingness and descriptive statistics
-    information for the categorical features, then the numerical features.
+    This function aggregates the features by class (i.e. feature type) and prints top-level missingness and
+    descriptive statistics information at the feature level. It then builds and logs summary tables at the feature-class
+    level.
     Args:
         df_renamed (pd.DataFrame): The renamed/tagged dataframe created by rename_features().
     Returns:
-        None. This is a void function.
+        A tuple of lists of strings for the non-target features at the feature-class level. These are used by the
+        scaling and encoding functions.
     """
-    logger.info('Displaying top-level information for non-target columns/features in dataset...')
+    logger.info('Displaying top-level information for columns/features in dataset...')
 
     # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
     cat_cols = [column for column in df_renamed.columns
@@ -502,5 +504,50 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                 logger.info(f'\nValue counts for target feature {column}:')
                 logger.info(df_renamed[column].value_counts())
 
-    # Return the list of column types for use in the encoding and scaling functions
+    # Return the tuple of the lists of columns by type for use in the encoding and scaling functions
     return cat_cols, ord_cols, num_cols
+
+
+def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
+    """
+    This function allows the user to perform simple imputation for missing values at the feature level. Three imputation
+    methods are offered: mean, median, and mode imputation. The missingness rate for each feature is used to select
+    features which are good candidates for imputation.
+    Args:
+        df_renamed (pd.DataFrame): The dataframe containing the trimmed and renamed data.
+    Returns:
+        df_imputed (pd.DataFrame): The dataframe after imputation is performed.
+    """
+    df_imputed = df_renamed.copy(deep=True)  # Create copy of the renamed dataset
+
+    logger.info('Preparing for missing-value imputation...')  # Log update for user
+
+    # Check if there are no missing values in the whole dataset - if so, log a message that says 'No missing values present in dataset, skipping imputation' and just return the copy of df_renamed created above
+
+    # If any missing values are present, ask the user if they want to perform imputation of missing values
+    # If not, just return the copy of df_renamed created above
+
+    # Otherwise, begin imputation process
+    # For each feature, log the count and rate of missingness (i.e. count of missing values and the percentage of values missing compared to length of the dataset)
+    logger.info('\nCount and rate of missingness for each feature:')
+
+    # Print (do not log) the message that imputing features with over 10% missing values is not recommended because it introduces bias
+
+    # Based on the missing rate for each feature, build a list of imputation candidate features which have a missingness rate >0% but <=10%
+
+    # Log the message that based on the missingness rate, the features which are good candidates for imputation are the features in that list, and show the list
+
+    # Ask the user if they want to impute only for those 'good candidate' features or if they want to override the warning and be offered the opportunity to impute for all features
+
+    # Print (do not log) the warning that TADPREPS only supports mean, median, and mode imputation, and that if they want to do imputation-by-modeling, they should skip this step
+
+    # Ask the user if they want a brief refresher on the strengths and weaknesses of each of the three imputation methods offered. If so, print the brief refresher.
+
+    # Use the user's response to the 'override' question to generate the features which the user will be asked about re: imputation
+    # For each feature, print the feature name, its datatype, and its missingness rate. Then ask the user if, for that feature, they want to perform mean, median, or mode imputation, or if they don't want to impute for that feature.
+    # Also need to handle the possibility that no mode exists.
+
+    # Calculate the value being used to impute the missing values for the given feature (i.e. the mean, median, or mode of the feature) and log a message that says "Replacing {missing count} missing values for {feature name} with {imputation type} value of {calculated value}."
+    # Then perform the desired imputation for that feature
+
+    return df_imputed  # Return the dataframe with imputed values
