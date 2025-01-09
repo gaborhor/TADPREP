@@ -339,7 +339,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
     return df_renamed  # Return dataframe with renamed and tagged columns
 
 
-def print_feature_stats(df_renamed: pd.DataFrame) -> None:
+def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     """
     This function isolates the non-target features and prints top-level missingness and descriptive statistics
     information for the categorical features, then the numerical features.
@@ -395,6 +395,74 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> None:
     else:
         logger.info('No numerical non-target columns/features were found in the dataset.')
 
+    print('Producing key values at the feature level...')
+    print('NOTE: Key values at the feature level are printed but not logged.')  # Notify user
+
+    def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
+        """This helper function calculates and prints key values and missingness info at the feature level."""
+        print(f'\n{"-" * 50}')  # Create visual separator
+        print(f'Key values for {feature_type} feature {column}:')  # Define feature
+        print(f'\n{"-" * 50}')  # Visual separator
+
+        # Calculate missingness at feature level
+        missing_cnt = df[column].isnull().sum()  # Calculate total missing values
+        missing_rate = (missing_cnt / len(df) * 100).round(2)
+        print(f'Missingness information for {column}:')
+        print(f'\n{missing_cnt} missing values - ({missing_rate}% missing)')
+
+        # Ensure the feature is not fully null before producing value counts for categorical and ordinal features
+        if not df[column].isnull().all():
+            if feature_type in ['Categorical', 'Ordinal']:  # Note: these are generated and passed in the outer function
+                print(f'\nValue counts:')
+                print(df[column].value_counts())  # Print value counts
+                # Print mode value if present - note that if multiple modes exist we produce the first mode
+                print(f'Mode: {df[column].mode().iloc[0] if not df[column].mode().empty else "No mode value present"}')
+
+            # Produce additional key stats for numerical features
+            if feature_type == 'Numerical':
+                print(f'\nMean: {df[column].mean():.4f}')
+                print(f'Median: {df[column].median():.4f}')
+                print(f'Standard deviation: {df[column].std():.4f}')
+                print(f'Minimum: {df[column].min():.4f}')
+                print(f'Maximum: {df[column].max():.4f}')
+
+    # Call helper function for each variable type
+    if cat_cols:  # If categorical features are present
+        print('\nKEY VALUES FOR CATEGORICAL FEATURES:')
+        for column in cat_cols:
+            show_key_vals(column, df_renamed, 'Categorical')
+
+        # Move to feature-class level information and log
+        print('Producing key values at the feature-class level...')
+        print('NOTE: Key values at the feature-class level are both printed and logged.')
+        # Build and log summary table for categorical features
+        cat_summary = pd.DataFrame({
+            'Unique_values': [df_renamed[column].nunique() for column in cat_cols],
+            'Missing_count': [df_renamed[column].isnull().sum() for column in cat_cols],
+            'Missing_rate': [(df_renamed[column].isnull().sum() / len(df_renamed) * 100).round(2)
+                             for column in cat_cols]
+        }, index=cat_cols)
+        logger.info('\nCategorical Features Summary Table:')
+        logger.info('\n' + str(cat_summary))
+
+    if ord_cols:  # If ordinal features are present
+        print('\nKEY VALUES FOR ORDINAL FEATURES:')
+        for column in ord_cols:
+            show_key_vals(column, df_renamed, 'Ordinal')
+
+        # Move to feature-class level information and log
+        print('Producing key values at the feature-class level...')
+        print('NOTE: Key values at the feature-class level are both printed and logged.')
+        # Build and log summary table for categorical features
+        ord_summary = pd.DataFrame({
+            'Unique_values': [df_renamed[column].nunique() for column in ord_cols],
+            'Missing_count': [df_renamed[column].isnull().sum() for column in ord_cols],
+            'Missing_rate': [(df_renamed[column].isnull().sum() / len(df_renamed) * 100).round(2)
+                             for column in ord_cols]
+        }, index=cat_cols)
+        logger.info('\nOrdinal Features Summary Table:')
+        logger.info('\n' + str(ord_summary))
+
     # Then, for each categorical non-target feature, print (but do not log) its value counts, mean, median, and mode, and the number of missing values, both as a count and as a '% missing' metric
 
     # Then, do the same for each ordinal non-target feature
@@ -405,3 +473,6 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> None:
     # Notify the user that those tables have been logged
 
     # Finally, list the target feature(s), and print and log mean, median, mode, and missingness for each
+
+    # Return the three list of features by feature type
+    return cat_cols, ord_cols, num_cols
