@@ -348,7 +348,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
     Returns:
         None. This is a void function.
     """
-    logger.info('Displaying top-level information for columns/features in dataset...')
+    logger.info('Displaying top-level information for non-target columns/features in dataset...')
 
     # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
     cat_cols = [column for column in df_renamed.columns
@@ -369,6 +369,9 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                 if pd.api.types.is_numeric_dtype(df_renamed[column])  # Use pandas' built-in numeric type checking
                 and not column.endswith('_target')
                 and not column.endswith('_ord')]
+
+    # Create a list of target columns (columns with '_target' suffix)
+    target_cols = [column for column in df_renamed.columns if column.endswith('_target')]
 
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
@@ -426,7 +429,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                 print(f'Minimum: {df[column].min():.4f}')
                 print(f'Maximum: {df[column].max():.4f}')
 
-    # Call helper function for each variable type
+    # Call helper function for each feature class
     if cat_cols:  # If categorical features are present
         print('\nKEY VALUES FOR CATEGORICAL FEATURES:')
         for column in cat_cols:
@@ -435,6 +438,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         # Move to feature-class level information and log
         print('Producing key values at the feature-class level...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
+
         # Build and log summary table for categorical features
         cat_summary = pd.DataFrame({
             'Unique_values': [df_renamed[column].nunique() for column in cat_cols],
@@ -453,26 +457,50 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         # Move to feature-class level information and log
         print('Producing key values at the feature-class level...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
-        # Build and log summary table for categorical features
+
+        # Build and log summary table for ordinal features
         ord_summary = pd.DataFrame({
             'Unique_values': [df_renamed[column].nunique() for column in ord_cols],
             'Missing_count': [df_renamed[column].isnull().sum() for column in ord_cols],
             'Missing_rate': [(df_renamed[column].isnull().sum() / len(df_renamed) * 100).round(2)
                              for column in ord_cols]
-        }, index=cat_cols)
+        }, index=ord_cols)
         logger.info('\nOrdinal Features Summary Table:')
         logger.info('\n' + str(ord_summary))
 
-    # Then, for each categorical non-target feature, print (but do not log) its value counts, mean, median, and mode, and the number of missing values, both as a count and as a '% missing' metric
+    if num_cols:  # If numerical features are present
+        print('\n KEY VALUES FOR NUMERICAL FEATURES:')
+        for column in num_cols:
+            show_key_vals(column, df_renamed, 'Numerical')
 
-    # Then, do the same for each ordinal non-target feature
+        # Move to feature-class level information and log
+        print('Producing key values at the feature-class level...')
+        print('NOTE: Key values at the feature-class level are both printed and logged.')
 
-    # Then, print (but do not log) the mean, median, and mode of each numerical feature along with the number of missing values, both as a count and as a '% missing' metric
+        # Build and log summary table for numerical features
+        num_summary = df_renamed[num_cols].describe()  # We can do this with a built-in Pandas method
+        logger.info('\nNumerical Features Summary Table:')
+        logger.info('\n' + str(num_summary))
 
-    # Log some form of efficient unified descriptive statistics table for each feature type using Pandas' built-in methods
-    # Notify the user that those tables have been logged
+    # Print key values for target features
+    if target_cols:  # If target features are present
+        print('\nTARGET FEATURE STATISTICS')
+        for column in target_cols:
+            # Note that we use the pandas type-assessment method to choose the string to pass to show_key_vals
+            show_key_vals(column, df_renamed,
+                          'Numerical' if pd.api.types.is_numeric_dtype(df_renamed[column]) else 'Categorical')
 
-    # Finally, list the target feature(s), and print and log mean, median, mode, and missingness for each
+        # Build and log summary table for target features
+        # We call .describe() for numericasl target features and produce value counts otherwise
+        logger.info('\nTarget Features Summary:')
+        for column in target_cols:
+            if pd.api.types.is_numeric_dtype(df_renamed[column]):
+                logger.info(f'\nSummary statistics for target feature {column}:')
+                logger.info(df_renamed[column].describe())
 
-    # Return the three list of features by feature type
+            else:
+                logger.info(f'\nValue counts for target feature {column}:')
+                logger.info(df_renamed[column].value_counts())
+
+    # Return the list of column types for use in the encoding and scaling functions
     return cat_cols, ord_cols, num_cols
