@@ -61,6 +61,8 @@
   - Ask if the user wants to see a barplot of the feature distribution
   - Ask if the user wants to one-hot encode or dummy the feature - provide very simple reminder of the difference
   - Apply selected encoding method (or none, if user doesn't want to encode) to the feature
+  - Do the same (with ordinal encoding) for any ordinal features
+  - Return the encoded dataset
 
 ### Function 8: Display Plots for Numerical Features and Facilitate Scaling
 - For each numerical feature:
