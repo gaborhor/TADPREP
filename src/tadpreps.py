@@ -533,7 +533,6 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         logger.info('Skipping imputation.')  # Log the choice
         return df_imputed  # And return the unmodified dataframe
 
-    # Beginning imputation
     # For each feature, log the count and rate of missingness
     logger.info('\nCount and rate of missingness for each feature:')
     missingness_vals = {}  # Instantiate an empty dictionary to hold the feature-level missingness values
@@ -591,7 +590,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
             print(f'Invalid input: {exc}')
             continue  # And restart the while loop
 
-    # Print  warning that TADPREPS only supports simple imputation methods
+    # Print warning that TADPREPS only supports simple imputation methods
     print('\nWARNING: TADPREPS supports only mean, median, and mode imputation.')
     print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
           'your own imputation code.')
@@ -610,7 +609,40 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
               '\n- Median: Better for skewed numerical data. Robust to outliers.'
               '\n- Mode: Useful for categorical and fully-discrete numerical data.')
 
-    # Use the user's response to the 'override' question to generate the features which the user will be asked about re: imputation
+    # Begin imputation at feature level
+    for feature in imp_features:
+        print(f'\nProcessing feature {feature}...')
+        print(f'- Datatype: {df_imputed[feature].dtype()}')
+        print(f'- Missing rate: {missingness_vals[feature]["rate"]}%')
+
+        # Build list of available/valid imputation methods based on feature datatype
+        if pd.api.types.is_numeric_dtype(df_imputed[feature]):  # For numerical features
+            val_methods = ['Mean', 'Median', 'Mode', 'Skip imputation for this feature']
+        else:
+            val_methods = ['Mode', 'Skip imputation for this feature']  # Only mode is valid for non-numeric data
+
+        # Prompt user to select an imputation method
+        while True:
+            method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
+            method_prompt = f"Choose imputation method:\n{'\n'.join(method_items)}\nEnter the number of your choice: "
+            user_imp_choice = input(method_prompt)
+
+            try:
+                method_idx = int(user_imp_choice) - 1  # Find correct integer value for index of selected method
+
+                if 0 <= method_idx < len(val_methods):  # Validate input
+                    imp_method = val_methods[method_idx]  # Select imputation method
+                    break  # And exit the while loop
+                else:  # Catch invalid integers
+                    print('Invalid input. Enter a valid number.')
+
+            # Catch other input errors
+            except ValueError:
+                print('Invalid input. Enter a valid number.')
+
+        if imp_method == 'Skip imputation for this feature':  # If user wants to skip a feature
+            logger.info(f'Skipping imputation for feature: {feature}')  # Log the choice
+            continue  # And restart the outer for loop with the next feature
     # For each feature, print the feature name, its datatype, and its missingness rate. Then ask the user if, for that feature, they want to perform mean, median, or mode imputation, or if they don't want to impute for that feature.
     # Also need to handle the possibility that no mode exists.
 
