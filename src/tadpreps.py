@@ -15,7 +15,7 @@ import sys
 # Fetch current runtime timestamp in a readable format
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 
-# Set up error logging with time-at-execution
+# Set up logging with time-at-execution
 # We persist with "%-type" formatting to preserve backward compatibility
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
@@ -92,25 +92,25 @@ def print_file_info(df_full: pd.DataFrame) -> None:
     Returns:
         None. This is a void function.
     """
-    # Print number of rows (instances) in file
-    logger.info(f'The unaltered file has {df_full.shape[0]} rows/instances.')  # [0] is rows
+    # Print number of instances in file
+    logger.info(f'The unaltered file has {df_full.shape[0]} instances.')  # [0] is rows
 
-    # Print number of columns (features) in file
-    logger.info(f'The unaltered file has {df_full.shape[1]} columns/features.')  # [1] is columns
+    # Print number of features in file
+    logger.info(f'The unaltered file has {df_full.shape[1]} features.')  # [1] is columns
 
-    # Print names and datatypes of columns/features in file
-    logger.info('Names and datatypes of columns/features:')
+    # Print names and datatypes of features in file
+    logger.info('Names and datatypes of features:')
     logger.info(df_full.info(memory_usage=False, show_counts=False))  # Limit information printed since it's logged
 
-    # Print # of instances/rows with missing values
+    # Print # of instances with missing values
     row_missing_cnt = df_full.isnull().any(axis=1).sum()  # Compute count
     row_missing_rate = (row_missing_cnt / len(df_full) * 100).round(2)  # Compute rate
-    logger.info(f'\n{row_missing_cnt} rows/instances ({row_missing_rate}%) contain at least one missing value.')
+    logger.info(f'\n{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
 
 
 def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
     """
-    This function allows the user to delete instances with any missing values, to drop columns/features from the
+    This function allows the user to delete instances with any missing values, to drop features from the
     dataset, and to sub-set the data by deleting a specified proportion of the instances at random.
     Args:
         df_full (pd.DataFrame): The original, unaltered dataset.
@@ -119,26 +119,26 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
     """
     df_trimmed = df_full.copy(deep=True)
     # Ask if the user wants to delete *all* instances with any missing values
-    user_drop_na = input('Do you want to drop all rows/instances with *any* missing values? (Y/N): ')
+    user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
     if user_drop_na.lower() == 'y':
         df_trimmed = df_trimmed.dropna()
         logger.info(f'After deletion of instances with missing values, {len(df_trimmed)} instances remain.')
 
     # Ask if the user wants to drop any of the columns/features in the dataset
-    user_drop_cols = input('Do you want to drop any of the columns/features in the dataset? (Y/N): ')
+    user_drop_cols = input('Do you want to drop any of the features in the dataset? (Y/N): ')
     if user_drop_cols.lower() == 'y':
-        print('The full set of columns/features in the dataset is:')
+        print('The full set of features in the dataset is:')
         for col_idx, column in enumerate(df_trimmed.columns, 1):  # Create enumerated list of features starting at 1
             print(f'{col_idx}. {column}')
 
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                drop_cols_input = input('\nEnter the index integers of the columns/features you wish to drop '
+                drop_cols_input = input('\nEnter the index integers of the features you wish to drop '
                                      '(comma-separated) or enter "C" to cancel: ')
 
                 # Check for user cancellation
                 if drop_cols_input.lower() == 'c':  # If user entered cancel-out input
-                    logger.info('Column/feature deletion cancelled.')  # Log the cancellation
+                    logger.info('Feature deletion cancelled.')  # Log the cancellation
                     break  # Exit the while loop
 
                 # Create list of column indices to drop
@@ -146,28 +146,28 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
                 # Verify that all index numbers of columns to be dropped are valid/in range
                 if not all(1 <= idx <= len(df_trimmed.columns) for idx in drop_cols_idx):  # Using a generator
-                    raise ValueError('Some column/feature index integers entered are out of range/invalid.')
+                    raise ValueError('Some feature index integers entered are out of range/invalid.')
 
                 # Convert specified column numbers to actual column names
                 drop_cols_names = [df_trimmed.columns[idx-1] for idx in drop_cols_idx]  # Subtracting 1 from indices
 
                 # Drop the columns
                 df_trimmed.drop(columns=drop_cols_names, inplace=True)
-                logger.info(f'Dropped columns/features: {",".join(drop_cols_names)}')  # Log the dropped columns
+                logger.info(f'Dropped features: {",".join(drop_cols_names)}')  # Log the dropped columns
                 break  # Exit the while loop
 
             # Catch invalid user input
             except ValueError:
-                logger.error('Invalid input. Please enter valid column/index integers separated by commas.')
+                logger.error('Invalid input. Please enter valid feature index integers separated by commas.')
                 continue  # Restart the loop
 
     # Ask if the user wants to sub-set the data by deleting a specified proportion of the instances at random
     user_subset = input('Do you want to sub-set the data by randomly deleting a specified proportion of '
-                        'rows/instances? (Y/N): ')
+                        'instances? (Y/N): ')
     if user_subset.lower() == 'y':
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                subset_input = input('Enter the proportion of rows/instances to DROP (0.0-1.0) or '
+                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or '
                                      'enter "C" to cancel: ')
 
                 # Check for user cancellation
@@ -181,7 +181,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
                     retain_row_cnt = int(len(df_trimmed) * retain_rate)  # Select count of rows to keep in subset
 
                     df_trimmed = df_trimmed.sample(n=retain_row_cnt)  # No random state set b/c we want true randomness
-                    logger.info(f'Randomly dropped {subset_rate}% of rows/instances. {retain_row_cnt} rows/instances '
+                    logger.info(f'Randomly dropped {subset_rate}% of instances. {retain_row_cnt} instances '
                                 f'remain.')  # Log sub-setting information/outcome
                     break  # Exit while loop
 
@@ -199,7 +199,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
 def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
     """
-    This function allows the user to rename columns/features and to append the '_ord' and/or '_target' suffixes
+    This function allows the user to rename features and to append the '_ord' and/or '_target' suffixes
     to ordinal or target columns.
     Args:
         df_trimmed (pd.DataFrame): The 'trimmed' dataset created by trim_file().
@@ -209,20 +209,20 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
     df_renamed = df_trimmed.copy(deep=True)  # Create copy of trimmed dataset
 
     # Ask if user wants to rename any columns
-    user_rename_cols = input('Do you want to rename any of the columns/features in the dataset? (Y/N): ')
+    user_rename_cols = input('Do you want to rename any of the features in the dataset? (Y/N): ')
     if user_rename_cols.lower() == 'y':
-        print('The list of columns/features currently in the dataset is:')
+        print('The list of features currently present in the dataset is:')
         for col_idx, column in enumerate(df_renamed.columns, 1):  # Create enumerated list of features starting at 1
             print(f'{col_idx}. {column}')
 
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                rename_cols_input = input('\nEnter the index integer of the column/feature you wish to rename '
+                rename_cols_input = input('\nEnter the index integer of the feature you wish to rename '
                                      'or enter "C" to cancel: ')
 
                 # Check for user cancellation
                 if rename_cols_input.lower() == 'c':  # If user entered cancel-out input
-                    logger.info('Column/feature renaming cancelled.')  # Log the cancellation
+                    logger.info('Feature renaming cancelled.')  # Log the cancellation
                     break  # Exit the while loop
 
                 col_idx = int(rename_cols_input)  # Convert input to integer
@@ -231,30 +231,30 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Get new name for the column from user
                 col_name_old = df_renamed.columns[col_idx - 1]
-                col_name_new = input(f'Enter new name for column "{col_name_old}": ').strip()
+                col_name_new = input(f'Enter new name for feature "{col_name_old}": ').strip()
 
                 # Validate name to make sure it doesn't already exist in the dataset
                 if col_name_new in df_renamed.columns:
-                    logger.error(f'Column name "{col_name_new}" already exists. Choose a different name.')
+                    logger.error(f'Feature name "{col_name_new}" already exists. Choose a different name.')
                     continue  # Restart the loop
 
                 # Rename column in-place
                 df_renamed.rename(columns={col_name_old: col_name_new}, inplace=True)
-                logger.info(f'Renamed column "{col_name_old}" to "{col_name_new}".')
+                logger.info(f'Renamed feature "{col_name_old}" to "{col_name_new}".')
 
                 # Ask if user wants to rename another column
-                if input('Do you want to rename another column? (Y/N): ').lower() != 'y':
+                if input('Do you want to rename another feature? (Y/N): ').lower() != 'y':
                     break  # If not, exit the while loop
 
             except ValueError as exc:
                 logger.error(f'Invalid input: {exc}')
 
     # Ask if user wants to perform batch-level appending of '_ord' tag to ordinal features
-    user_tag_ord = input('Do you want to tag any columns/features as ordinal by appending the "_ord" suffix '
+    user_tag_ord = input('Do you want to tag any features as ordinal by appending the "_ord" suffix '
                               'to their names? (Y/N): ')
 
     if user_tag_ord.lower() == 'y':
-        print('\nCurrent column/feature list:')
+        print('\nCurrent feature list:')
         for col_idx, column in enumerate(df_renamed.columns, 1):
             print(f'{col_idx}. {column}')
 
@@ -271,7 +271,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that all entered index integers are in range
                 if not all(1 <= idx <= len(df_renamed.columns) for idx in ord_idx_list):  # Using a generator again
-                    raise ValueError('Some column/feature indices are out of range.')
+                    raise ValueError('Some feature indices are out of range.')
 
                 ord_names_pretag = [df_renamed.columns[idx - 1] for idx in ord_idx_list]  # Create list of pretag names
 
@@ -280,11 +280,11 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
                 if not ord_rename_map:  # If the mapper is empty
-                    logger.warning('All selected columns/features are already tagged as ordinal.')  # Warn the user
+                    logger.warning('All selected features are already tagged as ordinal.')  # Warn the user
                     break  # And exit the while loop
 
                 df_renamed.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
-                logger.info(f'Tagged the following columns/features as ordinal: {", ".join(ord_rename_map.keys())}')
+                logger.info(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -293,11 +293,11 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                 continue  # Restart the loop
 
     # Ask if user wants to perform batch-level appending of '_target' tag to target features
-    user_tag_target = input('Do you want to tag any columns/features as targets by appending the "_target" suffix '
+    user_tag_target = input('Do you want to tag any features as targets by appending the "_target" suffix '
                             'to their names? (Y/N): ')
 
     if user_tag_target.lower() == 'y':
-        print('\nCurrent columns:')
+        print('\nCurrent features:')
         for col_idx, column in enumerate(df_renamed.columns, 1):
             print(f'{col_idx}. {column}')
 
@@ -314,7 +314,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that all entered index integers are in range
                 if not all(1 <= idx <= len(df_renamed.columns) for idx in target_idx_list):  # Using a generator again
-                    raise ValueError('Some column/feature indices are out of range.')
+                    raise ValueError('Some feature indices are out of range.')
 
                 target_names_pretag = [df_renamed.columns[idx - 1] for idx in target_idx_list]  # List of pretag names
 
@@ -324,11 +324,11 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
                 if not target_rename_map:  # If the mapper is empty
-                    logger.warning('All selected columns/features are already tagged as targets.')  # Warn the user
+                    logger.warning('All selected features are already tagged as targets.')  # Warn the user
                     break  # And exit the while loop
 
                 df_renamed.rename(columns=target_rename_map, inplace=True)  # Perform tagging
-                logger.info(f'Tagged the following columns/features as targets: {", ".join(target_rename_map.keys())}')
+                logger.info(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -350,7 +350,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         A tuple of lists of strings for the non-target features at the feature-class level. These are used by the
         scaling and encoding functions.
     """
-    logger.info('Displaying top-level information for columns/features in dataset...')
+    logger.info('Displaying top-level information for features in dataset...')
 
     # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
     cat_cols = [column for column in df_renamed.columns
@@ -377,28 +377,28 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
-        logger.info(f'NOTE: {len(ord_cols)} ordinal columns/features are present in the dataset.')
+        logger.info(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
     else:
-        logger.info('NOTE: No ordinal columns/features are tagged in the dataset.')
+        logger.info('NOTE: No ordinal features are tagged in the dataset.')
 
     # Print and log the names of the categorical features
     if cat_cols:
-        logger.info('\nThe categorical non-target columns/features are:')
+        logger.info('\nThe categorical non-target features are:')
         logger.info(', '.join(cat_cols))
     else:
-        logger.info('No categorical non-target columns/features were found in the dataset.')
+        logger.info('No categorical non-target features were found in the dataset.')
 
     # Print and log the names of the ordinal features (if present)
     if ord_cols:
-        logger.info('\nThe ordinal non-target columns/features are:')
+        logger.info('\nThe ordinal non-target features are:')
         logger.info(', '.join(ord_cols))
 
     # Print and log the names of the numerical features ('The numerical non-target features are:')
     if num_cols:
-        logger.info('\nThe numerical non-target columns/features are:')
+        logger.info('\nThe numerical non-target features are:')
         logger.info(', '.join(num_cols))
     else:
-        logger.info('No numerical non-target columns/features were found in the dataset.')
+        logger.info('No numerical non-target features were found in the dataset.')
 
     print('Producing key values at the feature level...')
     print('NOTE: Key values at the feature level are printed but not logged.')  # Notify user
@@ -421,7 +421,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                 print(f'\nValue counts:')
                 print(df[column].value_counts())  # Print value counts
                 # Print mode value if present - note that if multiple modes exist we produce the first mode
-                print(f'Mode: {df[column].mode().iloc[0] if not df[column].mode().empty else "No mode value present"}')
+                print(f'Mode: {df[column].mode().iloc[0] if not df[column].mode().empty else "No mode value exists."}')
 
             # Produce additional key stats for numerical features
             if feature_type == 'Numerical':
