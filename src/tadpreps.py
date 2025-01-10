@@ -493,7 +493,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                           'Numerical' if pd.api.types.is_numeric_dtype(df_renamed[column]) else 'Categorical')
 
         # Build and log summary table for target features
-        # We call .describe() for numericasl target features and produce value counts otherwise
+        # We call .describe() for numerical target features and produce value counts otherwise
         logger.info('\nTarget Features Summary:')
         for column in target_cols:
             if pd.api.types.is_numeric_dtype(df_renamed[column]):
@@ -522,26 +522,93 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
     logger.info('Preparing for missing-value imputation...')  # Log update for user
 
-    # Check if there are no missing values in the whole dataset - if so, log a message that says 'No missing values present in dataset, skipping imputation' and just return the copy of df_renamed created above
+    # Check if there are no missing values anywhere in the dataset
+    if not df_imputed.isnull().any().any():  # Stacking calls to .any() to return a single Boolean for the series
+        logger.info('No missing values present in dataset. Skipping imputation.')  # Log this
+        return df_imputed  # And return the unmodified dataframe
 
-    # If any missing values are present, ask the user if they want to perform imputation of missing values
-    # If not, just return the copy of df_renamed created above
+    # Ask user if they want to perform imputation
+    user_impute = input('Do you want to impute missing values? (Y/N): ')
+    if user_impute.lower() != 'y':  # If the user wants to skip imputation
+        logger.info('Skipping imputation.')  # Log the choice
+        return df_imputed  # And return the unmodified dataframe
 
-    # Otherwise, begin imputation process
-    # For each feature, log the count and rate of missingness (i.e. count of missing values and the percentage of values missing compared to length of the dataset)
+    # Beginning imputation
+    # For each feature, log the count and rate of missingness
     logger.info('\nCount and rate of missingness for each feature:')
+    missingness_vals = {}  # Instantiate an empty dictionary to hold the feature-level missingness values
+    for column in df_imputed.columns:
+        missing_cnt = df_imputed[column].isnull().sum()  # Calculate missing count
+        missing_rate = (missing_cnt / len(df_imputed) * 100).round(2)  # Calculate missing rate
+        missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}  # Add those values to the dictionary
+        logger.info(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Log this info
 
-    # Print (do not log) the message that imputing features with over 10% missing values is not recommended because it introduces bias
+    # Warn user about imputation thresholds
+    print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
+          'due to potential bias introduction.')
 
-    # Based on the missing rate for each feature, build a list of imputation candidate features which have a missingness rate >0% but <=10%
+    # Build a list of good candidate features for imputation (missingness rate >0% but <=10%) using the dictionary
+    imp_candidates = [key for key, value in missingness_vals.items() if 0 < value['rate'] <= 10]
 
-    # Log the message that based on the missingness rate, the features which are good candidates for imputation are the features in that list, and show the list
+    if imp_candidates:  # If any candidate features exist
+        logger.info('Based on missingness rates, the following features are good candidates for imputation:')
+        for key in imp_candidates:
+            logger.info(f'- {key}: {missingness_vals[key]["rate"]}% missing')
 
-    # Ask the user if they want to impute only for those 'good candidate' features or if they want to override the warning and be offered the opportunity to impute for all features
+    else:  # If no good candidate features are present
+        logger.info('No features fall within the recommended rate range for imputation.')  # Log that fact
+        print('WARNING: Statistical best practices indicate you should not perform imputation.')  # Print user warning
 
-    # Print (do not log) the warning that TADPREPS only supports mean, median, and mode imputation, and that if they want to do imputation-by-modeling, they should skip this step
+    # Ask if user wants to override the recommendation
+    while True:  # We can justify 'while True' because we have a cancel-out input option
+        try:
+            user_override = input('\nDo you wish to:\n'
+                                  '1. Impute only for recommended features (<= 10% missing)\n'
+                                  '2. Override the warning and consider all features with missing values\n'
+                                  '3. Skip imputation').strip()
 
-    # Ask the user if they want a brief refresher on the strengths and weaknesses of each of the three imputation methods offered. If so, print the brief refresher.
+            # Validate input
+            if user_override not in ['1', '2', '3']:
+                raise ValueError('Please enter 1, 2, or 3.')
+
+            # Check for cancellation
+            if user_override.lower() == '3':
+                logger.info('Skipping imputation. No changes made to dataset.')
+                return df_imputed
+
+            # Build list of features to be imputed
+            imp_features = (imp_candidates if user_override == '1'
+                            else [key for key, value in missingness_vals.items() if value['count'] > 0])
+
+            # Validate that the list of features for imputation isn't empty
+            if not imp_features:
+                logger.info('No features available for imputation given user input. Skipping imputation.')  # Log this
+                return df_imputed  # And return the unmodified dataset
+
+            break  # Exit the while loop if we get valid user input
+
+        except ValueError as exc:  # Catch invalid input
+            print(f'Invalid input: {exc}')
+            continue  # And restart the while loop
+
+    # Print  warning that TADPREPS only supports simple imputation methods
+    print('\nWARNING: TADPREPS supports only mean, median, and mode imputation.')
+    print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
+          'your own imputation code.')
+
+    # Allow the user to exit the process if they don't want to use simple imputation methods
+    user_proceed = input('Do you want to proceed using simple imputation methods? (Y/N): ')
+    if user_proceed.lower() != 'y':  # If the user wants to skip imputation
+        logger.info('Skipping imputation. No changes made to dataset.')  # Log this
+        return df_imputed  # And return the unmodified dataset
+
+    # Ask the user if they want a refresher on the three imputation methods offered
+    user_refresh = 'Do you want to see a brief refresher on these imputation methods? (Y/N): '
+    if user_refresh.lower() == 'y':
+        print('\nSimple Imputation Methods Overview:'
+              '\n- Mean: Best for normally-distributed data. Theoretically practical. Highly sensitive to outliers.'
+              '\n- Median: Better for skewed numerical data. Robust to outliers.'
+              '\n- Mode: Useful for categorical and fully-discrete numerical data.')
 
     # Use the user's response to the 'override' question to generate the features which the user will be asked about re: imputation
     # For each feature, print the feature name, its datatype, and its missingness rate. Then ask the user if, for that feature, they want to perform mean, median, or mode imputation, or if they don't want to impute for that feature.
