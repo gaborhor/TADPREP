@@ -673,3 +673,71 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
             continue  # Restart outer for loop with next feature
 
     return df_imputed  # Return the new dataframe with imputed values
+
+
+def encode_features(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list) -> pd.DataFrame:
+    """
+    This function allows the user to use appropriate encoding methods on the categorical and ordinal non-target
+    features in the dataset. It identifies the appropriate candidate features using the lists created by the
+    print_feature_stats function.
+    Args:
+        df_imputed (pd.Dataframe): The dataframe with imputed values return by impute_missing) data.
+        cat_cols (list): The list of categorical non-target features created by print_feature_stats().
+        ord_cols (list): The list of ordinal non-target features created by print_feature_stats().
+    Returns:
+        df_encoded (pd.DataFrame): A dataframe with encoded categorical and ordinal features.
+    """
+    df_encoded = df_imputed.copy(deep=True)  # Create copy of imputed dataframe
+
+    if not cat_cols and not ord_cols:  # If there are no candidate features for recoding
+        logger.info('No categorical or ordinal features are present in the dataset. Skipping encoding.')  # Log this
+        return df_encoded  # And return the unmodified dataset
+
+    # Log feature count info
+    logger.info(f'The dataset contains {len(cat_cols)} categorical and {len(ord_cols)} ordinal non-target features.')
+
+    # Ask if user wants to perform any encoding
+    user_encode = input('Do you wish to encode any of these features? (Y/N): ')
+    if user_encode.lower() != 'y':  # If user does not wish to encode
+        logger.info('Skipping encoding.')  # Log this
+        return df_encoded  # And return the unmodified dataset
+
+    if cat_cols:
+        print('Preparing to encode categorical features...')
+
+    # Ask if the user wants to see a brief refresher on one-hot vs. dummy encoding for categorical features
+    # If so, display the refresher
+
+    '''
+    Now, for each categorical feature (assuming any are present - check for this):
+    - Ask if the user wants to encode this feature. If not, skip to next feature
+    - Print total # of unique categories/values in the feature
+    - Print alphabetized unique list of categories/values in the feature
+    - Print warning message that if the number of categories is too high, (i.e. greater than about 20) the user should perform some kind of dimensionality reduction rather than encode the feature
+    - Note that this helps avoid the curse of dimensionality and overly-sparse data in the features 
+    - Print value counts for the feature
+    - Ask if the user wants to see a barplot of the feature distribution
+    - Ask if the user wants to one-hot encode or dummy the feature
+    - Apply selected encoding method (or none, if user doesn't want to encode) to the feature
+    '''
+
+    if ord_cols:
+        print('Preparing to encode ordinal features...')
+
+    # Ask if the user wants to see a brief refresher on ordinal encoding for ordinal features
+    # If so, display the refresher
+
+    '''
+    Now, for each ordinal feature (assuming any are present - check for this):
+    - Ask if the user wants to encode this feature. If not, skip to next feature
+    - Print total # of unique categories/values in the feature
+    - Print alphabetized unique list of categories/values in the feature
+    - Print warning message that if the number of categories is too high, (i.e. greater than about 20) the user should perform some kind of dimensionality reduction rather than encode the feature
+    - Note that this helps avoid the curse of dimensionality and overly-sparse data in the features 
+    - Print value counts for the feature
+    - Ask if the user wants to see a barplot of the feature distribution
+    - Ask if the user wants to encode the ordinal feature
+    - Apply ordinal encoding (or none, if user doesn't want to encode) to the feature
+    '''
+
+    return df_encoded  # Return the dataset with encoding applied
