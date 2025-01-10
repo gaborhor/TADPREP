@@ -602,7 +602,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         return df_imputed  # And return the unmodified dataset
 
     # Ask the user if they want a refresher on the three imputation methods offered
-    user_refresh = 'Do you want to see a brief refresher on these imputation methods? (Y/N): '
+    user_refresh = input('Do you want to see a brief refresher on these imputation methods? (Y/N): ')
     if user_refresh.lower() == 'y':
         print('\nSimple Imputation Methods Overview:'
               '\n- Mean: Best for normally-distributed data. Theoretically practical. Highly sensitive to outliers.'
@@ -612,7 +612,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
     # Begin imputation at feature level
     for feature in imp_features:
         print(f'\nProcessing feature {feature}...')
-        print(f'- Datatype: {df_imputed[feature].dtype()}')
+        print(f'- Datatype: {df_imputed[feature].dtype}')
         print(f'- Missing rate: {missingness_vals[feature]["rate"]}%')
 
         # Build list of available/valid imputation methods based on feature datatype
@@ -624,7 +624,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         # Prompt user to select an imputation method
         while True:
             method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
-            method_prompt = f"Choose imputation method:\n{'\n'.join(method_items)}\nEnter the number of your choice: "
+            method_prompt = f'Choose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
             user_imp_choice = input(method_prompt)
 
             try:
@@ -643,10 +643,33 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         if imp_method == 'Skip imputation for this feature':  # If user wants to skip a feature
             logger.info(f'Skipping imputation for feature: {feature}')  # Log the choice
             continue  # And restart the outer for loop with the next feature
-    # For each feature, print the feature name, its datatype, and its missingness rate. Then ask the user if, for that feature, they want to perform mean, median, or mode imputation, or if they don't want to impute for that feature.
-    # Also need to handle the possibility that no mode exists.
 
-    # Calculate the value being used to impute the missing values for the given feature (i.e. the mean, median, or mode of the feature) and log a message that says "Replacing {missing count} missing values for {feature name} with {imputation type} value of {calculated value}."
-    # Then perform the desired imputation for that feature
+        # Begin actual imputation process
+        try:
+            # Calculate impute values based on method selection
+            if imp_method == 'Mean':
+                imp_val = df_imputed[feature].mean()
+            elif imp_method == 'Median':
+                imp_val = df_imputed[feature].median()
+            else:  # If only mode is a valid method
+                mode_vals = df_imputed[feature].mode()
+                if len(mode_vals) == 0:  # If no mode values exist
+                    # Log a warning
+                    logger.warning(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
+                    continue  # Restart outer for loop with next feature
+                imp_val = mode_vals[0]  # Select first mode
 
-    return df_imputed  # Return the dataframe with imputed values
+            # Impute missing values at feature level
+            feature_missing_cnt = missingness_vals[feature]['count']
+            logger.info(f'Replacing {feature_missing_cnt} missing values for {feature} '
+                        f'using {imp_method} value of {imp_val}.')
+            df_imputed[feature].fillna(imp_val, inplace=True)  # Replace empty values with imputed value in-place
+
+        # Catch all other exceptions
+        except Exception as exc:
+            # Log errors
+            logger.error(f'Error during imputation for feature {feature}: {exc}')
+            logger.error('Skipping imputation for this feature.')
+            continue  # Restart outer for loop with next feature
+
+    return df_imputed  # Return the new dataframe with imputed values
