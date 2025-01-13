@@ -680,7 +680,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
     """
     This function allows the user to use appropriate encoding methods on the categorical and ordinal non-target
     features in the dataset. It identifies the appropriate candidate features using the lists created by the
-    print_feature_stats function.
+    print_feature_stats function. Note that the actual 'engine' of this function is the set of three helper functions
+    defined within its scope.
     Args:
         df_imputed (pd.Dataframe): The dataframe with imputed values return by impute_missing) data.
         cat_cols (list): The list of categorical non-target features created by print_feature_stats().
@@ -693,7 +694,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
 
     def handle_cats():
         """This internal helper function facilitates the encoding of categorical features, if desired by the user."""
-        nonlocal df_final  # Specify this object comes from the outer scope
+        nonlocal df_final  # Specify that this object comes from the outer scope
 
         if not cat_cols:  # If the list of categorical columns is empty
             logger.info('No categorical features are present in the dataset. Skipping encoding.')  # Log this
@@ -838,10 +839,124 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
         else:
             logger.info('No features were encoded.')
 
+    def handle_ords():
+        """This internal helper function facilitates the remapping of ordinal features, if desired by the user."""
+        nonlocal df_final  # Specify that this object comes from the outer scope
 
+        if not ord_cols:  # If no columns are tagged as ordinal
+            logger.info('No ordinal features are present in the dataset. Skipping remapping.')  # Log this
+            return  # And exit the process
 
-    # Create second helper function handle_ords to deal with ordinal features, which should only run if ord_cols isn't empty
-    # Log a message for how many ordinal features exist in dataset (i.e. len(ord_cols))
+        logger.info(f'The dataset contains {len(ord_cols)} ordinal features.')
+
+        # Create list to track which features get remapped for final reporting
+        remapped_cols = []
+
+        # Create list of string-type ordinal features using Pandas' data-type methods
+        str_ords = [column for column in ord_cols if not pd.api.types.is_numeric_dtype(df_final[column])]
+
+        # If all ordinal features are already numerical, they don't need remapping
+        if not str_ords:  # If there are no string-type ordinal features
+            logger.info('All ordinal features are already in a numerical format.')  # Log that fact
+
+            # Print (do not log) a notification/explanation for the user
+            print('\nNOTE: Ordinal features in numerical format do not need to be scaled.')
+            print('Scaling ordinal features distorts the meaningful distances between values.')
+            logger.info('Skipping remapping of ordinal features.')  # Log the auto-skip for the entire process
+            return  # Return the unmodified data
+
+        # If there are string-type ordinal features, ask if user wants to remap them with numerical values
+        logger.info(f'{len(str_ords)} ordinal features contain non-numeric values.')
+        user_remap = input('\nDo you want to remap any string-type ordinal features to numerical values? (Y/N): ')
+        if user_remap.lower() != 'y':  # If not
+            logger.info('Skipping remapping of ordinal features.')  # Log the choice
+            return  # Return the unmodified data
+
+        # Process each string-type ordinal feature
+        for column in str_ords:
+            print(f'\nProcessing feature: {column}')
+
+            # Ask if user wants to remap this specific feature
+            user_remap_feat = input(f'Do you want to remap {column} to numerical values? (Y/N): ')
+            if user_remap_feat.lower() != 'y':  # If not
+                logger.info(f'Skipping remapping for feature: {column}')  # Log the choice
+                continue  # Return the unmodified data
+
+            # Display the feature's current unique values
+            unique_vals = sorted(df_final[column].unique())
+            print(f'\nCurrent unique values in {column} (alphabetized):')
+            for idx, value in enumerate(unique_vals, 1):  # Created enumerated list, starting at index 1
+                print(f'{idx}. {value}')
+
+            while True:  # We can justify 'while True' because we have a cancel-out input option
+                try:
+                    print('\nProvide comma-separated numbers to represent the ordinal order of these values.')
+                    print('Example: For [High, Low, Medium], you might enter: 2,0,1')
+                    print('Or, for a Likert-type agreement scale [Agree, Disagree, Neither agree nor disagree], '
+                          'you might enter: 3,1,2')
+                    print('You may also enter "C" to cancel the remapping process for this feature.')
+
+                    user_remap_input = input('\nEnter your mapping values: ')
+
+                    if user_remap_input.lower() == 'c':  # If user cancels
+                        logger.info(f'Cancelled remapping for feature: {column}')  # Log the choice
+                        break  # And exit the while loop
+
+                    # Convert user remapping input to a list of integers
+                    new_vals = [int(x.strip()) for x in user_remap_input.split(',')]
+
+                    # Validate that the user input length matches the number of categories
+                    if len(new_vals) != len(unique_vals):
+                        raise ValueError('Number of mapping values must match number of categories.')
+
+                    mapping = dict(zip(unique_vals, new_vals))  # Build a mapping dictionary
+
+                    # Display the proposed remapping
+                    print('\nProposed mapping:')
+                    for old_val, new_val in mapping.items():
+                        print(f'- {old_val} → {new_val}')
+
+                    # Ask for user confirmation
+                    user_confirm = input('\nDo you want to apply this mapping? (Y/N): ')
+                    if user_confirm.lower() == 'y':  # If user confirms
+                        df_final[column] = df_final[column].map(mapping)  # Apply the mapping
+
+                        # Add the feature to the list of remapped features
+                        remapped_cols.append(column)
+
+                        # Log the remapping
+                        logger.info(f'Successfully remapped ordinal feature: {column}')
+
+                        break  # Exit the while loop
+
+                    # Otherwise, restart the remapping attempt
+                    else:
+                        print('Remapping cancelled. Please try again.')
+                        continue
+
+                # Catch input errors
+                except ValueError as exc:
+                    print(f'Invalid input: {exc}')
+                    print('Please try again or enter "C" to cancel.')
+                    continue  # Restart the loop
+
+                # Catch other errors
+                except Exception as exc:
+                    logger.error(f'Error during remapping of feature {column}: {exc}')  # Log the error
+                    print('An error occurred. Skipping remapping for this feature.')
+                    break  # Exit the loop
+
+        # After all features are processed, log a summary of remapping results
+        # If any features were remapped, log the encoded features
+        if remapped_cols:
+            logger.info('\nThe following ordinal features were remapped to numerical values:')
+            for col in remapped_cols:
+                logger.info(f'- {col}')
+
+        # If no features were remapped, log that fact
+        else:
+            logger.info('No ordinal features were remapped.')
+
     # Assess whether the ordinal features have strings as values (e.g. 'Low', 'Medium', 'High') or whether they're numerical in type and have values like (0, 1, and 2)
     # If the ordinal features are all already numerical, log that info, notify the user that they can be left as-is and explain briefly why no scaling of ordinal features is needed, and skip to the next step
     # If there are any ordinal features with strings as values, ask if the user wants to map them to numerical values - if not, log that and skip process leaving data intact
