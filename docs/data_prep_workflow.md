@@ -52,7 +52,9 @@
   - Ask which imputation method (if any) the user wants to apply to the feature
   - Apply selected imputation method (or none, if user doesn't want to impute) to the feature
 
-### Function 7: Facilitate Encoding of Categorical Features
+### Function 7: Facilitate Encoding and Scaling of Features
+- This function will contain three internal helper functions which will facilitate the encoding and scaling of the features in the dataset
+- Each helper function will handle one of the three input-feature types: categorical, ordinal, and numerical
 - For each categorical feature:
   - Print total # of categories/values in the feature
   - Print alphabetized unique list of categories/values in the feature
@@ -61,10 +63,11 @@
   - Ask if the user wants to see a barplot of the feature distribution
   - Ask if the user wants to one-hot encode or dummy the feature - provide very simple reminder of the difference
   - Apply selected encoding method (or none, if user doesn't want to encode) to the feature
-  - Do the same (with ordinal encoding) for any ordinal features
-  - Return the encoded dataset
-
-### Function 8: Display Plots for Numerical Features and Facilitate Scaling
+- For each ordinal feature:
+  - Assess whether the ordinal feature is numerical or string in datatype
+  - If the feature already has numbers as values (e.g. 1, 2, 3 rather than 'Low', 'Medium', 'High'), no transform is necessary
+  - If the feature has strings as values (e.g. 'Low', 'Medium', 'High'), work with the user to map the string values to numerical values which reflect the correct ordinal order
+  - Once the ordinal feature is correctly numerically mapped, note that these features are not scaled (briefly explain why), and move on to the next feature
 - For each numerical feature:
   - Print simple descriptive statistics of the feature
   - Ask if the user wants to see a histogram of the feature distribution
@@ -72,7 +75,7 @@
   - Ask which scaling method (if any) the user wants to apply to the feature
   - Apply selected scaling method (or none, if user doesn't want to scale) to the feature
 
-### Function 9: Export Prepared Dataset
+### Function 8: Export Prepared Dataset
 - Ask user for preferred export format (list of eligible/suggested formats apart from Excel and .csv is TBD)
 - Ask user what they want the file to be called
 - Ask user where they want the file to be saved (make directory if it doesn't already exist)
