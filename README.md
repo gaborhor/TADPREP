@@ -29,7 +29,7 @@ through a step-by-step process of applying encoding and scaling to the features 
 a few different options for exporting the cleaned, transformed data.
 
 *NOTE: A more in-depth explanation of the exact procedural flow of the script can be found in the
-'data_prep_workflow.md' document in this repository.*
+'data_prep_workflow.md' document in the 'docs' folder of this repository.*
 
 In terms of the daily work of a data scientist, TADPREPS is designed to integrate into the workflow as follows:
 1. A data scientist is provided with a flat file of relevant data, either externally by a client or by running a database query of some sort.
