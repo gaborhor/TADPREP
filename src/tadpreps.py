@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
 import sys
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 # Fetch current runtime timestamp in a readable format
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
@@ -521,6 +522,8 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
     """
     df_imputed = df_renamed.copy(deep=True)  # Create copy of the renamed dataset
 
+    imp_features = []  # Instantiate list of features for imputation before the try block begins (assignment resilience)
+
     logger.info('Preparing for missing-value imputation...')  # Log update for user
 
     # Check if there are no missing values anywhere in the dataset
@@ -688,7 +691,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
         ord_cols (list): The list of ordinal non-target features created by print_feature_stats().
         num_cols (list): The list of numerical non-target features created by print_feature_stats().
     Returns:
-        df_final (pd.DataFrame): A final-form dataframe with encoded categorical and ordinal features.
+        df_final (pd.DataFrame): A final-form dataframe with encoded and scaled features.
     """
     df_final = df_imputed.copy(deep=True)  # Create copy of imputed dataframe
 
@@ -877,8 +880,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
             print(f'\nProcessing feature: {column}')
 
             # Ask if user wants to remap this specific feature
-            user_remap_feat = input(f'Do you want to remap {column} to numerical values? (Y/N): ')
-            if user_remap_feat.lower() != 'y':  # If not
+            user_remap_feature = input(f'Do you want to remap {column} to numerical values? (Y/N): ')
+            if user_remap_feature.lower() != 'y':  # If not
                 logger.info(f'Skipping remapping for feature: {column}')  # Log the choice
                 continue  # Return the unmodified data
 
@@ -950,43 +953,145 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, n
         # If any features were remapped, log the encoded features
         if remapped_cols:
             logger.info('\nThe following ordinal features were remapped to numerical values:')
-            for col in remapped_cols:
-                logger.info(f'- {col}')
+            for column in remapped_cols:
+                logger.info(f'- {column}')
 
         # If no features were remapped, log that fact
         else:
             logger.info('No ordinal features were remapped.')
 
-    # Assess whether the ordinal features have strings as values (e.g. 'Low', 'Medium', 'High') or whether they're numerical in type and have values like (0, 1, and 2)
-    # If the ordinal features are all already numerical, log that info, notify the user that they can be left as-is and explain briefly why no scaling of ordinal features is needed, and skip to the next step
-    # If there are any ordinal features with strings as values, ask if the user wants to map them to numerical values - if not, log that and skip process leaving data intact
-    # If user wants to ennumerate string-type ordinal features:
-    '''
-    For each string-type ordinal feature:
-    - Ask if the user wants to remap this feature - if not, skip to the next string-type ordinal feature
-    - Display an alphabetized list of the unique values in the feature
-    - Help the user map the values to a sensible numerical order - e.g. if the values are Yes, No, and Maybe, help the user transform those strings into 0 for No, 1 for Maybe, and 2 for Yes
-    - The goal is to work with the user to map the string values to numerical values which reflect the correct ordinal order
-    - Once the user has provided the mapping, show the user what the transform will look like (e.g. display the old value and proposed new value for each value in the feature) and ensure that's what the user wants
-    - If so, remap the string values to the new numerical values
-    - If not, restart the renaming process
-    - Once the remapping has been approved, apply the remap to the feature in-place
-    - At the end of the process, log a message that says the following ordinal features were numerically remapped, then list those features
-    '''
+    def handle_nums():
+        """This internal helper function facilitates the scaling of numerical features, if desired by the user."""
+        nonlocal df_final  # Specify that this object comes from the outer scope
 
-    # Create third helper function handle_nums to deal with numerical features, which should only run if num_cols isn't empty
-    # Note that TADPREPS only supports common scaling methods
-    # Print a very simple reminder of the different common scaling methods and when each should be used
-    # Ask if the user wants to proceed with simple scaling - if not, skip this step and leave the data intact
-    # If the user does wants to do simple scaling:
-    '''
-    For each numerical feature:
-    - Ask if the user wants to scale this feature - if not, skip to the next numerical feature
-    - Print simple descriptive statistics of the feature
-    - Ask if the user wants to see a histogram of the feature distribution  (Use Seaborn)
-    - Ask which scaling method (if any) the user wants to apply to the feature
-    - Apply selected scaling method (or none, if user doesn't want to scale) to the feature in-place
-    - At the end of the process, log a message that says the following numerical features were scaled, then list those features
-    '''
+        if not num_cols:  # If no columns are tagged as numerical
+            logger.info('No numerical features are present in the dataset. Skipping remapping.')  # Log this
+            return  # And exit the process
+
+        logger.info(f'The dataset contains {len(num_cols)} numerical features.')  # Log count of numerical features
+
+        # Create list to track which features get scaled for final reporting
+        scaled_cols = []
+
+        # Print warning that TADPREPS only supports common scaling methods
+        print('\nWARNING: TADPREPS supports only the Standard, Robust, and MixMax scalers.')
+        print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
+              'your own scaler code.')
+        # Ask if the user wants to scale any numerical features
+        user_scale = input('Do you want to scale any of these features? (Y/N): ')
+        if user_scale != 'y':  # If not
+            logger.info('Skipping scaling of numerical features.')  # Log the choice
+            return  # And exit the process
+
+        # Ask if user wants a refresher on the three scaling methods
+        user_scale_refresh = input('Do you want to see a brief refresher on TADPRES_supported scalers? (Y/N): ')
+        if user_scale_refresh.lower() == 'y':  # If so, display refresher
+            print('\nOverview of the Standard, Robust, and MinMax Scalers:'
+                  '\nStandard Scaler (Z-score normalization):'
+                  '\n- Transforms features to have zero mean and unit variance.'
+                  '\n- Best choice for comparing measurements in different units (e.g., combining age, income, '
+                  'and test scores).'
+                  '\n- Good for methods that assume normally distributed data like linear regression.'
+                  '\n- Not ideal when data has many extreme values or outliers.'
+                  '\n'
+                  '\nRobust Scaler:'
+                  '\n- Scales using statistics that are resistant to extreme values.'
+                  '\n- Great for data where outliers are meaningful (e.g., rare but important market events).'
+                  '\n- Useful for survey data where some respondents give extreme ratings.'
+                  '\n- A good choice when you can\'t simply remove outliers because they contain important information.'
+                  '\n'
+                  '\nMinMax Scaler:'
+                  '\n- Scales all values to a fixed range between 0 and 1.'
+                  '\n- Good for image pixel data or whenever features must be strictly positive.'
+                  '\n- Good for visualization and neural networks that expect bounded inputs.'
+                  '\n- Works well with sparse data (data with many zeros).')
+
+        # For each numerical feature
+        for column in num_cols:
+            print(f'\nProcessing feature: {column}')
+
+            # Ask if user wants to scale this feature
+            user_scale_feature = input(f'Do you want to scale {column}? (Y/N): ')
+            if user_scale_feature.lower() != 'y':  # If not
+                logger.info(f'Skipping scaling for feature: {column}')  # Log that choice
+                continue  # And move to the next feature
+
+            # Print (do not log) descriptive statistics for the feature
+            print(f'\nDescriptive statistics for {column}:')
+            print(df_final[column].describe())
+
+            # Ask if user wants to see a distribution plot for the feature
+            user_show_plot = input('\nWould you like to see a histogram of the feature distribution? (Y/N): ')
+            if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
+                plt.figure(figsize=(12, 8))
+                sns.histplot(data=df_final, x=column)
+                plt.title(f'Distribution of {column}')
+                plt.tight_layout()
+                plt.show()
+
+            # Ask user to select a scaling method
+            while True:  # We can justify 'while True' because we have a cancel-out input option
+                try:
+                    print(f'\nSelect scaling method for feature {column}:')
+                    print('1. Standard Scaler (Z-score normalization)')
+                    print('2. Robust Scaler (uses median and IQR)')
+                    print('3. MinMax Scaler (scales to 0-1 range)')
+                    print('4. Skip scaling for this feature')
+                    scale_method = input('Enter your choice (1, 2, 3, or 4): ')
+
+                    if scale_method == '4':  # If user wants to skip
+                        logger.info(f'Skipping scaling for feature: {column}')  # Log that choice
+                        break  # Exit the while loop
+
+                    elif scale_method in ['1', '2', '3']:  # If a valid scaling choice is made
+                        # Reshape the data for use by scikit-learn
+                        reshaped_data = df_final[column].values.reshape(-1, 1)
+
+                        # Instantiate selected scaler and set sacler name
+                        if scale_method == '1':
+                            scaler = StandardScaler()
+                            method_name = 'Standard'
+                        elif scale_method == '2':
+                            scaler = RobustScaler()
+                            method_name = 'Robust'
+                        else:  # At this point, scale_method selection must be '3'
+                            scaler = MinMaxScaler()
+                            method_name = 'MinMax'
+
+                        # Perform scaling and replace original values
+                        df_final[column] = scaler.fit_transform(reshaped_data)
+
+                        # Add the feature to the list of scaled features
+                        scaled_cols.append(f'{column} ({method_name})')
+
+                        logger.info(f'Applied {method_name} scaling to feature {column}.')  # Log the scaling action
+                        break  # Exit the while loop
+
+                    else:  # If an invalid choice was entered
+                        print('Invalid input. Please enter 1, 2, 3, or 4.')
+                        continue  # Restart the while loop
+
+                # Catch other errors
+                except Exception as exc:
+                    logger.error(f'Error during scaling of feature {column}: {exc}')  # Log the error
+                    print('An error occurred. Skipping scaling for this feature.')
+                    break  # Exit the while loop
+
+        # After all features are processed, log a summary of scaling results
+        # If any features were scaled, log the scaled features
+        if scaled_cols:
+            logger.info('\nThe following features were scaled:')
+            for col in scaled_cols:
+                logger.info(f'- {col}')
+
+        # If no features were scaled, log that fact
+        else:
+            logger.info('No features were scaled.')
+
+    # Call the three helper functions in sequence
+    handle_cats()  # Encode categorical features
+    handle_ords()  # Transform and remap ordinal features
+    handle_nums()  # Scale numerical features
 
     # Return the final dataset with encoded and scaled features
+    return df_final
