@@ -1200,3 +1200,20 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
     # Return the final dataset with encoded and scaled features
     return df_final
+
+
+def export_data(df_final: pd.DataFrame):
+    """
+    This function handles the exporting of the final, transformed dataset as created by the encode_and_scale()
+    function to a static location on disk in one of a few common tabular formats. It is the last step in the TADPREPS
+    pipeline.
+    Args:
+        df_final (pd.DataFrame): The final dataframe created by encode_and_scale().
+    Returns:
+        This function has no formal return. It instead saves the finished dataframe to disk in accordance with user
+        instructions.
+    """
+    # Ask user for preferred export format (list of eligible/suggested formats apart from Excel and .csv is TBD)
+    # Ask user what they want the file to be called
+    # Ask user where they want the file to be saved (make directory if it doesn't already exist)
+    # Export file in desired format
