@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
 import sys
@@ -134,7 +135,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
                 drop_cols_input = input('\nEnter the index integers of the features you wish to drop '
-                                     '(comma-separated) or enter "C" to cancel: ')
+                                        '(comma-separated) or enter "C" to cancel: ')
 
                 # Check for user cancellation
                 if drop_cols_input.lower() == 'c':  # If user entered cancel-out input
@@ -149,7 +150,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
                     raise ValueError('Some feature index integers entered are out of range/invalid.')
 
                 # Convert specified column numbers to actual column names
-                drop_cols_names = [df_trimmed.columns[idx-1] for idx in drop_cols_idx]  # Subtracting 1 from indices
+                drop_cols_names = [df_trimmed.columns[idx - 1] for idx in drop_cols_idx]  # Subtracting 1 from indices
 
                 # Drop the columns
                 df_trimmed.drop(columns=drop_cols_names, inplace=True)
@@ -218,7 +219,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
                 rename_cols_input = input('\nEnter the index integer of the feature you wish to rename '
-                                     'or enter "C" to cancel: ')
+                                          'or enter "C" to cancel: ')
 
                 # Check for user cancellation
                 if rename_cols_input.lower() == 'c':  # If user entered cancel-out input
@@ -251,7 +252,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
     # Ask if user wants to perform batch-level appending of '_ord' tag to ordinal features
     user_tag_ord = input('Do you want to tag any features as ordinal by appending the "_ord" suffix '
-                              'to their names? (Y/N): ')
+                         'to their names? (Y/N): ')
 
     if user_tag_ord.lower() == 'y':
         print('\nCurrent feature list:')
@@ -596,14 +597,14 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
           'your own imputation code.')
 
     # Allow the user to exit the process if they don't want to use simple imputation methods
-    user_proceed = input('Do you want to proceed using simple imputation methods? (Y/N): ')
-    if user_proceed.lower() != 'y':  # If the user wants to skip imputation
+    user_imp_proceed = input('Do you want to proceed using simple imputation methods? (Y/N): ')
+    if user_imp_proceed.lower() != 'y':  # If the user wants to skip imputation
         logger.info('Skipping imputation. No changes made to dataset.')  # Log this
         return df_imputed  # And return the unmodified dataset
 
     # Ask the user if they want a refresher on the three imputation methods offered
-    user_refresh = input('Do you want to see a brief refresher on these imputation methods? (Y/N): ')
-    if user_refresh.lower() == 'y':
+    user_impute_refresh = input('Do you want to see a brief refresher on these imputation methods? (Y/N): ')
+    if user_impute_refresh.lower() == 'y':
         print('\nSimple Imputation Methods Overview:'
               '\n- Mean: Best for normally-distributed data. Theoretically practical. Highly sensitive to outliers.'
               '\n- Median: Better for skewed numerical data. Robust to outliers.'
@@ -675,7 +676,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
     return df_imputed  # Return the new dataframe with imputed values
 
 
-def encode_features(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list) -> pd.DataFrame:
+def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list, num_cols: list) -> pd.DataFrame:
     """
     This function allows the user to use appropriate encoding methods on the categorical and ordinal non-target
     features in the dataset. It identifies the appropriate candidate features using the lists created by the
@@ -684,60 +685,193 @@ def encode_features(df_imputed: pd.DataFrame, cat_cols: list, ord_cols: list) ->
         df_imputed (pd.Dataframe): The dataframe with imputed values return by impute_missing) data.
         cat_cols (list): The list of categorical non-target features created by print_feature_stats().
         ord_cols (list): The list of ordinal non-target features created by print_feature_stats().
+        num_cols (list): The list of numerical non-target features created by print_feature_stats().
     Returns:
-        df_encoded (pd.DataFrame): A dataframe with encoded categorical and ordinal features.
+        df_final (pd.DataFrame): A final-form dataframe with encoded categorical and ordinal features.
     """
-    df_encoded = df_imputed.copy(deep=True)  # Create copy of imputed dataframe
+    df_final = df_imputed.copy(deep=True)  # Create copy of imputed dataframe
 
-    if not cat_cols and not ord_cols:  # If there are no candidate features for recoding
-        logger.info('No categorical or ordinal features are present in the dataset. Skipping encoding.')  # Log this
-        return df_encoded  # And return the unmodified dataset
+    def handle_cats():
+        """This internal helper function facilitates the encoding of categorical features, if desired by the user."""
+        nonlocal df_final  # Specify this object comes from the outer scope
 
-    # Log feature count info
-    logger.info(f'The dataset contains {len(cat_cols)} categorical and {len(ord_cols)} ordinal non-target features.')
+        if not cat_cols:  # If the list of categorical columns is empty
+            logger.info('No categorical features are present in the dataset. Skipping encoding.')  # Log this
+            return  # And exit the process
 
-    # Ask if user wants to perform any encoding
-    user_encode = input('Do you wish to encode any of these features? (Y/N): ')
-    if user_encode.lower() != 'y':  # If user does not wish to encode
-        logger.info('Skipping encoding.')  # Log this
-        return df_encoded  # And return the unmodified dataset
+        logger.info(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
 
-    if cat_cols:
-        print('Preparing to encode categorical features...')
+        # Notify user that TADPREPS only supports common encoding methods
+        print('\nNOTE: TADPREPS only supports One-Hot and Dummy encoding.')
+        print('If you wish to use other, more complex encoding methods, skip this step and write your own code.')
 
-    # Ask if the user wants to see a brief refresher on one-hot vs. dummy encoding for categorical features
-    # If so, display the refresher
+        # Ask if user wants to proceed
+        user_encode = input('\nDo you want to Dummy or One-Hot encode any of the categorical features? (Y/N): ')
+        if user_encode.lower() != 'y':  # If not
+            logger.info('Skipping encoding of categorical features.')  # Log that fact
+            return  # And exit the process
 
+        # Ask if user wants a refresher on One-Hot vs. Dummy encoding
+        user_encode_refresh = input('Do you want to see a brief refresher on One-Hot vs. Dummy encoding? (Y/N): ')
+        if user_encode_refresh.lower() == 'y':  # If so, display refresher
+            print('\nOverview of One-Hot vs. Dummy Encoding:'
+                  '\nOne-Hot Encoding: '
+                  '\n- Creates a new binary column for every unique category. '
+                  '\n- No information is lost, which preserves interpretability, but more features are created.'
+                  '\n- This method is preferred for non-linear models like decision trees.'
+                  '\n'
+                  '\nDummy Encoding:'
+                  '\n- Creates n-1 binary columns for n categories in the feature. '
+                  '\n- One category becomes the reference and is represented by all zeros. '
+                  '\n- Dummy encoding is preferred for linear models to avoid perfect multicollinearity.'
+                  '\n- This method is more computationally- and space-efficient but is less interpretable.')
+
+        encoded_cols = []  # Instantiate an empty list to hold the encoded columns for final reporting
+
+        # Begin encoding process at the feature level
+        for column in cat_cols:
+            print(f'\nProcessing feature: {column}')
+
+            # Check if user wants to encode this feature
+            user_encode_feature = input(f'Do you want to encode {column}? (Y/N): ')
+            if user_encode_feature.lower() != 'y':  # If not
+                logger.info(f'Skipping encoding for feature: {column}')  # Log that choice
+                continue  # And move to the next feature
+
+            # Show unique value count
+            unique_cnt = df_final[column].nunique()
+            print(f'Feature {column} has {unique_cnt} unique values.')
+
+            # Display warning if the unique value count is too high
+            if unique_cnt > 20:
+                print(f'\nWARNING: Feature {column} contains more than 20 unique values.')
+                print('Consider using remapping or other dimensionality reduction techniques instead of encoding.')
+                print('Encoding high-cardinality features can create the curse of dimensionality.')
+                print('It can also result in having overly-sparse data in your feature set.')
+
+                # Ask if user wants to proceed despite this warning
+                user_enc_proceed = input(f'\n Do you still want to encode {column} despite this warning? (Y/N): ')
+                if user_enc_proceed.lower() != 'y':  # If not
+                    logger.info(f'Skipping encoding for high-cardinality feature {column}.')  # Log the choice
+                    continue  # And move to the next feature
+
+            # Display (do not log) unique values
+            print(f'\nUnique values (alphabetized) for {column}:')
+            unique_vals = sorted(df_final[column].unique())
+            for value in unique_vals:
+                print(f'- {value}')
+
+            # Display (do not log) value counts
+            print(f'\nValue counts for {column}:')
+            print(df_final[column].value_counts())
+
+            # Ask if user wants to see a distribution plot
+            user_show_plot = input('\nWould you like to see a barplot of the feature distribution? (Y/N): ')
+            if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
+                plt.figure(figsize=(12, 8))
+                sns.countplot(data=df_final, x=column)
+                plt.xticks(rotation=45)
+                plt.title(f'Distribution of {column}')
+                plt.tight_layout()
+                plt.show()
+
+            # Ask user to select encoding method
+            while True:  # We can justify 'while True' because we have a cancel-out input option
+                try:
+                    print(f'\nSelect encoding method for feature {column}:')
+                    print('1. One-Hot Encoding')
+                    print('2. Dummy Encoding')
+                    print('3. Skip encoding for this feature')
+                    enc_method = input('Enter your choice (1, 2, or 3): ')
+
+                    if enc_method == '3':  # If user wants to skip
+                        logger.info(f'Skipping encoding for feature {column}.')  # Log that choice
+                        break  # Exit the while loop
+
+                    elif enc_method in ['1', '2']:  # If a valid encoding choice is made
+                        # Perform one-hot encoding
+                        if enc_method == '1':
+                            encoded = pd.get_dummies(df_final[column], prefix=column, prefix_sep='_')
+
+                            # Drop original, non-encoded feature
+                            df_final = pd.concat([df_final.drop(column, axis=1), encoded], axis=1)
+
+                            # Append feature and encoding method to list of encoded features
+                            encoded_cols.append(f'{column} (One-Hot)')
+
+                            # Log encoding action
+                            logger.info(f'Applied one-hot encoding to feature {column}.')
+
+                        # Perform dummy encoding
+                        else:  # If enc_method is '2'
+                            encoded = pd.get_dummies(df_final[column], prefix=column, prefix_sep='_', drop_first=True)
+
+                            # Drop original, non-encoded feature
+                            df_final = pd.concat([df_final.drop(column, axis=1), encoded], axis=1)
+
+                            # Append feature and encoding method to list of encoded features
+                            encoded_cols.append(f'{column} (Dummy)')
+
+                            # Log encoding action
+                            logger.info(f'Applied dummy encoding to feature {column}.')
+
+                        break  # Exit the while loop
+
+                    else:  # Catch invalid input
+                        print('Invalid input. Please enter 1, 2, or 3.')
+                        continue  # Restart the while loop
+
+                # Catch other errors
+                except Exception as exc:
+                    logger.error(f'Error during encoding of feature {column}: {exc}')
+                    print('An error occurred. Skipping encoding for this feature.')
+                    break  # Exit the while loop
+
+        # After all features are processed, log a summary of encoding results
+        # If any features were encoded, log the encoded features
+        if encoded_cols:
+            logger.info('\nThe following features were encoded:')
+            for column in encoded_cols:
+                logger.info(f'- {column}')
+
+        # If no features were encoded, log that fact
+        else:
+            logger.info('No features were encoded.')
+
+
+
+    # Create second helper function handle_ords to deal with ordinal features, which should only run if ord_cols isn't empty
+    # Log a message for how many ordinal features exist in dataset (i.e. len(ord_cols))
+    # Assess whether the ordinal features have strings as values (e.g. 'Low', 'Medium', 'High') or whether they're numerical in type and have values like (0, 1, and 2)
+    # If the ordinal features are all already numerical, log that info, notify the user that they can be left as-is and explain briefly why no scaling of ordinal features is needed, and skip to the next step
+    # If there are any ordinal features with strings as values, ask if the user wants to map them to numerical values - if not, log that and skip process leaving data intact
+    # If user wants to ennumerate string-type ordinal features:
     '''
-    Now, for each categorical feature (assuming any are present - check for this):
-    - Ask if the user wants to encode this feature. If not, skip to next feature
-    - Print total # of unique categories/values in the feature
-    - Print alphabetized unique list of categories/values in the feature
-    - Print warning message that if the number of categories is too high, (i.e. greater than about 20) the user should perform some kind of dimensionality reduction rather than encode the feature
-    - Note that this helps avoid the curse of dimensionality and overly-sparse data in the features 
-    - Print value counts for the feature
-    - Ask if the user wants to see a barplot of the feature distribution
-    - Ask if the user wants to one-hot encode or dummy the feature
-    - Apply selected encoding method (or none, if user doesn't want to encode) to the feature
+    For each string-type ordinal feature:
+    - Ask if the user wants to remap this feature - if not, skip to the next string-type ordinal feature
+    - Display an alphabetized list of the unique values in the feature
+    - Help the user map the values to a sensible numerical order - e.g. if the values are Yes, No, and Maybe, help the user transform those strings into 0 for No, 1 for Maybe, and 2 for Yes
+    - The goal is to work with the user to map the string values to numerical values which reflect the correct ordinal order
+    - Once the user has provided the mapping, show the user what the transform will look like (e.g. display the old value and proposed new value for each value in the feature) and ensure that's what the user wants
+    - If so, remap the string values to the new numerical values
+    - If not, restart the renaming process
+    - Once the remapping has been approved, apply the remap to the feature in-place
+    - At the end of the process, log a message that says the following ordinal features were numerically remapped, then list those features
     '''
 
-    if ord_cols:
-        print('Preparing to encode ordinal features...')
-
-    # Ask if the user wants to see a brief refresher on ordinal encoding for ordinal features
-    # If so, display the refresher
-
+    # Create third helper function handle_nums to deal with numerical features, which should only run if num_cols isn't empty
+    # Note that TADPREPS only supports common scaling methods
+    # Print a very simple reminder of the different common scaling methods and when each should be used
+    # Ask if the user wants to proceed with simple scaling - if not, skip this step and leave the data intact
+    # If the user does wants to do simple scaling:
     '''
-    Now, for each ordinal feature (assuming any are present - check for this):
-    - Ask if the user wants to encode this feature. If not, skip to next feature
-    - Print total # of unique categories/values in the feature
-    - Print alphabetized unique list of categories/values in the feature
-    - Print warning message that if the number of categories is too high, (i.e. greater than about 20) the user should perform some kind of dimensionality reduction rather than encode the feature
-    - Note that this helps avoid the curse of dimensionality and overly-sparse data in the features 
-    - Print value counts for the feature
-    - Ask if the user wants to see a barplot of the feature distribution
-    - Ask if the user wants to encode the ordinal feature
-    - Apply ordinal encoding (or none, if user doesn't want to encode) to the feature
+    For each numerical feature:
+    - Ask if the user wants to scale this feature - if not, skip to the next numerical feature
+    - Print simple descriptive statistics of the feature
+    - Ask if the user wants to see a histogram of the feature distribution  (Use Seaborn)
+    - Ask which scaling method (if any) the user wants to apply to the feature
+    - Apply selected scaling method (or none, if user doesn't want to scale) to the feature in-place
+    - At the end of the process, log a message that says the following numerical features were scaled, then list those features
     '''
 
-    return df_encoded  # Return the dataset with encoding applied
+    # Return the final dataset with encoded and scaled features
