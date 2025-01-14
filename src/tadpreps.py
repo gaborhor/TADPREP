@@ -473,7 +473,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         logger.info('\n' + str(ord_summary))
 
     if num_cols:  # If numerical features are present
-        print('\n KEY VALUES FOR NUMERICAL FEATURES:')
+        print('\nKEY VALUES FOR NUMERICAL FEATURES:')
         for column in num_cols:
             show_key_vals(column, df_renamed, 'Numerical')
 
@@ -1034,12 +1034,12 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
         scaled_cols = []
 
         # Print warning that TADPREPS only supports common scaling methods
-        print('\nWARNING: TADPREPS supports only the Standard, Robust, and MixMax scalers.')
+        print('\nWARNING: TADPREPS supports only the Standard, Robust, and MinMax scalers.')
         print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
               'your own scaler code.')
         # Ask if the user wants to scale any numerical features
         user_scale = input('Do you want to scale any of these features? (Y/N): ')
-        if user_scale != 'y':  # If not
+        if user_scale.lower() != 'y':  # If not
             logger.info('Skipping scaling of numerical features.')  # Log the choice
             return  # And exit the process
 
