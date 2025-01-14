@@ -1,7 +1,7 @@
 person_id,name,sex,age,race,cit_status,married,has_children,num_children,employed,more_school,field,title,salary,happy
 125480,Derrick Ballard,M,62,White,Y,N,Y,3,1,Not interested,Technology,Software Engineer,176541,5
 173760,Lavonne Conley,F,58,Black or African American,Y,Y,Y,2,1,Not interested,Law,Associate Attorney,154327,4
-965911,Angelina Lang,F,,Asian,N,N,N,,0,Unsure,,,,2
+965911,Angelina Lang,F,41,Asian,N,N,N,,0,Unsure,,,,2
 448626,Julia Villegas,F,35,Hispanic of Any Origin,Y,Y,,,1,Interested,Education,Teacher,46132,2
 725925,Marcelo Romero,M,25,Hispanic of Any Origin,Y,N,N,,1,Interested,Business,Analyst,74925,3
 131384,Dale Gray,M,58,White,Y,Y,,,0,Unsure,,,,1
@@ -9,11 +9,11 @@ person_id,name,sex,age,race,cit_status,married,has_children,num_children,employe
 241754,Mara Meyer,F,50,Black or African American,Y,Y,,,1,Interested,Business,Comptroller,117461,4
 697265,Malinda Bowman,F,51,White,N,Y,,,1,Interested,Education,Vice Principal,61900,3
 977981,Esperanza Horne,F,33,Hispanic of Any Origin,Y,N,N,,0,Unsure,,,,5
-806548,Ethel Mata,F,,White,Y,,,,1,Interested,Military,Lieutenant,45750,3
+806548,Ethel Mata,F,38,White,Y,,,,1,Interested,Military,Lieutenant,45750,3
 454425,Ahmed Boyd,M,46,Asian,N,Y,,,1,Not interested,Technology,Project Manager,126458,4
 944405,Hai Stuart,M,32,Asian,Y,Y,,,1,Interested,Business,Administrative Assistant,45670,2
 213020,Eugene Campos,M,30,Black or African American,Y,N,N,,0,Interested,,,,2
-754419,Erwin Kerr,M,,White,Y,N,Y,5,1,Unsure,Military,Chief Petty Officer,41220,3
+754419,Erwin Kerr,M,26,White,Y,N,Y,5,1,Unsure,Military,Chief Petty Officer,41220,3
 506573,Nanette Farmer,F,56,White,Y,Y,Y,1,0,Unsure,,,,4
 774158,Vanessa Weber,F,27,White,N,,,,0,Interested,,,,2
 563038,Carolina Donaldson,F,35,White,Y,,,,1,Interested,Business,Loan Officer,53650,3
