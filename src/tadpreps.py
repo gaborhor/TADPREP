@@ -1213,7 +1213,232 @@ def export_data(df_final: pd.DataFrame):
         This function has no formal return. It instead saves the finished dataframe to disk in accordance with user
         instructions.
     """
-    # Ask user for preferred export format (list of eligible/suggested formats apart from Excel and .csv is TBD)
-    # Ask user what they want the file to be called
-    # Ask user where they want the file to be saved (make directory if it doesn't already exist)
-    # Export file in desired format
+    print('Data preparation complete. Preparing for file export.')
+
+    # Define supported export formats and their corresponding file extensions in a dictionary
+    supported_formats = {
+        '1': ('CSV (.csv)', '.csv'),
+        '2': ('Excel (.xlsx)', '.xlsx'),
+        '3': ('Pickle (.pkl)', '.pkl'),
+        '4': ('Parquet (.parquet)', '.parquet'),
+        '5': ('JSON (.json)', '.json')
+    }
+
+    # SELECTING EXPORT FORMAT
+    while True:  # We can justify 'while True' because we have a cancel-out input option
+        try:
+            # Display available export formats
+            print('\nAvailable export formats:')
+            for key, (format_name, _) in supported_formats.items():
+                print(f'{key}. {format_name}')
+            print('C. Cancel file export')
+
+            # Fetch user export format choice
+            format_choice = input('\nSelect an export format (enter format number or "C" to cancel): ').strip()
+
+            # Check for cancellation
+            if format_choice.lower() == 'c':  # If user cancels
+                logger.info('File export cancelled by user.')  # Log the choice
+                return  # And exit the process
+
+            # Validate user format choice
+            if format_choice not in supported_formats:
+                raise ValueError('Invalid format selection.')
+
+            # Fetch selected format information - name and extension
+            format_name, file_extension = supported_formats[format_choice]
+            break  # Exit the loop if we get valid input from user
+
+        # Catch input errors
+        except ValueError as exc:
+            print(f'Invalid input: {exc}')
+            continue  # Restart the loop
+
+    # VALIDATING FILENAME
+    while True:  # We can justify 'while True' because we need to validate the filename
+        try:
+            # Fetch desired filename from user (without extension)
+            filename = input('\nEnter desired filename (without extension): ').strip()
+
+            # Filename validation
+            # Catch empty filename
+            if not filename:
+                raise ValueError('Filename cannot be empty.')
+
+            # Catch invalid characters
+            if any(character in filename for character in r'\/:*?"<>|'):
+                raise ValueError('Filename contains invalid characters.')
+
+            # Append appropriate extension
+            full_filename = filename + file_extension
+            break  # Exit loop if we get valid input from user
+
+        # Catch input errors
+        except ValueError as exc:
+            print(f'Invalid input: {exc}')
+            continue  # Restart the loop
+
+    # VALIDATING FILEPATH
+    while True:  # We can justify 'while True' because we need to find a valid directory path for the export
+        try:
+            # Fetch desired save location from user
+            save_path = input('\nEnter the absolute path to the directory where you want to save the file: ').strip()
+
+            # Convert to a Path object and resolve it to an absolute path
+            save_dir = Path(save_path).resolve()
+
+            # Create the directory if it doesn't exist
+            if not save_dir.exists():
+                user_create = input(f'\nDirectory {save_dir} does not exist. Create it? (Y/N): ')
+                if user_create.lower() == 'y':
+                    try:
+                        save_dir.mkdir(parents=True)
+                        logger.info(f'Created directory: {save_dir}')
+
+                    # Catch directory creation problems - could be a permissions problem for some users
+                    except Exception as exc:
+                        raise ValueError(f'Failed to create directory: {exc}')
+                else:
+                    raise ValueError('Directory does not exist and user declined to create it.')
+
+            # Ensure the path is actually a directory
+            if not save_dir.is_dir():
+                raise ValueError(f'The path {save_dir} is not a directory.')
+
+            # Create the full save path using Pathlib - this is preferred b/c it's platform independent
+            save_path = save_dir / full_filename
+
+            # Check if the file already exists and give user the opportunity to overwrite it
+            if save_path.exists():
+                user_overwrite = input(f'\nFile {full_filename} already exists. Overwrite? (Y/N): ')
+                if user_overwrite.lower() != 'y':
+                    raise ValueError('User declined to overwrite existing file.')
+
+            break  # Exit loop if we get valid input from user
+
+        # Catch input errors
+        except ValueError as exc:
+            print(f'Invalid input: {exc}')
+            continue  # Restart the loop
+
+        # Catch other errors
+        except Exception as exc:
+            print(f'Error processing directory path: {exc}')
+            continue  # Restart the loop
+
+    # EXPORTING FILE
+    # Size validation before export
+    try:
+        estimated_size_mb = df_final.memory_usage(deep=True).sum() / (1024 * 1024)
+        if estimated_size_mb > 1000:  # If over 1GB
+            logger.warning(f'Large file size detected ({estimated_size_mb:.2f} MB). Export may take some time.')
+
+    # Catch file size/memory usage estimation errors
+    except Exception as exc:
+        logger.warning(f'Unable to estimate file size: {exc}')
+
+    # Exporting file
+    try:
+        print('Attempting file export...')
+        # Export the file based on chosen format
+        if format_choice == '1':  # CSV
+            df_final.to_csv(save_path, index=False)
+
+        elif format_choice == '2':  # Excel
+            df_final.to_excel(save_path, index=False)
+
+        elif format_choice == '3':  # Pickle
+            df_final.to_pickle(save_path)
+
+        elif format_choice == '4':  # Parquet
+            df_final.to_parquet(save_path, index=False)
+
+        else:  # JSON
+            df_final.to_json(save_path, orient='records')
+
+        # Log successful file export
+        logger.info(f'Successfully exported prepared dataset as {format_name}')
+        logger.info(f'Filename: {full_filename}')
+        logger.info(f'File saved to: {save_path}')
+        logger.info('TADPREPS execution is complete.')
+
+    # Catch all other errors and log
+    except Exception as exc:
+        logger.error(f'Error during file export: {exc}')
+        print('Failed to export file. Please check the logs for details.')
+
+
+def main():
+    """
+    This is the main function for the TADPREPS (Tabular Automated Data PREParation System) program.
+    It orchestrates the data preparation workflow by calling the core functions in the proper sequence
+    and managing the dataframe transformations throughout the pipeline.
+
+    The workflow consists of:
+    1. Loading the data file
+    2. Printing basic file information for the user
+    3. Trimming the dataset (handling missing values and sub-setting the data, if desired)
+    4. Renaming features and adding suffixes
+    5. Printing feature statistics
+    6. Imputing missing values
+    7. Encoding and scaling features
+    8. Exporting the prepared dataset
+
+    Returns:
+        None. This function handles the entire TADPREPS workflow and ends with the file export process.
+    """
+    try:
+        # Print welcome message and basic instructions
+        print('Welcome to TADPREPS (Tabular Automated Data PREParation System)')
+        print('This program will guide you through preparing your tabular dataset for further analysis.')
+        print('Follow the prompts and make selections when asked to do so.\n')
+
+        # Stage 1: Load the data file
+        print('\nSTAGE 1: LOADING DATA FILE')
+        print('-' * 30)
+        df_full = load_file()
+
+        # Stage 2: Print basic file information
+        print('\nSTAGE 2: DISPLAYING FILE INFORMATION')
+        print('-' * 30)
+        print_file_info(df_full)
+
+        # Stage 3: Allow user to trim the dataset if desired
+        print('\nSTAGE 3: TRIMMING DATASET')
+        print('-' * 30)
+        df_trimmed = trim_file(df_full)
+
+        # Stage 4: Allow user to rename features and add feature-type suffixes
+        print('\nSTAGE 4: RENAMING FEATURES')
+        print('-' * 30)
+        df_renamed = rename_features(df_trimmed)
+
+        # Stage 5: Print feature statistics and get feature type lists
+        print('\nSTAGE 5: ANALYZING FEATURES')
+        print('-' * 30)
+        cat_cols, ord_cols, num_cols = print_feature_stats(df_renamed)
+
+        # Stage 6: Handle missing value imputation
+        print('\nSTAGE 6: HANDLING/IMPUTING MISSING VALUES')
+        print('-' * 30)
+        df_imputed = impute_missing_data(df_renamed)
+
+        # Stage 7: Perform encoding and scaling
+        print('\nSTAGE 7: ENCODING AND SCALING FEATURES')
+        print('-' * 30)
+        df_final = encode_and_scale(df_imputed, cat_cols, ord_cols, num_cols)
+
+        # Stage 8: Export the prepared dataset
+        print('\nSTAGE 8: EXPORTING FINISHED DATASET')
+        print('-' * 30)
+        export_data(df_final)
+
+    # Catch process exceptions and log
+    except Exception as exc:
+        logger.error(f'An unexpected error occurred in the main TADPREPS workflow: {exc}')
+        logger.error('TADPREPS execution terminated due to an error. See log for details.')
+        sys.exit(1)  # Exit program
+
+
+if __name__ == '__main__':
+    main()
