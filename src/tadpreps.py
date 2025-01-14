@@ -47,12 +47,12 @@ def relocate_log(target_dir: Path) -> None:
 
         # Remove and close all current handlers
         for handler in handlers:
-            # Flush and close properly
+            # Flush and close the handler properly
             handler.flush()
             handler.close()
             logger.removeHandler(handler)
 
-        # Now that handlers are closed, we can safely move the file
+        # Now that handlers are closed, move the file
         new_log_path = target_dir / temp_log_path.name
         shutil.move(temp_log_path, new_log_path)
 
@@ -68,6 +68,7 @@ def relocate_log(target_dir: Path) -> None:
 
         logger.info(f'Log file relocated to: {new_log_path}')
 
+    # Catch relocation errors
     except Exception as error:
         logger.error(f'Failed to relocate log file: {error}')
         logger.error('Continuing with original log location.')
@@ -154,12 +155,12 @@ def print_file_info(df_full: pd.DataFrame) -> None:
 
     # Print number of features in file
     logger.info(f'The unaltered file has {df_full.shape[1]} features.')  # [1] is columns
-    print('-' * 30)  # Visual separator
+    print('-' * 50)  # Visual separator
 
     # Print names and datatypes of features in file
     logger.info('Names and datatypes of features:')
     logger.info(df_full.info(memory_usage=False, show_counts=False))  # Limit information printed since it's logged
-    print('-' * 30)  # Visual separator
+    print('-' * 50)  # Visual separator
 
     # Print # of instances with missing values
     row_missing_cnt = df_full.isnull().any(axis=1).sum()  # Compute count
@@ -437,43 +438,43 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
         logger.info(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
     else:
         logger.info('NOTE: No ordinal features are tagged in the dataset.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
     # Print and log the names of the categorical features
     if cat_cols:
         logger.info('The categorical non-target features are:')
         logger.info(', '.join(cat_cols))
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
     else:
         logger.info('No categorical non-target features were found in the dataset.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
     # Print and log the names of the ordinal features (if present)
     if ord_cols:
         logger.info('The ordinal non-target features are:')
         logger.info(', '.join(ord_cols))
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
     # Print and log the names of the numerical features ('The numerical non-target features are:')
     if num_cols:
         logger.info('The numerical non-target features are:')
         logger.info(', '.join(num_cols))
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
     else:
         logger.info('No numerical non-target features were found in the dataset.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
     print('Producing key values at the feature level...')
     print('NOTE: Key values at the feature level are printed but not logged.')  # Notify user
 
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
         """This helper function calculates and prints key values and missingness info at the feature level."""
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print(f'Key values for {feature_type} feature "{column}":')  # Define feature
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
         # Calculate missingness at feature level
         missing_cnt = df[column].isnull().sum()  # Calculate total missing values
@@ -499,16 +500,16 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
     # Call helper function for each feature class
     if cat_cols:  # If categorical features are present
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('KEY VALUES FOR CATEGORICAL FEATURES:')
         for column in cat_cols:
             show_key_vals(column, df_renamed, 'Categorical')
 
         # Move to feature-class level information and log
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('Producing key values at the feature-class level...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
         # Build and log summary table for categorical features
         cat_summary = pd.DataFrame({
@@ -521,16 +522,16 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         logger.info(str(cat_summary))
 
     if ord_cols:  # If ordinal features are present
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('KEY VALUES FOR ORDINAL FEATURES:')
         for column in ord_cols:
             show_key_vals(column, df_renamed, 'Ordinal')
 
         # Move to feature-class level information and log
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('Producing key values at the feature-class level...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
         # Build and log summary table for ordinal features
         ord_summary = pd.DataFrame({
@@ -543,16 +544,16 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         logger.info(str(ord_summary))
 
     if num_cols:  # If numerical features are present
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('KEY VALUES FOR NUMERICAL FEATURES:')
         for column in num_cols:
             show_key_vals(column, df_renamed, 'Numerical')
 
         # Move to feature-class level information and log
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('Producing key values at the feature-class level...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
 
         # Build and log summary table for numerical features
         num_summary = df_renamed[num_cols].describe()  # We can do this with a built-in Pandas method
@@ -561,7 +562,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
     # Print key values for target features
     if target_cols:  # If target features are present
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         print('TARGET FEATURE STATISTICS')
         for column in target_cols:
             # Note that we use the pandas type-assessment method to choose the string to pass to show_key_vals
@@ -570,7 +571,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
         # Build and log summary table for target features
         # We call .describe() for numerical target features and produce value counts otherwise
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         logger.info('Target Features Summary Table:')
         for column in target_cols:
             if pd.api.types.is_numeric_dtype(df_renamed[column]):
@@ -613,7 +614,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         return df_imputed  # And return the unmodified dataframe
 
     # For each feature, log the count and rate of missingness
-    print('-' * 30)  # Visual separator
+    print('-' * 50)  # Visual separator
     logger.info('Count and rate of missingness for each feature:')
     missingness_vals = {}  # Instantiate an empty dictionary to hold the feature-level missingness values
     for column in df_imputed.columns:
@@ -781,7 +782,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             logger.info('No categorical features are present in the dataset. Skipping encoding.')  # Log this
             return  # And exit the process
 
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         logger.info(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
 
         # Notify user that TADPREPS only supports common encoding methods
@@ -983,7 +984,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             logger.info('No ordinal features are present in the dataset. Skipping remapping.')  # Log this
             return  # And exit the process
 
-        print('-' * 30)  # Visual separator
+        print('-' * 50)  # Visual separator
         logger.info(f'The dataset contains {len(ord_cols)} ordinal features.')
 
         # Create list to track which features get remapped for final reporting
@@ -1274,17 +1275,17 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
         # After all features are processed, log a summary of scaling results
         # If any features were scaled, log the scaled features
         if scaled_cols:
-            print('-' * 30)  # Visual separator
+            print('-' * 50)  # Visual separator
             logger.info('The following features were scaled:')
             for col in scaled_cols:
                 logger.info(f'- {col}')
-            print('-' * 30)  # Visual separator
+            print('-' * 50)  # Visual separator
 
         # If no features were scaled, log that fact
         else:
-            print('-' * 30)  # Visual separator
+            print('-' * 50)  # Visual separator
             logger.info('No features were scaled.')
-            print('-' * 30)  # Visual separator
+            print('-' * 50)  # Visual separator
 
     # Call the three helper functions in sequence
     handle_cats()  # Encode categorical features
@@ -1491,42 +1492,42 @@ def main():
 
         # Stage 1: Load the data file
         print('\nSTAGE 1: LOADING DATA FILE')
-        print('-' * 30)
+        print('-' * 50)
         df_full = load_file()
 
         # Stage 2: Print basic file information
         print('\nSTAGE 2: DISPLAYING FILE INFORMATION')
-        print('-' * 30)
+        print('-' * 50)
         print_file_info(df_full)
 
         # Stage 3: Allow user to trim the dataset if desired
         print('\nSTAGE 3: TRIMMING DATASET')
-        print('-' * 30)
+        print('-' * 50)
         df_trimmed = trim_file(df_full)
 
         # Stage 4: Allow user to rename features and add feature-type suffixes
         print('\nSTAGE 4: RENAMING FEATURES')
-        print('-' * 30)
+        print('-' * 50)
         df_renamed = rename_features(df_trimmed)
 
         # Stage 5: Print feature statistics and get feature type lists
         print('\nSTAGE 5: ANALYZING FEATURES')
-        print('-' * 30)
+        print('-' * 50)
         cat_cols, ord_cols, num_cols = print_feature_stats(df_renamed)
 
         # Stage 6: Handle missing value imputation
         print('\nSTAGE 6: HANDLING/IMPUTING MISSING VALUES')
-        print('-' * 30)
+        print('-' * 50)
         df_imputed = impute_missing_data(df_renamed)
 
         # Stage 7: Perform encoding and scaling
         print('\nSTAGE 7: ENCODING AND SCALING FEATURES')
-        print('-' * 30)
+        print('-' * 50)
         df_final = encode_and_scale(df_imputed, cat_cols, ord_cols, num_cols)
 
         # Stage 8: Export the prepared dataset
         print('\nSTAGE 8: EXPORTING FINISHED DATASET')
-        print('-' * 30)
+        print('-' * 50)
         export_data(df_final)
 
     # Catch process exceptions and log
