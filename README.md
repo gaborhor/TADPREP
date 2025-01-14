@@ -2,7 +2,7 @@
 **A personal project to generate a resilient end-to-end ML data preparation Python script for tabular data.**
 
 ### Background
-The TADPREPS program (TAbular Data PREParation Script) is a unified, command line-executable data preparation script 
+The TADPREPS program (Tabular Automated Data PREParation System) is a unified, command line-executable data preparation script 
 intended to streamline the data preparation process that is performed on nearly every tabular datafile before any form 
 of advanced data analysis is applied.
 
