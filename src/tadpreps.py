@@ -11,21 +11,62 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
+import shutil
 import sys
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 # Fetch current runtime timestamp in a readable format
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 
+# Set up first-phase temporary log
+temp_log_name = f'tadpreps_runtime_log_{timestamp}.log'
+temp_log_path = Path(temp_log_name)
+
 # Set up logging with time-at-execution
 # We persist with "%-type" formatting to preserve backward compatibility
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler(f'tadpreps_runtime_log_{timestamp}.log'), logging.StreamHandler(sys.stdout)]
+    handlers=[logging.FileHandler(temp_log_path), logging.StreamHandler(sys.stdout)]
 )
 
+# Instantiate log object
 logger = logging.getLogger(__name__)
 logger.info('Initiating TADPREPS...')
+
+
+def relocate_log(target_dir: Path) -> None:
+    """
+    This allows for the second phase of logging - i.e. co-locating the log on disk with the exported file.
+    Relocates log file to the target directory supplied by the user in export_file() and updates logging configuration.
+    Args:
+        target_dir (Path): Path object representing the target directory
+    """
+    try:
+        # Remove existing file handlers
+        for handler in logger.handlers[:]:
+            if isinstance(handler, logging.FileHandler):
+                handler.close()
+                logger.removeHandler(handler)
+
+        # Create a new log path in the target directory
+        new_log_path = target_dir / temp_log_path.name
+
+        # Copy the existing log to new location using shutil
+        shutil.copy2(temp_log_path, new_log_path)
+
+        # Add a new file handler
+        new_handler = logging.FileHandler(new_log_path)
+        new_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(new_handler)
+
+        # Remove temporary log file
+        temp_log_path.unlink()
+
+        logger.info(f'Log file relocated to: {new_log_path}')
+
+    except Exception as error:
+        logger.error(f'Failed to relocate log file: {error}')
+        logger.error('Continuing with original log location.')
 
 
 def load_file() -> pd.DataFrame:
@@ -1304,6 +1345,9 @@ def export_data(df_final: pd.DataFrame):
             # Ensure the path is actually a directory
             if not save_dir.is_dir():
                 raise ValueError(f'The path {save_dir} is not a directory.')
+
+            # Activate the relocate_log() function to complete the second logging phase - co-location
+            relocate_log(save_dir)
 
             # Create the full save path using Pathlib - this is preferred b/c it's platform independent
             save_path = save_dir / full_filename
