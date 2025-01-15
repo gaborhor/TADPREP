@@ -435,6 +435,45 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
     # Create a list of target columns (columns with '_target' suffix)
     target_cols = [column for column in df_renamed.columns if column.endswith('_target')]
 
+    def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
+        """
+        This internal helper function identifies numerical features that might actually be categorical in function.
+        If such a feature is identified as categorical, the function converts its values to strings in-place.
+        It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
+        """
+        # Instantiate empty lists to hold the features after parsing
+        true_num_cols = []
+        true_cat_cols = []
+
+        for column in init_num_cols:  # For each feature that was initially identified as numeric
+            unique_vals = sorted(df[column].unique())  # Calculate number of unique values
+            if (len(unique_vals) <= 5 and  # If that value is small
+                    all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
+
+                print(f'\nFeature "{column}" has {len(unique_vals)} unique values: {unique_vals}')
+                print('ALERT: This could be a categorical feature encoded as numbers.')
+                print('E.g., this might be similar to 1/0 encoding for Yes/No responses.')
+
+                user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
+                if user_cat.lower() == 'y':  # If so
+                    df[column] = df[column].astype(str)  # Cast the values to strings in-place
+                    true_cat_cols.append(column)  # And add the identified feature to the true_cat_cols list
+                    logger.info(f'Converted feature "{column}" to categorical type.')  # Log the choice
+
+                # Otherwise, if user says no, treat the value as truly numeric
+                else:
+                    true_num_cols.append(column)
+
+            # If the feature fails the checks, treat it as truly numeric
+            else:
+                true_num_cols.append(column)
+
+        return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
+
+    # Call the helper function
+    num_cols, new_cat_cols = handle_numeric_cats(df_renamed, num_cols)
+    cat_cols.extend(new_cat_cols)  # Add any new identified categorical features to cat_cols
+
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
         logger.info(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
