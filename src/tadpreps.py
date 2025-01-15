@@ -34,54 +34,27 @@ logger = logging.getLogger(__name__)
 logger.info('Initiating TADPREPS...')
 
 
-def relocate_log(target_dir: Path) -> None:
+def relocate_log(save_dir: Path) -> None:
     """
-    This allows for the second phase of logging - i.e. co-locating the log on disk with the exported file.
-    Relocates log file to the target directory supplied by the user in export_file() and updates logging configuration.
+    This function moves the log file to the same directory as the exported data file.
+    This is called only after all logging is complete.
     Args:
-        target_dir (Path): Path object representing the target directory
+        save_dir (Path): Directory where the cleaned data was saved.
     """
     try:
-        # Store the current handlers
-        handlers = logger.handlers[:]
-
-        # Remove and close all current handlers
-        for handler in handlers:
-            # Flush and close the handler properly
-            handler.flush()
+        # Close all handlers to release the file
+        for handler in logger.handlers[:]:
             handler.close()
             logger.removeHandler(handler)
 
-        # Now that handlers are closed, move the file
-        new_log_path = target_dir / temp_log_path.name
-        shutil.move(temp_log_path, new_log_path)
+        # Move log file to target directory
+        target_path = save_dir / temp_log_path.name
+        shutil.move(temp_log_path, target_path)
 
-        # Create a new file handler for the new location
-        new_handler = logging.FileHandler(new_log_path)
-        new_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-        logger.addHandler(new_handler)
-
-        # Recreate the console handler
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-        logger.addHandler(console_handler)
-
-        logger.info(f'Log file relocated to: {new_log_path}')
-
-    # Catch relocation errors
-    except Exception as error:
-        logger.error(f'Failed to relocate log file: {error}')
-        logger.error('Continuing with original log location.')
-
-        # If relocation failed, restore original handlers
-        if not logger.handlers:
-            file_handler = logging.FileHandler(temp_log_path)
-            file_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-            logger.addHandler(file_handler)
-
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-            logger.addHandler(console_handler)
+    # Catch file-movement errors
+    except Exception as exc:
+        print(f'Error moving log file: {exc}')
+        print(f'Log file remains at: {temp_log_path}')
 
 
 def load_file() -> pd.DataFrame:
@@ -1339,7 +1312,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
     return df_final
 
 
-def export_data(df_final: pd.DataFrame):
+def export_data(df_final: pd.DataFrame) -> Path:
     """
     This function handles the exporting of the final, transformed dataset as created by the encode_and_scale()
     function to a static location on disk in one of a few common tabular formats. It is the last step in the TADPREPS
@@ -1347,8 +1320,7 @@ def export_data(df_final: pd.DataFrame):
     Args:
         df_final (pd.DataFrame): The final dataframe created by encode_and_scale().
     Returns:
-        This function has no formal return. It instead saves the finished dataframe to disk in accordance with user
-        instructions.
+        A Path object with the directory where the user saved the cleaned/reshaped data.
     """
     print('Data preparation complete. Preparing for file export.')
 
@@ -1502,10 +1474,13 @@ def export_data(df_final: pd.DataFrame):
         logger.info(f'File saved to: {save_path}')
         logger.info('TADPREPS execution is complete.')
 
+        return save_dir  # Return Path object for directory where user saved the file
+
     # Catch all other errors and log
     except Exception as exc:
         logger.error(f'Error during file export: {exc}')
         print('Failed to export file. Please check the logs for details.')
+        return None  # Return None if export fails
 
 
 def main():
@@ -1571,7 +1546,11 @@ def main():
         # Stage 8: Export the prepared dataset
         print('\nSTAGE 8: EXPORTING FINISHED DATASET')
         print('-' * 50)
-        export_data(df_final)
+        save_dir = export_data(df_final)
+
+        # If export was successful, move the log file
+        if save_dir is not None:
+            relocate_log(save_dir)
 
     # Catch process exceptions and log
     except Exception as exc:
