@@ -1,0 +1,6 @@
+numpy==1.26.4
+pandas==2.1.4  # Using last stable release before 2.2.0rc0
+matplotlib==3.8.2
+seaborn==0.13.2
+scikit-learn==1.4.2
+pyarrow==1.3.0  # Required for pandas parquet support
