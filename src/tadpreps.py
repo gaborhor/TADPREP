@@ -13,6 +13,7 @@ import seaborn as sns
 import logging
 import shutil
 import sys
+from typing import Optional
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 # Fetch current runtime timestamp in a readable format
@@ -171,7 +172,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if drop_cols_input.lower() == 'c':  # If user entered cancel-out input
-                    logger.info('Feature deletion cancelled.')  # Log the cancellation
+                    print('Feature deletion cancelled.')  # Note the cancellation
                     break  # Exit the while loop
 
                 # Create list of column indices to drop
@@ -205,7 +206,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if subset_input.lower() == 'c':  # If user entered cancel-out input
-                    print('Random sub-setting cancelled.')  # Log the cancellation
+                    print('Random sub-setting cancelled.') # Note the cancellation
                     break  # Exit the while loop
 
                 subset_rate = float(subset_input)  # Convert string input to float
@@ -340,7 +341,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                                      'or enter "C" to cancel: ')
 
                 if target_input.lower() == 'c':  # If user cancels
-                    print('Target feature tagging cancelled.')  # Log the cancellation
+                    print('Target feature tagging cancelled.')  # Note the cancellation
                     break  # And exit the while loop
 
                 target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
@@ -632,7 +633,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         missing_cnt = df_imputed[column].isnull().sum()  # Calculate missing count
         missing_rate = (missing_cnt / len(df_imputed) * 100).round(2)  # Calculate missing rate
         missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}  # Add those values to the dictionary
-        print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Log this info
+        print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Print this info
 
     # Warn user about imputation thresholds
     print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
@@ -674,7 +675,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
             # Validate that the list of features for imputation isn't empty
             if not imp_features:
-                print('No features available for imputation given user input. Skipping imputation.')  # Log this
+                print('No features available for imputation given user input. Skipping imputation.')  # Note this
                 return df_imputed  # And return the unmodified dataset
 
             break  # Exit the while loop if we get valid user input
@@ -1007,7 +1008,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
         # If all ordinal features are already numerical, they don't need remapping
         if not str_ords:  # If there are no string-type ordinal features
-            print('All ordinal features are already in a numerical format.')  # Log that fact
+            print('All ordinal features are already in a numerical format.')  # Note that fact
 
             # Print (do not log) a notification/explanation for the user
             print('\nNOTE: Ordinal features in numerical format do not need to be scaled.')
@@ -1031,17 +1032,17 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Ask if user wants to remap this specific feature
             user_remap_feature = input(f'Do you want to remap "{column}" with numerical values? (Y/N): ')
             if user_remap_feature.lower() != 'y':  # If not
-                logger.info(f'Skipping remapping for feature: "{column}"')  # Log the choice
+                print(f'Skipping remapping for feature: "{column}"')  # Note the choice
                 continue  # Return the unmodified data
 
             # Check for nulls before proceeding
             null_cnt = df_final[column].isnull().sum()
             # If nulls are present, log a warning and ask if user wants to proceed
             if null_cnt > 0:
-                logger.warning(f'Feature "{column}" contains {null_cnt} null values.')
+                print(f'Feature "{column}" contains {null_cnt} null values.')
                 user_proceed = input('Do you still want to proceed with remapping this feature? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
-                    logger.info(f'Skipping remapping for feature: "{column}"')  # Log the choice
+                    print(f'Skipping remapping for feature: "{column}"')  # Note the choice
                     continue  # And move on to the next feature
 
             # Validate unique values
@@ -1066,7 +1067,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                     user_remap_input = input('\nEnter your mapping values: ')
 
                     if user_remap_input.lower() == 'c':  # If user cancels
-                        print(f'Cancelled remapping for feature: {column}')  # Log the choice
+                        print(f'Cancelled remapping for feature: {column}')  # Note the choice
                         break  # And exit the while loop
 
                     # Convert user remapping input to a list of integers
@@ -1133,7 +1134,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(num_cols)} numerical features.')  # Log count of numerical features
+        print(f'The dataset contains {len(num_cols)} numerical features.')  # Print count of numerical features
 
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
@@ -1178,7 +1179,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Ask if user wants to scale this feature
             user_scale_feature = input(f'Do you want to scale "{column}"? (Y/N): ')
             if user_scale_feature.lower() != 'y':  # If not
-                logger.info(f'Skipping scaling for feature: "{column}"')  # Log that choice
+                print(f'Skipping scaling for feature: "{column}"')  # Note that choice
                 continue  # And move to the next feature
 
             # Validate feature before scaling
@@ -1274,7 +1275,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                         # Add the feature to the list of scaled features
                         scaled_cols.append(f'{column} ({method_name})')
 
-                        print(f'Applied {method_name} scaling to feature {column}.')  # Log the scaling action
+                        print(f'Applied {method_name} scaling to feature {column}.')  # Note the scaling action
                         print('-' * 50)  # Visual separator
                         break  # Exit the while loop
 
@@ -1312,7 +1313,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
     return df_final
 
 
-def export_data(df_final: pd.DataFrame) -> Path:
+def export_data(df_final: pd.DataFrame) -> Optional[Path]:
     """
     This function handles the exporting of the final, transformed dataset as created by the encode_and_scale()
     function to a static location on disk in one of a few common tabular formats. It is the last step in the TADPREPS
@@ -1348,7 +1349,7 @@ def export_data(df_final: pd.DataFrame) -> Path:
             # Check for cancellation
             if format_choice.lower() == 'c':  # If user cancels
                 logger.info('File export cancelled by user.')  # Log the choice
-                return  # And exit the process
+                return None  # And exit the process
 
             # Validate user format choice
             if format_choice not in supported_formats:
