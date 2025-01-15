@@ -450,7 +450,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
             if (len(unique_vals) <= 5 and  # If that value is small
                     all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
 
-                print(f'\nFeature "{column}" has {len(unique_vals)} unique values: {unique_vals}')
+                print(f'\nFeature "{column}" has only {len(unique_vals)} unique values: {unique_vals}')
                 print('ALERT: This could be a categorical feature encoded as numbers.')
                 print('E.g., this might be similar to 1/0 encoding for Yes/No responses.')
 
@@ -459,6 +459,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                     df[column] = df[column].astype(str)  # Cast the values to strings in-place
                     true_cat_cols.append(column)  # And add the identified feature to the true_cat_cols list
                     logger.info(f'Converted feature "{column}" to categorical type.')  # Log the choice
+                    print('-' * 50)  # Visual separator
 
                 # Otherwise, if user says no, treat the value as truly numeric
                 else:
@@ -855,33 +856,33 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
         # Begin encoding process at the feature level
         for column in cat_cols:
-            print(f'\nProcessing feature: {column}')
+            print(f'\nProcessing feature: "{column}"')
 
             # Check if user wants to encode this feature
-            user_encode_feature = input(f'Do you want to encode {column}? (Y/N): ')
+            user_encode_feature = input(f'Do you want to encode "{column}"? (Y/N): ')
             if user_encode_feature.lower() != 'y':  # If not
-                logger.info(f'Skipping encoding for feature: {column}')  # Log that choice
+                logger.info(f'Skipping encoding for feature: "{column}"')  # Log that choice
                 continue  # And move to the next feature
 
             # Show unique value count
             unique_cnt = df_final[column].nunique()
-            print(f'Feature {column} has {unique_cnt} unique values.')
+            print(f'Feature "{column}" has {unique_cnt} unique values.')
 
             # Check for nulls before proceeding
             null_cnt = df_final[column].isnull().sum()
             if null_cnt > 0:  # If nulls are present
                 # Log a warning
                 logger.warning(
-                    f'Feature {column} contains {null_cnt} null values. Encoding may produce unexpected results.')
+                    f'Feature "{column}" contains {null_cnt} null values. Encoding may produce unexpected results.')
                 # Ask if the user wants to proceed anyway
                 user_proceed = input('Do you want to proceed with encoding this feature? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
-                    logger.info(f'Skipping encoding for feature: {column}')  # Log the choice
+                    logger.info(f'Skipping encoding for feature: "{column}"')  # Log the choice
                     continue  # Move on to the next feature
 
             # Check for single-value features and log a warning if this feature is single-value
             if unique_cnt == 1:
-                logger.warning(f'Feature {column} has only one unique value. Consider dropping this feature.')
+                logger.warning(f'Feature "{column}" has only one unique value. Consider dropping this feature.')
                 continue  # Move on to the next feature
 
             # Check for low-frequency categories
@@ -892,22 +893,24 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                 print(low_freq_cats)
                 print('Consider grouping rare categories before encoding.')
 
-                user_proceed = input('Do you want to proceed with encoding despite low-frequency categories? (Y/N): ')
+                user_proceed = input('Do you want to proceed with encoding despite the presence of '
+                                     'low-frequency categories? (Y/N): ')
                 if user_proceed.lower() != 'y':
-                    logger.info(f'Skipping encoding for feature {column} due to low-frequency categories.')
-                    continue
+                    logger.info(f'Skipping encoding for feature "{column}" due to presence of '
+                                f'low-frequency categories.')
+                    continue  # Move to next feature
 
             # Display warning if the unique value count is too high
             if unique_cnt > 20:
-                print(f'\nWARNING: Feature {column} contains more than 20 unique values.')
+                print(f'\nWARNING: Feature "{column}" contains more than 20 unique values.')
                 print('Consider using remapping or other dimensionality reduction techniques instead of encoding.')
                 print('Encoding high-cardinality features can create the curse of dimensionality.')
                 print('It can also result in having overly-sparse data in your feature set.')
 
                 # Ask if user wants to proceed despite this warning
-                user_proceed = input(f'\n Do you still want to encode {column} despite this warning? (Y/N): ')
+                user_proceed = input(f'\nDo you still want to encode "{column}" despite this warning? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
-                    logger.info(f'Skipping encoding for high-cardinality feature {column}.')  # Log the choice
+                    logger.info(f'Skipping encoding for high-cardinality feature "{column}".')  # Log the choice
                     continue  # And move to the next feature
 
             # Display (do not log) unique values
@@ -1007,7 +1010,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
         # After all features are processed, log a summary of encoding results
         # If any features were encoded, log the encoded features
         if encoded_cols:
-            logger.info('\nThe following features were encoded:')
+            print('-' * 50)  # Visual separator
+            logger.info('The following features were encoded:')
             for column in encoded_cols:
                 logger.info(f'- {column}')
 
@@ -1044,29 +1048,31 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
         # If there are string-type ordinal features, ask if user wants to remap them with numerical values
         logger.info(f'{len(str_ords)} ordinal features contain non-numeric values.')
-        user_remap = input('\nDo you want to remap any string-type ordinal features to numerical values? (Y/N): ')
+        print('NOTE: Ordinal features should be expressed numerically to allow for proper analysis.')
+        user_remap = input('\nDo you want to consider remapping any string-type ordinal features with '
+                           'appropriate numerical values? (Y/N): ')
         if user_remap.lower() != 'y':  # If not
-            logger.info('Skipping remapping of ordinal features.')  # Log the choice
+            logger.info('Skipping numerical remapping of ordinal features.')  # Log the choice
             return  # Return the unmodified data
 
         # Process each string-type ordinal feature
         for column in str_ords:
-            print(f'\nProcessing feature: {column}')
+            print(f'\nProcessing string-type ordinal feature: "{column}"')
 
             # Ask if user wants to remap this specific feature
-            user_remap_feature = input(f'Do you want to remap {column} to numerical values? (Y/N): ')
+            user_remap_feature = input(f'Do you want to remap "{column}" with numerical values? (Y/N): ')
             if user_remap_feature.lower() != 'y':  # If not
-                logger.info(f'Skipping remapping for feature: {column}')  # Log the choice
+                logger.info(f'Skipping remapping for feature: "{column}"')  # Log the choice
                 continue  # Return the unmodified data
 
             # Check for nulls before proceeding
             null_cnt = df_final[column].isnull().sum()
             # If nulls are present, log a warning and ask if user wants to proceed
             if null_cnt > 0:
-                logger.warning(f'Feature {column} contains {null_cnt} null values.')
+                logger.warning(f'Feature "{column}" contains {null_cnt} null values.')
                 user_proceed = input('Do you still want to proceed with remapping this feature? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
-                    logger.info(f'Skipping remapping for feature: {column}')  # Log the choice
+                    logger.info(f'Skipping remapping for feature: "{column}"')  # Log the choice
                     continue  # And move on to the next feature
 
             # Validate unique values
@@ -1157,6 +1163,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             logger.info('No numerical features are present in the dataset. Skipping remapping.')  # Log this
             return  # And exit the process
 
+        print('-' * 50)  # Visual separator
         logger.info(f'The dataset contains {len(num_cols)} numerical features.')  # Log count of numerical features
 
         # Create list to track which features get scaled for final reporting
@@ -1197,12 +1204,12 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
         # For each numerical feature
         for column in num_cols:
-            print(f'\nProcessing feature: {column}')
+            print(f'\nProcessing numerical feature: "{column}"')
 
             # Ask if user wants to scale this feature
-            user_scale_feature = input(f'Do you want to scale {column}? (Y/N): ')
+            user_scale_feature = input(f'Do you want to scale "{column}"? (Y/N): ')
             if user_scale_feature.lower() != 'y':  # If not
-                logger.info(f'Skipping scaling for feature: {column}')  # Log that choice
+                logger.info(f'Skipping scaling for feature: "{column}"')  # Log that choice
                 continue  # And move to the next feature
 
             # Validate feature before scaling
@@ -1211,42 +1218,42 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                 null_cnt = df_final[column].isnull().sum()
                 # If nulls are present, log a warning, and ask if user wants to proceed
                 if null_cnt > 0:
-                    logger.warning(f'Feature {column} contains {null_cnt} null values.')
+                    logger.warning(f'Feature "{column}" contains {null_cnt} null values.')
                     user_proceed = input('Do you still want to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: {column}')  # Log the choice
+                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
                         continue  # And move on to the next feature
 
                 # Check for infinite values
                 inf_cnt = np.isinf(df_final[column]).sum()
                 # If infinite values are present, log a warning, and ask if user wants to proceed
                 if inf_cnt > 0:
-                    logger.warning(f'Feature {column} contains {inf_cnt} infinite values.')
+                    logger.warning(f'Feature "{column}" contains {inf_cnt} infinite values.')
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: {column}')  # Log the choice
+                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
                         continue  # And move on to the next feature
 
                 # Check for constant/near-constant features, e.g. with only 1 unique value or minimal variance
                 if df_final[column].nunique() <= 1:  # If this is so
                     # Log a warning
-                    logger.warning(f'Feature {column} has no meaningful variance. Consider dropping this feature.')
+                    logger.warning(f'Feature "{column}" has no meaningful variance. Consider dropping this feature.')
                     continue  # And move on to the next feature
 
                 # Check for extreme skewness in the feature
                 skewness = df_final[column].skew()  # Calculate skew
                 if abs(skewness) > 2:  # Using 2 as threshold for extreme skewness
                     # If skewness is extreme, log a warning and ask if user wants to proceed
-                    logger.warning(f'Feature {column} is highly skewed (skewness={skewness:.2f}). '
+                    logger.warning(f'Feature "{column}" is highly skewed (skewness={skewness:.2f}). '
                                    'Consider transformation before scaling.')
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: {column}')  # Log the choice
+                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
                         continue  # And move on to the next feature
 
             # Catch validation errors
             except Exception as exc:
-                logger.error(f'Error validating feature {column}: {exc}')
+                logger.error(f'Error validating feature "{column}": {exc}')
                 logger.error('Skipping scaling for this feature.')
                 continue  # Move to next feature
 
@@ -1299,6 +1306,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                         scaled_cols.append(f'{column} ({method_name})')
 
                         logger.info(f'Applied {method_name} scaling to feature {column}.')  # Log the scaling action
+                        print('-' * 50)  # Visual separator
                         break  # Exit the while loop
 
                     else:  # If an invalid choice was entered
@@ -1307,7 +1315,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
                 # Catch other errors
                 except Exception as exc:
-                    logger.error(f'Error during scaling of feature {column}: {exc}')  # Log the error
+                    logger.error(f'Error during scaling of feature "{column}": {exc}')  # Log the error
                     print('An error occurred. Skipping scaling for this feature.')
                     break  # Exit the while loop
 
