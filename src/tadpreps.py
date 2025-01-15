@@ -115,7 +115,7 @@ def load_file() -> pd.DataFrame:
         if filepath.suffix.lower() not in ['.csv', '.xls', '.xlsx']:
             logger.error('TADPREPS only supports .csv, .xls, and .xlsx files.')
             logger.error(f'The file at "{filepath}" does not appear to be of a compatible type.')
-            logger.error('Please resolve this issue and re-run TADPREPS.')
+            print('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
 
         # Error handling: Use pathlib library to check whether the file is larger than 1GB
@@ -158,14 +158,14 @@ def print_file_info(df_full: pd.DataFrame) -> None:
     print('-' * 50)  # Visual separator
 
     # Print names and datatypes of features in file
-    logger.info('Names and datatypes of features:')
-    logger.info(df_full.info(memory_usage=False, show_counts=False))  # Limit information printed since it's logged
+    print('Names and datatypes of features:')
+    print(df_full.info(memory_usage=False, show_counts=False))
     print('-' * 50)  # Visual separator
 
     # Print # of instances with missing values
     row_missing_cnt = df_full.isnull().any(axis=1).sum()  # Compute count
     row_missing_rate = (row_missing_cnt / len(df_full) * 100).round(2)  # Compute rate
-    logger.info(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
+    print(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
 
 
 def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
@@ -218,7 +218,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
             # Catch invalid user input
             except ValueError:
-                logger.error('Invalid input. Please enter valid feature index integers separated by commas.')
+                print('Invalid input. Please enter valid feature index integers separated by commas.')
                 continue  # Restart the loop
 
     # Ask if the user wants to sub-set the data by deleting a specified proportion of the instances at random
@@ -232,7 +232,7 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if subset_input.lower() == 'c':  # If user entered cancel-out input
-                    logger.info('Random sub-setting cancelled.')  # Log the cancellation
+                    print('Random sub-setting cancelled.')  # Log the cancellation
                     break  # Exit the while loop
 
                 subset_rate = float(subset_input)  # Convert string input to float
@@ -247,11 +247,11 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
 
                 # Catch user input error for invalid/out-of-range float
                 else:
-                    logger.error('Enter a value between 0.0 and 1.0.')
+                    print('Enter a value between 0.0 and 1.0.')
 
             # Catch outer-level user input errors
             except ValueError:
-                logger.error('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
+                print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
                 continue  # Restart the loop
 
     return df_trimmed  # Return the trimmed dataframe
@@ -282,7 +282,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if rename_cols_input.lower() == 'c':  # If user entered cancel-out input
-                    logger.info('Feature renaming cancelled.')  # Log the cancellation
+                    print('Feature renaming cancelled.')  # Note the cancellation
                     break  # Exit the while loop
 
                 col_idx = int(rename_cols_input)  # Convert input to integer
@@ -295,7 +295,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate name to make sure it doesn't already exist in the dataset
                 if col_name_new in df_renamed.columns:
-                    logger.error(f'Feature name "{col_name_new}" already exists. Choose a different name.')
+                    print(f'Feature name "{col_name_new}" already exists. Choose a different name.')
                     continue  # Restart the loop
 
                 # Rename column in-place
@@ -307,7 +307,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                     break  # If not, exit the while loop
 
             except ValueError as exc:
-                logger.error(f'Invalid input: {exc}')
+                print(f'Invalid input: {exc}')
 
     # Ask if user wants to perform batch-level appending of '_ord' tag to ordinal features
     user_tag_ord = input('Do you want to tag any features as ordinal by appending the "_ord" suffix '
@@ -324,7 +324,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                                   'or enter "C" to cancel: ')
 
                 if ord_input.lower() == 'c':  # If user cancels
-                    logger.info('Ordinal feature tagging cancelled.')  # Log the cancellation
+                    print('Ordinal feature tagging cancelled.')  # Note the cancellation
                     break  # And exit the while loop
 
                 ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
@@ -340,7 +340,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
                 if not ord_rename_map:  # If the mapper is empty
-                    logger.warning('All selected features are already tagged as ordinal.')  # Warn the user
+                    print('WARNING: All selected features are already tagged as ordinal.')  # Warn the user
                     break  # And exit the while loop
 
                 df_renamed.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
@@ -349,7 +349,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
             # Catch invalid input
             except ValueError as exc:
-                logger.error(f'Invalid input: {exc}')
+                print(f'Invalid input: {exc}')
                 continue  # Restart the loop
 
     # Ask if user wants to perform batch-level appending of '_target' tag to target features
@@ -367,7 +367,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
                                      'or enter "C" to cancel: ')
 
                 if target_input.lower() == 'c':  # If user cancels
-                    logger.info('Target feature tagging cancelled.')  # Log the cancellation
+                    print('Target feature tagging cancelled.')  # Log the cancellation
                     break  # And exit the while loop
 
                 target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
@@ -384,7 +384,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
                 # Validate that tags for the selected columns are not somehow already present (i.e. done pre-import)
                 if not target_rename_map:  # If the mapper is empty
-                    logger.warning('All selected features are already tagged as targets.')  # Warn the user
+                    print('WARNING: All selected features are already tagged as targets.')  # Warn the user
                     break  # And exit the while loop
 
                 df_renamed.rename(columns=target_rename_map, inplace=True)  # Perform tagging
@@ -393,7 +393,7 @@ def rename_features(df_trimmed: pd.DataFrame) -> pd.DataFrame:
 
             # Catch invalid input
             except ValueError as exc:
-                logger.error(f'Invalid input: {exc}')
+                print(f'Invalid input: {exc}')
                 continue  # Restart the loop
 
     return df_renamed  # Return dataframe with renamed and tagged columns
@@ -458,7 +458,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
                 if user_cat.lower() == 'y':  # If so
                     df[column] = df[column].astype(str)  # Cast the values to strings in-place
                     true_cat_cols.append(column)  # And add the identified feature to the true_cat_cols list
-                    logger.info(f'Converted feature "{column}" to categorical type.')  # Log the choice
+                    logger.info(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
                     print('-' * 50)  # Visual separator
 
                 # Otherwise, if user says no, treat the value as truly numeric
@@ -477,34 +477,34 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
-        logger.info(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
+        print(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
         print('-' * 50)  # Visual separator
     else:
-        logger.info('NOTE: No ordinal features are tagged in the dataset.')
+        print('NOTE: No ordinal features are tagged in the dataset.')
         print('-' * 50)  # Visual separator
 
     # Print and log the names of the categorical features
     if cat_cols:
-        logger.info('The categorical non-target features are:')
-        logger.info(', '.join(cat_cols))
+        print('The categorical non-target features are:')
+        print(', '.join(cat_cols))
         print('-' * 50)  # Visual separator
     else:
-        logger.info('No categorical non-target features were found in the dataset.')
+        print('No categorical non-target features were found in the dataset.')
         print('-' * 50)  # Visual separator
 
     # Print and log the names of the ordinal features (if present)
     if ord_cols:
-        logger.info('The ordinal non-target features are:')
-        logger.info(', '.join(ord_cols))
+        print('The ordinal non-target features are:')
+        print(', '.join(ord_cols))
         print('-' * 50)  # Visual separator
 
     # Print and log the names of the numerical features ('The numerical non-target features are:')
     if num_cols:
-        logger.info('The numerical non-target features are:')
-        logger.info(', '.join(num_cols))
+        print('The numerical non-target features are:')
+        print(', '.join(num_cols))
         print('-' * 50)  # Visual separator
     else:
-        logger.info('No numerical non-target features were found in the dataset.')
+        print('No numerical non-target features were found in the dataset.')
         print('-' * 50)  # Visual separator
 
     print('Producing key values at the feature level...')
@@ -640,8 +640,6 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
     imp_features = []  # Instantiate list of features for imputation before the try block begins (assignment resilience)
 
-    logger.info('Preparing for missing-value imputation...')  # Log update for user
-
     # Check if there are no missing values anywhere in the dataset
     if not df_imputed.isnull().any().any():  # Stacking calls to .any() to return a single Boolean for the series
         logger.info('No missing values present in dataset. Skipping imputation.')  # Log this
@@ -655,13 +653,13 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
     # For each feature, log the count and rate of missingness
     print('-' * 50)  # Visual separator
-    logger.info('Count and rate of missingness for each feature:')
+    print('Count and rate of missingness for each feature:')
     missingness_vals = {}  # Instantiate an empty dictionary to hold the feature-level missingness values
     for column in df_imputed.columns:
         missing_cnt = df_imputed[column].isnull().sum()  # Calculate missing count
         missing_rate = (missing_cnt / len(df_imputed) * 100).round(2)  # Calculate missing rate
         missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}  # Add those values to the dictionary
-        logger.info(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Log this info
+        print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Log this info
 
     # Warn user about imputation thresholds
     print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
@@ -671,9 +669,9 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
     imp_candidates = [key for key, value in missingness_vals.items() if 0 < value['rate'] <= 10]
 
     if imp_candidates:  # If any candidate features exist
-        logger.info('Based on missingness rates, the following features are good candidates for imputation:')
+        print('Based on missingness rates, the following features are good candidates for imputation:')
         for key in imp_candidates:
-            logger.info(f'- {key}: {missingness_vals[key]["rate"]}% missing')
+            print(f'- {key}: {missingness_vals[key]["rate"]}% missing')
 
     else:  # If no good candidate features are present
         logger.info('No features fall within the recommended rate range for imputation.')  # Log that fact
@@ -694,7 +692,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
             # Check for cancellation
             if user_override.lower() == '3':
-                logger.info('Skipping imputation. No changes made to dataset.')
+                print('Skipping imputation. No changes made to dataset.')
                 return df_imputed
 
             # Build list of features to be imputed
@@ -703,7 +701,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
 
             # Validate that the list of features for imputation isn't empty
             if not imp_features:
-                logger.info('No features available for imputation given user input. Skipping imputation.')  # Log this
+                print('No features available for imputation given user input. Skipping imputation.')  # Log this
                 return df_imputed  # And return the unmodified dataset
 
             break  # Exit the while loop if we get valid user input
@@ -776,8 +774,8 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
             else:  # If only mode is a valid method
                 mode_vals = df_imputed[feature].mode()
                 if len(mode_vals) == 0:  # If no mode values exist
-                    # Log a warning
-                    logger.warning(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
+                    # Print a warning
+                    print(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
                     continue  # Restart outer for loop with next feature
                 imp_val = mode_vals[0]  # Select first mode
 
@@ -791,7 +789,7 @@ def impute_missing_data(df_renamed: pd.DataFrame) -> pd.DataFrame:
         except Exception as exc:
             # Log errors
             logger.error(f'Error during imputation for feature {feature}: {exc}')
-            logger.error('Skipping imputation for this feature.')
+            print('Skipping imputation for this feature.')
             continue  # Restart outer for loop with next feature
 
     return df_imputed  # Return the new dataframe with imputed values
@@ -823,7 +821,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        logger.info(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
+        print(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
 
         # Notify user that TADPREPS only supports common encoding methods
         print('\nNOTE: TADPREPS only supports One-Hot and Dummy encoding.')
@@ -871,9 +869,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Check for nulls before proceeding
             null_cnt = df_final[column].isnull().sum()
             if null_cnt > 0:  # If nulls are present
-                # Log a warning
-                logger.warning(
-                    f'Feature "{column}" contains {null_cnt} null values. Encoding may produce unexpected results.')
+                # Print a warning
+                print(f'Feature "{column}" contains {null_cnt} null values. Encoding may produce unexpected results.')
                 # Ask if the user wants to proceed anyway
                 user_proceed = input('Do you want to proceed with encoding this feature? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
@@ -896,8 +893,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                 user_proceed = input('Do you want to proceed with encoding despite the presence of '
                                      'low-frequency categories? (Y/N): ')
                 if user_proceed.lower() != 'y':
-                    logger.info(f'Skipping encoding for feature "{column}" due to presence of '
-                                f'low-frequency categories.')
+                    print(f'Skipping encoding for feature "{column}" due to presence of low-frequency categories.')
                     continue  # Move to next feature
 
             # Display warning if the unique value count is too high
@@ -910,7 +906,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                 # Ask if user wants to proceed despite this warning
                 user_proceed = input(f'\nDo you still want to encode "{column}" despite this warning? (Y/N): ')
                 if user_proceed.lower() != 'y':  # If not
-                    logger.info(f'Skipping encoding for high-cardinality feature "{column}".')  # Log the choice
+                    print(f'Skipping encoding for high-cardinality feature "{column}".')  # Note the choice
                     continue  # And move to the next feature
 
             # Display (do not log) unique values
@@ -953,7 +949,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                     enc_method = input('Enter your choice (1, 2, or 3): ')
 
                     if enc_method == '3':  # If user wants to skip
-                        logger.info(f'Skipping encoding for feature {column}.')  # Log that choice
+                        print(f'Skipping encoding for feature {column}.')  # Note that choice
                         break  # Exit the while loop
 
                     elif enc_method in ['1', '2']:  # If a valid encoding choice is made
@@ -971,8 +967,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                             # Track this column for reporting purposes
                             encoded_cols.append(f'{column} (One-Hot)')
 
-                            # Log the action
-                            logger.info(f'Applied one-hot encoding to feature {column}.')
+                            # Note the action
+                            print(f'Applied one-hot encoding to feature {column}.')
 
                         else:  # If enc_method is '2', perform dummy encoding
                             # Create n-1 binary columns, dropping first category as reference
@@ -987,8 +983,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                             # Track this column for reporting purposes
                             encoded_cols.append(f'{column} (Dummy)')
 
-                            # Log the action
-                            logger.info(f'Applied dummy encoding to feature {column}.')
+                            # Note the action
+                            print(f'Applied dummy encoding to feature {column}.')
 
                         break  # Exit the while loop
 
@@ -1028,7 +1024,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        logger.info(f'The dataset contains {len(ord_cols)} ordinal features.')
+        print(f'The dataset contains {len(ord_cols)} ordinal features.')
 
         # Create list to track which features get remapped for final reporting
         remapped_cols = []
@@ -1038,7 +1034,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
 
         # If all ordinal features are already numerical, they don't need remapping
         if not str_ords:  # If there are no string-type ordinal features
-            logger.info('All ordinal features are already in a numerical format.')  # Log that fact
+            print('All ordinal features are already in a numerical format.')  # Log that fact
 
             # Print (do not log) a notification/explanation for the user
             print('\nNOTE: Ordinal features in numerical format do not need to be scaled.')
@@ -1078,7 +1074,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Validate unique values
             unique_vals = sorted(df_final[column].unique())
             if len(unique_vals) < 2:
-                logger.warning(f'Feature {column} has fewer than 2 unique values. Skipping remapping.')
+                print(f'Feature {column} has fewer than 2 unique values. Skipping remapping.')
                 continue
 
             # Display the feature's current unique values
@@ -1097,7 +1093,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                     user_remap_input = input('\nEnter your mapping values: ')
 
                     if user_remap_input.lower() == 'c':  # If user cancels
-                        logger.info(f'Cancelled remapping for feature: {column}')  # Log the choice
+                        print(f'Cancelled remapping for feature: {column}')  # Log the choice
                         break  # And exit the while loop
 
                     # Convert user remapping input to a list of integers
@@ -1122,8 +1118,8 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                         # Add the feature to the list of remapped features
                         remapped_cols.append(column)
 
-                        # Log the remapping
-                        logger.info(f'Successfully remapped ordinal feature: {column}')
+                        # Note the remapping
+                        print(f'Successfully remapped ordinal feature: {column}')
 
                         break  # Exit the while loop
 
@@ -1164,7 +1160,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        logger.info(f'The dataset contains {len(num_cols)} numerical features.')  # Log count of numerical features
+        print(f'The dataset contains {len(num_cols)} numerical features.')  # Log count of numerical features
 
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
@@ -1218,20 +1214,20 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                 null_cnt = df_final[column].isnull().sum()
                 # If nulls are present, log a warning, and ask if user wants to proceed
                 if null_cnt > 0:
-                    logger.warning(f'Feature "{column}" contains {null_cnt} null values.')
+                    print(f'Feature "{column}" contains {null_cnt} null values.')
                     user_proceed = input('Do you still want to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
+                        print(f'Skipping scaling for feature: "{column}"')  # Note the choice
                         continue  # And move on to the next feature
 
                 # Check for infinite values
                 inf_cnt = np.isinf(df_final[column]).sum()
                 # If infinite values are present, log a warning, and ask if user wants to proceed
                 if inf_cnt > 0:
-                    logger.warning(f'Feature "{column}" contains {inf_cnt} infinite values.')
+                    print(f'Feature "{column}" contains {inf_cnt} infinite values.')
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
+                        print(f'Skipping scaling for feature: "{column}"')  # Note the choice
                         continue  # And move on to the next feature
 
                 # Check for constant/near-constant features, e.g. with only 1 unique value or minimal variance
@@ -1248,13 +1244,13 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                                    'Consider transformation before scaling.')
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':  # If not
-                        logger.info(f'Skipping scaling for feature: "{column}"')  # Log the choice
+                        print(f'Skipping scaling for feature: "{column}"')  # Note the choice
                         continue  # And move on to the next feature
 
             # Catch validation errors
             except Exception as exc:
                 logger.error(f'Error validating feature "{column}": {exc}')
-                logger.error('Skipping scaling for this feature.')
+                print('Skipping scaling for this feature.')
                 continue  # Move to next feature
 
             # Print (do not log) descriptive statistics for the feature
@@ -1281,14 +1277,14 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                     scale_method = input('Enter your choice: ')
 
                     if scale_method == '4':  # If user wants to skip
-                        logger.info(f'Skipping scaling for feature: {column}')  # Log that choice
+                        print(f'Skipping scaling for feature: {column}')  # Note that choice
                         break  # Exit the while loop
 
                     elif scale_method in ['1', '2', '3']:  # If a valid scaling choice is made
                         # Reshape the data for use by scikit-learn
                         reshaped_data = df_final[column].values.reshape(-1, 1)
 
-                        # Instantiate selected scaler and set sacler name
+                        # Instantiate selected scaler and set scaler name
                         if scale_method == '1':
                             scaler = StandardScaler()
                             method_name = 'Standard'
@@ -1305,7 +1301,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
                         # Add the feature to the list of scaled features
                         scaled_cols.append(f'{column} ({method_name})')
 
-                        logger.info(f'Applied {method_name} scaling to feature {column}.')  # Log the scaling action
+                        print(f'Applied {method_name} scaling to feature {column}.')  # Log the scaling action
                         print('-' * 50)  # Visual separator
                         break  # Exit the while loop
 
@@ -1325,7 +1321,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             print('-' * 50)  # Visual separator
             logger.info('The following features were scaled:')
             for col in scaled_cols:
-                logger.info(f'- {col}')
+                logger.info(f'- {col} ({method_name})')
             print('-' * 50)  # Visual separator
 
         # If no features were scaled, log that fact
@@ -1475,11 +1471,11 @@ def export_data(df_final: pd.DataFrame):
     try:
         estimated_size_mb = df_final.memory_usage(deep=True).sum() / (1024 * 1024)
         if estimated_size_mb > 1000:  # If over 1GB
-            logger.warning(f'Large file size detected ({estimated_size_mb:.2f} MB). Export may take some time.')
+            print(f'Large file size detected ({estimated_size_mb:.2f} MB). Export may take some time.')
 
     # Catch file size/memory usage estimation errors
     except Exception as exc:
-        logger.warning(f'Unable to estimate file size: {exc}')
+        print(f'Unable to estimate file size: {exc}')
 
     # Exporting file
     try:
