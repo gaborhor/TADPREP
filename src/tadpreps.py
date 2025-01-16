@@ -44,39 +44,97 @@ def load_file() -> pd.DataFrame:
     Returns:
         df_full (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
     """
+
+    def fetch_file_tkinter() -> Path:
+        """Internal helper function which provides a file dialog for selecting input files using tkinter."""
+        # Function-specific import statements
+        import tkinter as tk
+        from tkinter import filedialog
+
+        # Create and configure root window
+        root = tk.Tk()
+        root.attributes('-topmost', True)  # Force window ro stay on top
+        root.withdraw()
+
+        # Configure file types for the dialog
+        filetypes = [
+            ('Tabular files', '*.csv;*.xls;*.xlsx'),
+            ('CSV files', '*.csv'),
+            ('Excel files', '*.xls;*.xlsx'),
+            ('All files', '*.*')
+        ]
+
+        try:
+            # Force focus on the dialog
+            root.focus_force()
+
+            # Open the file dialog and explicitly set parent window
+            filepath = filedialog.askopenfilename(title='Select your data file', filetypes=filetypes, parent=root)
+
+            # Check for user cancellation
+            if not filepath:
+                logger.error('No file selected. Please select a file to proceed.')
+                sys.exit(1)
+
+            # Convert to Path object and resolve
+            return Path(filepath).resolve()
+
+        # Catch errors
+        except Exception as exc:
+            logger.error(f'Error during file selection: {exc}')
+            sys.exit(1)
+
+        # Clean up tkinter resources
+        finally:
+            root.destroy()
+
     print('NOTE: TADPREPS supports only .csv and Excel files.')
 
     try:
-        # Fetch filepath and convert to Path object
-        filepath = Path(input('Enter the absolute path to your datafile: ')).resolve()
+        # Ask user for preferred input method
+        while True:
+            print('\nHow would you like to select your input file?')
+            print('1. Use a file browser dialog')
+            print('2. Enter an absolute filepath manually')
+            user_input_method = input('Enter your choice (1 or 2): ').strip()
 
-        # Error handling: Use pathlib library to check whether the supplied path is valid
+            if user_input_method in ['1', '2']:
+                break
+            print('Invalid choice. Please enter 1 or 2.')
+
+        # Fetch filepath based on user's choice
+        if user_input_method == '1':
+            filepath = fetch_file_tkinter()
+        else:
+            filepath = Path(input('Enter the absolute path to your datafile: ')).resolve()
+
+        # Validate the path exists
         if not filepath.exists():
             logger.error(f'The supplied path "{filepath}" is invalid.')
             logger.error('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
 
-        # Error handling: Use pathlib library to check whether the path leads to a directory rather than a file
+        # Validate the path leads to a single file
         if not filepath.is_file():
             logger.error(f'The supplied path "{filepath}" does not point to a single file.')
             logger.error('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
 
-        # Error handling: Raise error if the file exists but is of an unsupported type
+        # Validate file type
         if filepath.suffix.lower() not in ['.csv', '.xls', '.xlsx']:
             logger.error('TADPREPS only supports .csv, .xls, and .xlsx files.')
             logger.error(f'The file at "{filepath}" does not appear to be of a compatible type.')
             print('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
 
-        # Error handling: Use pathlib library to check whether the file is larger than 1GB
-        size_mb = filepath.stat().st_size / (1024 ** 2)  # Fetch file size, divide by 1024^2 to get size in megabytes
+        # Check file size and stop program if it's too large
+        size_mb = filepath.stat().st_size / (1024 ** 2)
         if size_mb > 1000:
             logger.error(f'File size ({size_mb} megabytes) exceeds 1 GB limit.')
             logger.error('For files of this size, consider an out-of-memory or distributed solution.')
             sys.exit(1)
 
-        # Use pathlib library to check whether the file is .csv or Excel and load into Pandas dataframe
+        # Set Pandas read method
         if filepath.suffix.lower() == '.csv':
             file_type = 'CSV'
             df_full = pd.read_csv(filepath)
@@ -88,6 +146,7 @@ def load_file() -> pd.DataFrame:
         logger.info(f'Base shape of file: {df_full.shape}')
         return df_full
 
+    # Catch all other errors
     except Exception as exc:
         logger.error(f'An unexpected error occurred: {exc}')
         sys.exit(1)
