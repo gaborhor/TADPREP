@@ -20,7 +20,7 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 
 # Set up first-phase temporary log
-temp_log_name = f'tadpreps_runtime_log_{timestamp}.log'
+temp_log_name = f'tadpreps_runtime_{timestamp}.log'
 temp_log_path = Path(temp_log_name)
 
 # Set up logging with time-at-execution
@@ -33,29 +33,6 @@ logging.basicConfig(
 # Instantiate log object
 logger = logging.getLogger(__name__)
 logger.info('Initiating TADPREPS...')
-
-
-def relocate_log(save_dir: Path) -> None:
-    """
-    This function moves the log file to the same directory as the exported data file.
-    This is called only after all logging is complete.
-    Args:
-        save_dir (Path): Directory where the cleaned data was saved.
-    """
-    try:
-        # Close all handlers to release the file
-        for handler in logger.handlers[:]:
-            handler.close()
-            logger.removeHandler(handler)
-
-        # Move log file to target directory
-        target_path = save_dir / temp_log_path.name
-        shutil.move(temp_log_path, target_path)
-
-    # Catch file-movement errors
-    except Exception as exc:
-        print(f'Error moving log file: {exc}')
-        print(f'Log file remains at: {temp_log_path}')
 
 
 def load_file() -> pd.DataFrame:
@@ -152,11 +129,14 @@ def trim_file(df_full: pd.DataFrame) -> pd.DataFrame:
         df_trimmed (pd.DataFrame): The dataset after trimming/sub-setting.
     """
     df_trimmed = df_full.copy(deep=True)
-    # Ask if the user wants to delete *all* instances with any missing values
-    user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
-    if user_drop_na.lower() == 'y':
-        df_trimmed = df_trimmed.dropna()
-        logger.info(f'After deletion of instances with missing values, {len(df_trimmed)} instances remain.')
+
+    row_missing_cnt = df_trimmed.isnull().any(axis=1).sum()  # Compute count
+    # Ask if the user wants to delete *all* instances with any missing values, if any exist
+    if row_missing_cnt > 0:
+        user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
+        if user_drop_na.lower() == 'y':
+            df_trimmed = df_trimmed.dropna()
+            logger.info(f'After deletion of instances with missing values, {len(df_trimmed)} instances remain.')
 
     # Ask if the user wants to drop any of the columns/features in the dataset
     user_drop_cols = input('Do you want to drop any of the features in the dataset? (Y/N): ')
@@ -384,7 +364,9 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         A tuple of lists of strings for the non-target features at the feature-class level. These are used by the
         scaling and encoding functions.
     """
-    logger.info('Displaying top-level information for features in dataset...')
+    print('-' * 50)  # Visual separator
+    print('Displaying top-level information for features in dataset...')
+    print('-' * 50)  # Visual separator
 
     # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
     cat_cols = [column for column in df_renamed.columns
@@ -424,9 +406,9 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
             if (len(unique_vals) <= 5 and  # If that value is small
                     all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
 
-                print(f'\nFeature "{column}" has only {len(unique_vals)} unique values: {unique_vals}')
-                print('ALERT: This could be a categorical feature encoded as numbers.')
-                print('E.g., this might be similar to 1/0 encoding for Yes/No responses.')
+                print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                      'Yes/No values.')
 
                 user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
                 if user_cat.lower() == 'y':  # If so
@@ -521,7 +503,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
         # Move to feature-class level information and log
         print('-' * 50)  # Visual separator
-        print('Producing key values at the feature-class level...')
+        print('Producing aggregated key values for categorical features...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
@@ -543,7 +525,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
         # Move to feature-class level information and log
         print('-' * 50)  # Visual separator
-        print('Producing key values at the feature-class level...')
+        print('Producing aggregated key values for ordinal features...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
@@ -565,7 +547,7 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
 
         # Move to feature-class level information and log
         print('-' * 50)  # Visual separator
-        print('Producing key values at the feature-class level...')
+        print('Producing aggregated key values for numerical features...')
         print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
@@ -1017,7 +999,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # Return the unmodified data
 
         # If there are string-type ordinal features, ask if user wants to remap them with numerical values
-        logger.info(f'{len(str_ords)} ordinal features contain non-numeric values.')
+        print(f'{len(str_ords)} ordinal features contain non-numeric values.')
         print('NOTE: Ordinal features should be expressed numerically to allow for proper analysis.')
         user_remap = input('\nDo you want to consider remapping any string-type ordinal features with '
                            'appropriate numerical values? (Y/N): ')
@@ -1134,7 +1116,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(num_cols)} numerical features.')  # Print count of numerical features
+        print(f'The dataset contains {len(num_cols)} non-target numerical features.')
 
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
@@ -1144,7 +1126,7 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
         print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
               'your own scaler code.')
         # Ask if the user wants to scale any numerical features
-        user_scale = input('Do you want to scale any of these features? (Y/N): ')
+        user_scale = input('Do you want to scale any of these numerical features? (Y/N): ')
         if user_scale.lower() != 'y':  # If not
             logger.info('Skipping scaling of numerical features.')  # Log the choice
             return  # And exit the process
@@ -1415,9 +1397,6 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
             if not save_dir.is_dir():
                 raise ValueError(f'The path {save_dir} is not a directory.')
 
-            # Activate the relocate_log() function to complete the second logging phase - co-location
-            relocate_log(save_dir)
-
             # Create the full save path using Pathlib - this is preferred b/c it's platform independent
             save_path = save_dir / full_filename
 
@@ -1484,6 +1463,28 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
         return None  # Return None if export fails
 
 
+def relocate_log(save_dir: Path) -> None:
+    """
+    Ensure all log content is written, then move the log file to the same directory as the exported data file.
+    Args:
+        save_dir (Path): Directory where the cleaned data was saved.
+    Returns:
+        None. This is a void function.
+    """
+    try:
+        # Safely shut down the logging system
+        logging.shutdown()
+
+        # Move the log file to the target directory
+        target_path = save_dir / temp_log_path.name
+        shutil.move(temp_log_path, target_path)
+
+        print(f'Log file has been moved to: {target_path}')
+
+    except Exception as exc:
+        print(f'Error moving log file: {exc}')
+
+
 def main():
     """
     This is the main function for the TADPREPS (Tabular Automated Data PREParation System) program.
@@ -1505,7 +1506,7 @@ def main():
     """
     try:
         # Print welcome message and basic instructions
-        print('Welcome to TADPREPS (Tabular Automated Data PREParation System)')
+        print('Welcome to TADPREPS (Tabular Automated Data PREParation System).')
         print('This program will guide you through preparing your tabular dataset for further analysis.')
         print('Follow the prompts and make selections when asked to do so.')
 
