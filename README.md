@@ -18,7 +18,7 @@ TADPREPS leverages standard data preparation libraries, extensive error handling
 lightweight UX intended to make the tabular data preparation process as smooth and low-effort as possible.
 
 It can be run directly from the command line or within any standard IDE. The log file created by the script is 
-generated in the same working directory as the script itself.
+stored in the same directory as the exported datafile for co-location purposes.
 
 ### Use Case/General Functionality
 The TADPREPS tool is designed to operate as a sort of "Swiss Army Knife" program which can handle the most common
