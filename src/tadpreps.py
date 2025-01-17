@@ -53,7 +53,7 @@ def load_file() -> pd.DataFrame:
 
         # Create and configure root window
         root = tk.Tk()
-        root.attributes('-topmost', True)  # Force window ro stay on top
+        root.attributes('-topmost', True)  # Force window to stay on top
         root.withdraw()
 
         # Configure file types for the dialog
@@ -1366,6 +1366,41 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
     Returns:
         A Path object with the directory where the user saved the cleaned/reshaped data.
     """
+    def fetch_save_dir_tkinter() -> Optional[Path]:
+        """Internal helper function which provides a directory dialog for selecting the save location using tkinter."""
+        # Function-specific import statements
+        import tkinter as tk
+        from tkinter import filedialog
+
+        # Create and configure root window
+        root = tk.Tk()
+        root.attributes('-topmost', True)  # Force window to stay on top
+        root.withdraw()
+
+        try:
+            # Force focus on the dialog
+            root.focus_force()
+
+            # Open the directory dialog and explicitly set parent window
+            save_dir = filedialog.askdirectory(title='Select directory to save your file', parent=root)
+
+            # Check for user cancellation
+            if not save_dir:
+                logger.error('No directory selected. Please select a directory to proceed.')
+                return None
+
+            # Convert to Path object and resolve
+            return Path(save_dir).resolve()
+
+        # Catch errors
+        except Exception as exc:
+            logger.error(f'Error during directory selection: {exc}')
+            return None
+
+        # Clean up tkinter resources
+        finally:
+            root.destroy()
+
     print('Data preparation complete. Preparing for file export.')
 
     # Define supported export formats and their corresponding file extensions in a dictionary
@@ -1433,11 +1468,26 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
     # VALIDATING FILEPATH
     while True:  # We can justify 'while True' because we need to find a valid directory path for the export
         try:
-            # Fetch desired save location from user
-            save_path = input('\nEnter the absolute path to the directory where you want to save the file: ').strip()
+            # Ask user for preferred input method
+            print('\nHow would you like to select your save directory?')
+            print('1. Use a directory browser dialog')
+            print('2. Enter an absolute filepath manually')
+            user_input_method = input('Enter your choice (1 or 2): ').strip()
 
-            # Convert to a Path object and resolve it to an absolute path
-            save_dir = Path(save_path).resolve()
+            # Catch bad user input
+            if user_input_method not in ['1', '2']:
+                raise ValueError('Invalid choice. Please enter 1 or 2.')
+
+            # Get save directory based on user's choice
+            if user_input_method == '1':
+                save_dir = fetch_save_dir_tkinter()
+                if save_dir is None:  # If directory selection was cancelled or failed
+                    continue
+            else:
+                # Fetch desired save location from user
+                save_path = input('\nEnter the absolute path to the directory where you want to save the file: ').strip()
+                # Convert to a Path object and resolve it to an absolute path
+                save_dir = Path(save_path).resolve()
 
             # Create the directory if it doesn't exist
             if not save_dir.exists():
