@@ -1,12 +1,12 @@
 id,age,sex,race,us_citizen,educ,salary
 107912442,44,M,unknown,0,no degree,128346
 115068853,56,M,unknown,0,postgraduate,228492
-148278102,77,F,asian,1,high school,142314
+148278102,,F,asian,1,high school,142314
 165426506,52,F,unknown,0,undergraduate,235806
 169443655,59,M,hispanic,0,high school,167679
 194374283,35,M,hispanic,1,undergraduate,195652
 198324842,44,M,hispanic,0,no degree,166306
-207521562,51,F,hispanic,0,no degree,180260
+207521562,51,,hispanic,0,no degree,180260
 213932258,57,M,asian,1,postgraduate,130515
 247690467,80,F,black,1,postgraduate,268984
 249784911,41,F,asian,1,postgraduate,250509
@@ -18,7 +18,7 @@ id,age,sex,race,us_citizen,educ,salary
 401092058,27,M,unknown,1,no degree,192207
 404189895,75,F,black,1,no degree,248932
 470096486,62,M,hispanic,0,no degree,65049
-483468128,48,M,unknown,0,postgraduate,202900
+483468128,,M,unknown,0,postgraduate,202900
 526967691,61,F,white,0,postgraduate,254081
 534630562,45,M,asian,1,undergraduate,190127
 569762301,20,F,asian,0,undergraduate,119615
@@ -29,7 +29,7 @@ id,age,sex,race,us_citizen,educ,salary
 618566277,44,M,unknown,1,undergraduate,168226
 637474999,55,M,white,1,postgraduate,213024
 661369328,28,M,white,0,postgraduate,94634
-661978303,44,M,white,0,postgraduate,147950
+661978303,44,,white,0,postgraduate,147950
 663643609,24,M,unknown,0,high school,171059
 668831784,43,M,hispanic,1,high school,196904
 754221078,50,M,white,0,postgraduate,231493
@@ -40,12 +40,12 @@ id,age,sex,race,us_citizen,educ,salary
 814002736,69,F,white,1,undergraduate,137314
 846704990,62,F,hispanic,1,undergraduate,169658
 848490860,18,M,hispanic,0,postgraduate,238797
-861973788,27,M,hispanic,1,undergraduate,193814
+861973788,27,,hispanic,1,undergraduate,193814
 884464108,77,M,asian,0,postgraduate,260893
 892007614,62,M,asian,1,postgraduate,221974
 903232856,30,F,black,1,postgraduate,146271
 908877547,36,M,unknown,1,no degree,194853
-910408445,63,F,black,1,postgraduate,225607
+910408445,,F,black,1,postgraduate,225607
 925128101,65,F,asian,0,undergraduate,270080
-933718511,54,F,white,0,no degree,167537
+933718511,54,,white,0,no degree,167537
 982009793,59,F,unknown,0,no degree,216854
