@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+import matplotlib
+matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
@@ -425,7 +427,6 @@ def print_feature_stats(df_renamed: pd.DataFrame) -> tuple[list[str], list[str],
         A tuple of lists of strings for the non-target features at the feature-class level. These are used by the
         scaling and encoding functions.
     """
-    print('-' * 50)  # Visual separator
     print('Displaying top-level information for features in dataset...')
     print('-' * 50)  # Visual separator
 
@@ -836,7 +837,6 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             logger.info('No categorical features are present in the dataset. Skipping encoding.')  # Log this
             return  # And exit the process
 
-        print('-' * 50)  # Visual separator
         print(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
 
         # Notify user that TADPREPS only supports common encoding methods
@@ -949,11 +949,25 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Ask if user wants to see a distribution plot
             user_show_plot = input('\nWould you like to see a plot of the feature distribution? (Y/N): ')
             if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
-                plt.figure(figsize=(12, 8))
-                sns.displot(data=df_final, x=column, discrete=True)
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                plt.show()
+                # Attempt plot creation
+                try:
+                    plt.figure(figsize=(12, 8))
+                    value_counts = df_final[column].value_counts()
+                    plt.bar(range(len(value_counts)), value_counts.values)
+                    plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
+                    plt.title(f'Distribution of {column}')
+                    plt.xlabel(column)
+                    plt.ylabel('Count')
+                    plt.tight_layout()
+                    plt.show()
+                    plt.close()  # Explicitly close the figure
+
+                # Catch plotting errors
+                except Exception as plot_exc:
+                    logger.error(f'Error creating plot: {plot_exc}')
+                    print('Unable to display plot. Continuing with analysis.')
+                    if plt.get_fignums():  # If any figures are open
+                        plt.close('all')  # Close all figures
 
             # Ask user to select encoding method
             while True:  # We can justify 'while True' because we have a cancel-out input option
@@ -1278,11 +1292,21 @@ def encode_and_scale(df_imputed: pd.DataFrame, cat_cols: list[str], ord_cols: li
             # Ask if user wants to see a distribution plot for the feature
             user_show_plot = input('\nWould you like to see a histogram of the feature distribution? (Y/N): ')
             if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
-                plt.figure(figsize=(12, 8))
-                sns.histplot(data=df_final, x=column)
-                plt.title(f'Distribution of {column}')
-                plt.tight_layout()
-                plt.show()
+                # Attempt plot creation
+                try:
+                    plt.figure(figsize=(12, 8))
+                    sns.histplot(data=df_final, x=column)
+                    plt.title(f'Distribution of {column}')
+                    plt.tight_layout()
+                    plt.show()
+                    plt.close()  # Explicitly close the figure
+
+                # Catch plotting errors
+                except Exception as plot_exc:
+                    logger.error(f'Error creating plot: {plot_exc}')
+                    print('Unable to display plot. Continuing with analysis.')
+                    if plt.get_fignums():  # If any figures are open
+                        plt.close('all')  # Close all figures
 
             # Ask user to select a scaling method
             while True:  # We can justify 'while True' because we have a cancel-out input option
