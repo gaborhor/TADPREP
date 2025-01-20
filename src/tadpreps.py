@@ -250,6 +250,7 @@ def load_file() -> pd.DataFrame:
             sys.exit(1)
 
         # Check file size and stop program if it's too large
+        # TODO: Allow override
         size_mb = filepath.stat().st_size / (1024 ** 2)
         if size_mb > 1000:
             logger.error(f'File size ({size_mb} megabytes) exceeds 1 GB limit.')
@@ -345,7 +346,7 @@ def trim_file(df: pd.DataFrame) -> pd.DataFrame:
                 drop_cols_names = [df.columns[idx - 1] for idx in drop_cols_idx]  # Subtracting 1 from indices
 
                 # Drop the columns
-                df.drop(columns=drop_cols_names, inplace=True)
+                df = df.drop(columns=drop_cols_names)
                 logger.info(f'Dropped features: {",".join(drop_cols_names)}')  # Log dropped columns
                 break
 
@@ -430,7 +431,7 @@ def rename_features(df: pd.DataFrame) -> pd.DataFrame:
                     continue  # Restart the loop
 
                 # Rename column in-place
-                df.rename(columns={col_name_old: col_name_new}, inplace=True)
+                df = df.rename(columns={col_name_old: col_name_new})
                 logger.info(f'Renamed feature "{col_name_old}" to "{col_name_new}".')
 
                 # Ask if user wants to rename another column
@@ -520,7 +521,7 @@ def rename_features(df: pd.DataFrame) -> pd.DataFrame:
                     print('WARNING: All selected features are already tagged as targets.')  # Warn the user
                     break
 
-                df.rename(columns=target_rename_map, inplace=True)  # Perform tagging
+                df = df.rename(columns=target_rename_map)  # Perform tagging
                 logger.info(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
                 break
 
@@ -933,7 +934,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
     print_feature_stats function. Note that the actual 'engine' of this function is the set of three helper functions
     defined within its scope.
     Args:
-        df (pd.Dataframe): The dataframe with imputed values return by impute_missing) data.
+        df (pd.Dataframe): The dataframe with imputed values return by impute_missing_data().
         cat_cols (list): The list of categorical non-target features created by print_feature_stats().
         ord_cols (list): The list of ordinal non-target features created by print_feature_stats().
         num_cols (list): The list of numerical non-target features created by print_feature_stats().
