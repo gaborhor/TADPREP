@@ -63,5 +63,6 @@ The tool assumes that:
 
 ### Future Development
 While future development needs are unclear at this point, there are a couple of things I have my eye on, including:
-1. Building in a Dask-centric capability to work with very large tabular files outside of active memory.
-2. Building in a functionality which allows the user to automatically test the features for the statistical assumptions of linear modeling
+1. Building roll-back functionality into the pipeline so the user can return to earlier stages in the data transformation process.
+2. Building in a Dask-centric capability to work with very large tabular files outside of active memory.
+3. Building in a functionality which allows the user to automatically test the features for the statistical assumptions of linear modeling
