@@ -15,8 +15,128 @@ import seaborn as sns
 import logging
 import shutil
 import sys
-from typing import Optional
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+
+
+# Set up pipeline staging and rollback capabilities using dataclass - this is an OOP implementation
+@dataclass
+class PipelineState:
+    """
+    This class object is used to store a complete-state status of a pipeline stage.
+    Each state capture represents a snapshot of the data at that specific point in the TADPREPS pipeline.
+    """
+    stage_name: str  # Name of pipeline stage
+    dataframe: pd.DataFrame  # Full copy of the DataFrame at the specified stage
+    metadata: Dict[str, Any]  # Additional information about transformations applied
+
+
+class PipelineManager:
+    """
+    This class object manages the sequence of pipeline states and handles use of the rollback functionality.
+    It does this by maintaining a strictly-ordered list of states which can be traversed backwards if needed.
+    """
+    def __init__(self):
+        self.states = []  # Instantiate a list to store all pipeline states
+
+        self.current_stage = 0  # Track current stage (NOTE: This is a 0-based index)
+
+        # Define the sequence of stages in the TADPREPS pipeline
+        self.stage_names = [
+            'Load Data',
+            'Trim Data',
+            'Rename Features',
+            'Feature Information',
+            'Impute Missing Values',
+            'Encode/Scale Features',
+            'Export Data'
+        ]
+
+    def save_state(self, state: PipelineState) -> None:
+        """
+        Class method of PipelineManager.
+        Saves a new state to the pipeline history.
+        When a state is saved, it automatically creates a deep copy of the DataFrame.
+        This obviates the need for the deep-copy syntax present in earlier versions of the data transform functions.
+        """
+        # NOTE: pd.DataFrame.copy() is implicitly called (with deep=True) when the state is stored
+        self.states.append(state)
+        self.current_stage += 1  # Advance the current_stage index
+
+    def get_state(self, stage_index: int) -> Optional[PipelineState]:
+        """
+        Class method of PipelineManager.
+        Retrieves a specific pipeline state by index value.
+        Returns None if the requested state doesn't exist.
+        """
+        # Check for valid state at index
+        if 0 <= stage_index < len(self.states):
+            return self.states[stage_index]
+
+        else:
+            return None
+
+    def rollback(self) -> Optional[PipelineState]:
+        """
+        Class method of PipelineManager.
+        Handles the logic for rolling back to a previous state in the TADPREPS pipeline.
+        Returns the selected previous state in the pipeline, or None if the user cancels the rollback operation.
+        """
+        # Show user what states are available to roll back to
+        print('\nCurrent pipeline stages:')
+        for idx, state in enumerate(self.states):
+            print(f'{idx + 1}. {state.stage_name}')
+
+        while True:
+            try:
+                # Fetch user's rollback choice
+                user_input = input('\nEnter stage number to roll back to (or "C" to cancel rollback): ').strip()
+
+                # Check if user wants to cancel rollback
+                if user_input.lower() == 'c':
+                    return None
+
+                # Convert user input to state index
+                stage_idx = int(user_input) - 1
+
+                # Validate that the chosen state exists
+                if 0 <= stage_idx < len(self.states):
+                    # Truncate states list to remove everything after the rollback point as defined by the user
+                    self.states = self.states[:stage_idx + 1]
+                    # Update current stage to the selected rollback point
+                    self.current_stage = stage_idx
+                    # Return the desired rollback stage
+                    return self.states[stage_idx]
+
+                # Catch invalid input
+                else:
+                    print('INPUT ERROR: Invalid stage number.')
+
+            # Catch other input errors
+            except ValueError:
+                print('Please enter a valid stage number or "C" to cancel rollback.')
+
+
+def check_rollback(pipeline: PipelineManager) -> Optional[PipelineState]:
+    """
+    This is a global-scope unified function which checks if the user wants to roll back after each stage in TADPREPS.
+    This ensures consistent rollback behavior throughout each 'pass' through the pipeline.
+    It returns the pipeline state to roll back to, or None to continue with the TADPREPS process.
+    """
+    user_input = input('\nWould you like to:'
+                       '\n1. Continue to the next stage of data preparation'
+                       '\n2. Roll back to a previous stage'
+                       '\nEnter choice (1 or 2): ')
+
+    # If the user wants to roll back
+    if user_input == '2':
+        return pipeline.rollback()  # Return the result of the .rollback() method
+
+    # Otherwise, proceed with TADPREPS
+    else:
+        return None
+
 
 # Fetch current runtime timestamp in a readable format
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
