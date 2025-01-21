@@ -1480,7 +1480,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             print('-' * 50)  # Visual separator
             logger.info('The following features were scaled:')
             for col in scaled_cols:
-                logger.info(f'- {col})')
+                logger.info(f'- {col}')
             print('-' * 50)  # Visual separator
 
         # If no features were scaled, log that fact
