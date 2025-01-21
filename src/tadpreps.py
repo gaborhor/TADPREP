@@ -39,8 +39,8 @@ class PipelineManager:
     """
     def __init__(self):
         self.states = []  # Instantiate a list to store all pipeline states
-
         self.current_stage = 0  # Track current stage (NOTE: This is a 0-based index)
+        self.current_dataframe = None  # Maintain a reference to the current DataFrame
 
         # Define the sequence of stages in the TADPREPS pipeline
         self.stage_names = [
@@ -60,9 +60,9 @@ class PipelineManager:
         When a state is saved, it automatically creates a deep copy of the DataFrame.
         This obviates the need for the deep-copy syntax present in earlier versions of the data transform functions.
         """
-        # NOTE: pd.DataFrame.copy() is implicitly called (with deep=True) when the state is stored
-        self.states.append(state)
+        self.states.append(state)  # Append new state object to the list of states
         self.current_stage += 1  # Advance the current_stage index
+        self.current_dataframe = state.dataframe.copy(deep=True)  # Update the working DataFrame
 
     def get_state(self, stage_index: int) -> Optional[PipelineState]:
         """
@@ -104,8 +104,13 @@ class PipelineManager:
                 if 0 <= stage_idx < len(self.states):
                     # Truncate states list to remove everything after the rollback point as defined by the user
                     self.states = self.states[:stage_idx + 1]
+
                     # Update current stage to the selected rollback point
                     self.current_stage = stage_idx
+
+                    # Restore the DataFrame to the rolled-back state
+                    self.current_dataframe = self.states[self.current_stage].dataframe.copy(deep=True)
+
                     # Return the desired rollback stage
                     return self.states[stage_idx]
 
