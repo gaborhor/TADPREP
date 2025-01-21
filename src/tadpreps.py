@@ -96,22 +96,24 @@ class PipelineManager:
                 if user_input.lower() == 'c':
                     return None
 
-                # Convert user input to state index
+                # Convert user input to state index (0-based)
                 stage_idx = int(user_input) - 1
 
                 # Validate that the chosen state exists
                 if 0 <= stage_idx < len(self.states):
-                    # Truncate states list to remove everything after the rollback point as defined by the user
-                    self.states = self.states[:stage_idx + 1]
+                    # First get the target stage's data before we truncate
+                    target_state = self.states[stage_idx]
 
-                    # Update current stage to the selected rollback point
+                    # Truncate states list to remove everything after the rollback point
+                    self.states = self.states[:stage_idx]
+
+                    # Set current stage to the selected stage
                     self.current_stage = stage_idx
 
-                    # Restore the DataFrame to the rolled-back state
-                    self.current_dataframe = self.states[self.current_stage].dataframe.copy(deep=True)
+                    # Restore the DataFrame to the selected stage's state
+                    self.current_dataframe = target_state.dataframe.copy(deep=True)
 
-                    # Return the desired rollback stage
-                    return self.states[stage_idx]
+                    return target_state
 
                 # Catch invalid input
                 else:
