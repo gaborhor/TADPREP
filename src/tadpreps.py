@@ -261,12 +261,13 @@ def load_file() -> pd.DataFrame:
             logger.warning(f'File size ({size_mb:.2f} megabytes) exceeds 1 GB limit.')
             print('\nWARNING: This file is larger than the recommended size limit.')
             print('Processing files of this size may cause memory issues and/or slow performance.')
+            print('Consider instead using an out-of-memory or distributed solution.')
 
             # Fetch choice re: size override from user
             while True:
                 user_override = input('\nDo you want to:\n'
-                                      '1. Proceed anyway (not recommended)\n'
-                                      '2. Cancel and consider using an out-of-memory or distributed solution\n'
+                                      '1. Proceed with data import (not recommended)\n'
+                                      '2. Cancel data import\n'
                                       'Enter choice (1 or 2): ').strip()
 
                 if user_override == '1':
