@@ -255,13 +255,32 @@ def load_file() -> pd.DataFrame:
             print('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
 
-        # Check file size and stop program if it's too large
-        # TODO: Allow override
+        # Check file size and warn if it's too large
         size_mb = filepath.stat().st_size / (1024 ** 2)
         if size_mb > 1000:
-            logger.error(f'File size ({size_mb} megabytes) exceeds 1 GB limit.')
-            logger.error('For files of this size, consider an out-of-memory or distributed solution.')
-            sys.exit(1)
+            logger.warning(f'File size ({size_mb:.2f} megabytes) exceeds 1 GB limit.')
+            print('\nWARNING: This file is larger than the recommended size limit.')
+            print('Processing files of this size may cause memory issues and/or slow performance.')
+
+            # Fetch choice re: size override from user
+            while True:
+                user_override = input('\nDo you want to:\n'
+                                      '1. Proceed anyway (not recommended)\n'
+                                      '2. Cancel and consider using an out-of-memory or distributed solution\n'
+                                      'Enter choice (1 or 2): ').strip()
+
+                if user_override == '1':
+                    logger.warning('User chose to override file size limit warning.')
+                    print('\nProceeding with file load...')
+                    break
+
+                elif user_override == '2':
+                    logger.info('User cancelled loading of large file.')
+                    print('\nOperation cancelled. Consider using alternative solutions for large files.')
+                    sys.exit(1)
+
+                else:
+                    print('Invalid input. Please enter 1 or 2.')
 
         # Set Pandas read method
         if filepath.suffix.lower() == '.csv':
