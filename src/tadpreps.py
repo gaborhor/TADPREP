@@ -1787,54 +1787,49 @@ def main():
             if pipeline.current_stage == 1:
                 print('\nSTAGE 2: TRIMMING DATASET')
                 print('-' * 50)
-                # Retrieve previous state's dataframe for processing
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
-                df = trim_file(current_state.dataframe)
+                # Process current working dataframe
+                df = trim_file(pipeline.current_dataframe)
 
                 # Save state with original-shape metadata for tracking changes
                 pipeline.save_state(PipelineState(
                     stage_name='Trim Data',
                     dataframe=df,
-                    metadata={'original_shape': current_state.dataframe.shape}
+                    metadata={'original_shape': pipeline.current_dataframe.shape}
                 ))
 
                 # Check for user rollback after transformation
-                rollback_state = check_rollback(pipeline)
-                # If user wants to rollback
-                if rollback_state:
-                    continue  # Restart pipeline loop from rollback point
+                if check_rollback(pipeline):
+                    continue
 
             # Stage 3: Rename Features
             if pipeline.current_stage == 2:
                 print('\nSTAGE 3: RENAMING FEATURES')
                 print('-' * 50)
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
-                df = rename_features(current_state.dataframe)
+                # Process current working dataframe
+                df = rename_features(pipeline.current_dataframe)
 
                 # Save state with original column names for reference purposes
                 pipeline.save_state(PipelineState(
                     stage_name='Rename Features',
                     dataframe=df,
-                    metadata={'original_columns': list(current_state.dataframe.columns)}
+                    metadata={'original_columns': list(pipeline.current_dataframe.columns)}
                 ))
 
                 # Check for user rollback after transformation
-                rollback_state = check_rollback(pipeline)
-                if rollback_state:
+                if check_rollback(pipeline):
                     continue
 
             # Stage 4: Feature Information - This stage provides metadata for later transformations
             if pipeline.current_stage == 3:
                 print('\nSTAGE 4: ANALYZING FEATURES')
                 print('-' * 50)
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
-                # Get column type classifications needed for transformation stage
-                cat_cols, ord_cols, num_cols = print_feature_stats(current_state.dataframe)
+                # Extract feature classifications directly from the current DataFrame
+                cat_cols, ord_cols, num_cols = print_feature_stats(pipeline.current_dataframe)
 
                 # Save state with column classification metadata
                 pipeline.save_state(PipelineState(
                     stage_name='Feature Information',
-                    dataframe=current_state.dataframe,
+                    dataframe=pipeline.current_dataframe,
                     metadata={
                         'categorical_columns': cat_cols,
                         'ordinal_columns': ord_cols,
@@ -1843,44 +1838,41 @@ def main():
                 ))
 
                 # Check for user rollback after transformation
-                rollback_state = check_rollback(pipeline)
-                if rollback_state:
+                if check_rollback(pipeline):
                     continue
 
             # Stage 5: Impute Missing Values
             if pipeline.current_stage == 4:
                 print('\nSTAGE 5: HANDLING/IMPUTING MISSING VALUES')
                 print('-' * 50)
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
-                df = impute_missing_data(current_state.dataframe)
+                # Process current working DataFrame
+                df = impute_missing_data(pipeline.current_dataframe)
 
-                # Save state with original missingness counts for comparison purposes
+                # Save state
                 pipeline.save_state(PipelineState(
                     stage_name='Impute Missing Values',
                     dataframe=df,
-                    metadata={'missing_counts_before': current_state.dataframe.isnull().sum().to_dict()}
+                    metadata={'missing_counts_before': pipeline.current_dataframe.isnull().sum().to_dict()}
                 ))
 
                 # Check for user rollback after transformation
-                rollback_state = check_rollback(pipeline)
-                if rollback_state:
+                if check_rollback(pipeline):
                     continue
 
             # Stage 6: Transform Features - Uses metadata supplied in the Feature Information stage
             if pipeline.current_stage == 5:
                 print('\nSTAGE 6: ENCODING AND SCALING FEATURES')
                 print('-' * 50)
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
-                # Retrieve column classifications from stage 4 - Imputation
+                # Retrieve metadata from feature analysis stage
                 prev_metadata = pipeline.get_state(3).metadata
                 df = encode_and_scale(
-                    current_state.dataframe,
+                    pipeline.current_dataframe,
                     prev_metadata['categorical_columns'],
                     prev_metadata['ordinal_columns'],
                     prev_metadata['numerical_columns']
                 )
 
-                # Save state with final column list after transformations
+                # Save state
                 pipeline.save_state(PipelineState(
                     stage_name='Encode/Scale Features',
                     dataframe=df,
@@ -1888,19 +1880,16 @@ def main():
                 ))
 
                 # Check for user rollback after transformation
-                rollback_state = check_rollback(pipeline)
-                if rollback_state:
+                if check_rollback(pipeline):
                     continue
 
             # Stage 7: Export Data - Final stage
             if pipeline.current_stage == 6:
                 print('\nSTAGE 7: EXPORTING FINISHED DATASET')
                 print('-' * 50)
-                current_state = pipeline.get_state(pipeline.current_stage - 1)
+                save_dir = export_data(pipeline.current_dataframe)  # Assign save directory
 
-                save_dir = export_data(current_state.dataframe)  # Assign save directory
-
-                # Relocate log file
+                # Relocate log file is export succeeded
                 if save_dir is not None:
                     relocate_log(save_dir)
 
