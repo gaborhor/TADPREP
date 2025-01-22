@@ -4,20 +4,24 @@ runtime) and the logging file will be created in the same working directory as t
 """
 
 # Library imports
-import numpy as np
-import pandas as pd
-from pathlib import Path
-from datetime import datetime
-import matplotlib
-matplotlib.use('TkAgg')  # Set the backend before importing pyplot
-import matplotlib.pyplot as plt
-import seaborn as sns
 import logging
 import shutil
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
+
+# Data processing imports
+import numpy as np
+import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+
+# Visualization imports
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 # Set up pipeline staging and rollback capabilities using dataclass - this is an OOP implementation
