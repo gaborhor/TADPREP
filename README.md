@@ -65,5 +65,5 @@ The tool assumes that:
 While future development needs are unclear at this point, there are a couple of things I have my eye on, including:
 1. Building in a Dask-centric capability to work with very large tabular files outside of active memory.
 2. Building in a functionality which allows the user to automatically test the features for the statistical assumptions of linear modeling.
-3. Further decomposing the core functions of the script into chunks that can be used within an IDE if I push TADPREPS to PyPi.
+3. Further decomposing the core functions of the script into chunks that can be used within an IDE if I push TADPREPS to PyPi. See the 'docs' folder for more explanation.
 4. Building callable methods which will work within an IDE which will prepare data without the import and export processes - a sort of tadpreps.process_df() method. Again, mostly relevant if I push to PyPi.
