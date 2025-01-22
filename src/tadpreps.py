@@ -59,9 +59,9 @@ class PipelineManager:
         Saves a new state to the pipeline history.
         When a state is saved, it automatically creates an updated deep copy of the DataFrame.
         """
+        self.current_dataframe = state.dataframe.copy(deep=True)  # Update the working DataFrame
         self.states.append(state)  # Append new state object to the list of states
         self.current_stage += 1  # Advance the current_stage index
-        self.current_dataframe = state.dataframe.copy(deep=True)  # Update the working DataFrame
 
     def get_state(self, stage_index: int) -> Optional[PipelineState]:
         """
@@ -84,8 +84,19 @@ class PipelineManager:
         """
         # Show user what states are available to roll back to
         print('\nCurrent pipeline stages:')
+
+        # Create mapping between display numbers and actual indices
+        stage_mapping = {}
+        display_stages = {}
+
+        # Find the last occurrence of each stage
         for idx, state in enumerate(self.states):
-            print(f'{idx + 1}. {state.stage_name}')
+            display_stages[state.stage_name] = idx
+
+        # Create display mapping with consecutive numbers
+        for i, (stage_name, idx) in enumerate(display_stages.items(), 1):
+            stage_mapping[i] = idx
+            print(f'{i}. {stage_name}')
 
         while True:
             try:
@@ -96,28 +107,31 @@ class PipelineManager:
                 if user_input.lower() == 'c':
                     return None
 
-                # Convert user input to state index (0-based)
-                stage_idx = int(user_input) - 1
-
-                # Validate that the chosen state exists
-                if 0 <= stage_idx < len(self.states):
-                    # First get the target stage's data before we truncate
-                    target_state = self.states[stage_idx]
-
-                    # Truncate states list to remove everything after the rollback point
-                    self.states = self.states[:stage_idx]
-
-                    # Set current stage to the selected stage
-                    self.current_stage = stage_idx
-
-                    # Restore the DataFrame to the selected stage's state
-                    self.current_dataframe = target_state.dataframe.copy(deep=True)
-
-                    return target_state
-
-                # Catch invalid input
-                else:
+                # Convert user input to a display number and validate
+                display_num = int(user_input)
+                if display_num not in stage_mapping:
                     print('INPUT ERROR: Invalid stage number.')
+                    continue
+
+                # Fetch the actual index in the states list
+                actual_idx = stage_mapping[display_num]
+
+                # Fetch the state we want to roll back to
+                target_state = self.states[actual_idx]
+
+                # Fetch the state of data prior to the target stage to restore the correct DataFrame
+                prior_state = self.states[actual_idx - 1] if actual_idx > 0 else self.states[0]
+
+                # Truncate states list to remove everything after the rollback point
+                self.states = self.states[:actual_idx + 1]
+
+                # Set current stage to the target stage's position in stage_names
+                self.current_stage = self.stage_names.index(target_state.stage_name)
+
+                # Restore the DataFrame to the state BEFORE the target stage
+                self.current_dataframe = prior_state.dataframe.copy(deep=True)
+
+                return target_state
 
             # Catch other input errors
             except ValueError:
