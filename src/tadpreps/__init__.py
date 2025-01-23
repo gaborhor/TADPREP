@@ -24,7 +24,7 @@ __all__ = [
 
 # Package metadata
 __version__ = '0.1.0'
-__author__ = "Donald Smith"
+__author__ = 'Donald Smith'
 
 
 def main():
@@ -33,5 +33,5 @@ def main():
     interactive_main()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
