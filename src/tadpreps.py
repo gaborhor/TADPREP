@@ -1,24 +1,17 @@
-"""
-This is the TADPREPS codebase. All core functions will be defined internally (so no additional files are necessary at
-runtime) and the logging file will be created in the same working directory as the script itself.
-"""
-"""
-This block checks for required non-standard dependencies and provides clear error messages
-if any are missing. It should be placed at the very beginning of the script.
-"""
 import sys
 from importlib import util
 
 
-def check_dependencies(package_name: str) -> bool:
+def check_pkg(package_name: str) -> bool:
     """
-    Check if a Python package is installed.
+    This function simply checks if a given Python package is installed.
     Args:
-        package_name (str): The name of the package to check
+        package_name (str): The name of the package to check for.
     Returns:
-        bool: True if package is installed, False otherwise
+        bool: True if the specified package is installed, and False otherwise
     """
     return util.find_spec(package_name) is not None
+
 
 # Dictionary of required non-standard/non-implicit packages
 REQUIRED_PACKAGES = {
@@ -31,9 +24,9 @@ REQUIRED_PACKAGES = {
 
 # Check for any missing packages in user environment
 missing_pkgs = []
-for import_name, package_name in REQUIRED_PACKAGES.items():
-    if not check_dependencies(import_name):
-        missing_pkgs.append(package_name)
+for import_name, pkg_name in REQUIRED_PACKAGES.items():
+    if not check_pkg(import_name):
+        missing_pkgs.append(pkg_name)
 
 # If any required packages are missing, print error message and exit
 if missing_pkgs:
@@ -69,6 +62,7 @@ except Exception as exc:
     print(f'ERROR: An unexpected error occurred while importing dependencies: {str(exc)}')
     print('Please ensure all required packages are properly installed.')
     sys.exit(1)
+
 
 # Set up pipeline staging and rollback capabilities using dataclass - this is an OOP implementation
 @dataclass
@@ -1063,7 +1057,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
                   '\nDummy Encoding:'
                   '\n- Creates n-1 binary columns for n categories in the feature. '
                   '\n- One category becomes the reference and is represented by all zeros. '
-                  '\n- Dummy encoding is preferred for linear models to avoid perfect multicollinearity.'
+                  '\n- Dummy encoding is preferred for linear models to avoid perfect multi-collinearity.'
                   '\n- This method is more computationally- and space-efficient but is less interpretable.')
 
         encoded_cols = []  # Instantiate an empty list to hold the encoded columns for final reporting
@@ -1194,7 +1188,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
                             # Store encoded DataFrame for later use
                             encoded_dfs.append(encoded)
 
-                            # Store original column name so we can drop all original columns at once
+                            # Store original column name to allow dropping of all original columns at once
                             columns_to_drop.append(column)
 
                             # Track this column for reporting purposes
@@ -1712,7 +1706,8 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
                     continue
             else:
                 # Fetch desired save location from user
-                save_path = input('\nEnter the absolute path to the directory where you want to save the file: ').strip()
+                save_path = input('\nEnter the absolute path to the directory where you want '
+                                  'to save the file: ').strip()
                 # Convert to a Path object and resolve it to an absolute path
                 save_dir = Path(save_path).resolve()
 
