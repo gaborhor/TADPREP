@@ -27,7 +27,7 @@ from tadpreps import transform_df  # Or whatever it will be called
 df_raw = pd.read_json('some_file_name')  # TADPREPS' current form doesn't support JSON imports
 
 # User applies all parts of TADPREPS other than import/export
-df_clean = tadpreps.transform_df(df_raw)  # This will be appropriately parametrized
+df_clean = tadpreps.prep_df(df_raw)  # This will be appropriately parametrized
 
 # User performs whatever other work/analysis they require
 ```
@@ -39,6 +39,8 @@ method which runs the whole TADPREPS process, but without I/O, rollback, or logg
 So, we'd have these methods as part of the TADPREPS package:
 - "Unified" full-process method:
   - tadpreps.prep_df() &rarr; runs the full TADPREPS pipeline but without I/O or logging, keeps the rollback intact
+
+
 - "Smaller" single-step methods:
   - tadpreps.info() &rarr; runs the print_file_info() core function
   - tadpreps.reshape() &rarr; runs the trim_file() core function
@@ -48,4 +50,18 @@ So, we'd have these methods as part of the TADPREPS package:
   - tadpreps.encode_and_scale() &rarr; runs the encode_and_scale() core function
 
 ### Preparing and Modifying TADPREPS for PyPi Compatability
-- Lorem ipsum
+
+1. Create a proper package directory structure under src/ _(Move current tadpreps.py into src/tadpreps/cli.py, create __init__.py files)_
+2. Separate core transformation logic from I/O and pipeline management _(Move core functions into src/tadpreps/core/transforms.py, remove logging/pipeline dependencies)_
+3. Create package interface functions _(Build public-facing functions in src/tadpreps/package.py with proper docstrings)_
+4. Write package __init__.py _(Import and expose public functions, define __all__ and __version__)_
+5. Create pyproject.toml _(Define metadata, dependencies, console script entry point for CLI)_
+6. Update README.md with installation and usage instructions _(Document both package import and CLI usage patterns)_
+7. Create proper test directory structure _(Set up tests/ directory with test files matching package structure)_
+8. Write basic tests for core functionality _(Test both public interfaces and core transformations)_
+9. Create a build workflow _(Set up GitHub Actions for automated testing and PyPI deployment)_
+10. Set up documentation _(Move current docs into proper structure, add API documentation)_
+11. Create distribution files _(python -m build to create source and wheel distributions)_
+12. Create PyPI test deployment _(Upload to test.pypi.org first to verify packaging)_
+13. Create final PyPI deployment _(Upload to real PyPI after successful testing)_
+14. Verify installation and functionality _(Test pip install and both usage patterns in clean environment)_
