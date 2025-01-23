@@ -33,7 +33,19 @@ df_clean = tadpreps.transform_df(df_raw)  # This will be appropriately parametri
 ```
 
 ### Possible Methods for the TADPREPS Package on PyPi
-- Lorem ipsum
+The basic principle is that each core data mutation function will be its own method, and there will also be a unified
+method which runs the whole TADPREPS process, but without I/O, rollback, or logging. 
+
+So, we'd have these methods as part of the TADPREPS package:
+- "Unified" full-process method:
+  - tadpreps.prep_df() &rarr; runs the full TADPREPS pipeline but without I/O or logging, keeps the rollback intact
+- "Smaller" single-step methods:
+  - tadpreps.info() &rarr; runs the print_file_info() core function
+  - tadpreps.reshape() &rarr; runs the trim_file() core function
+  - tadpreps.rename_and_tag() &rarr; runs the rename_features() core function
+  - tadpreps.feature_stats() &rarr; runs the print_feature_stats() core function
+  - tadpreps.impute() &rarr; runs the impute_missing_data() core function
+  - tadpreps.encode_and_scale() &rarr; runs the encode_and_scale() core function
 
 ### Preparing and Modifying TADPREPS for PyPi Compatability
 - Lorem ipsum
