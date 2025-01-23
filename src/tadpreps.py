@@ -2,27 +2,73 @@
 This is the TADPREPS codebase. All core functions will be defined internally (so no additional files are necessary at
 runtime) and the logging file will be created in the same working directory as the script itself.
 """
-
-# Library imports
-import logging
-import shutil
+"""
+This block checks for required non-standard dependencies and provides clear error messages
+if any are missing. It should be placed at the very beginning of the script.
+"""
 import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+from importlib import util
 
-# Data processing imports
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
-# Visualization imports
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-import seaborn as sns
+def check_dependencies(package_name: str) -> bool:
+    """
+    Check if a Python package is installed.
+    Args:
+        package_name (str): The name of the package to check
+    Returns:
+        bool: True if package is installed, False otherwise
+    """
+    return util.find_spec(package_name) is not None
 
+# Dictionary of required non-standard/non-implicit packages
+REQUIRED_PACKAGES = {
+    'numpy': 'numpy',
+    'pandas': 'pandas',
+    'sklearn': 'scikit-learn',
+    'matplotlib': 'matplotlib',
+    'seaborn': 'seaborn'
+}
+
+# Check for any missing packages in user environment
+missing_pkgs = []
+for import_name, package_name in REQUIRED_PACKAGES.items():
+    if not check_dependencies(import_name):
+        missing_pkgs.append(package_name)
+
+# If any required packages are missing, print error message and exit
+if missing_pkgs:
+    print('ERROR: Missing required Python packages.')
+    print('The following packages need to be installed:')
+    for package in missing_pkgs:
+        print(f'  - {package}')
+
+    print('\nYou can install them using pip via the command:')
+    print(f'pip install {" ".join(missing_pkgs)}')
+    print('\nOr , if you\'re using conda, by running:')
+    print(f'conda install {" ".join(missing_pkgs)}')
+    sys.exit(1)
+
+# If all dependencies are present, run library imports
+try:
+    import numpy as np
+    import pandas as pd
+    from pathlib import Path
+    from datetime import datetime
+    import matplotlib
+    matplotlib.use('TkAgg')  # Set the backend before importing pyplot
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import logging
+    import shutil
+    from typing import Optional, Dict, Any
+    from dataclasses import dataclass
+    from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+
+# Catch all other errors and exit program
+except Exception as exc:
+    print(f'ERROR: An unexpected error occurred while importing dependencies: {str(exc)}')
+    print('Please ensure all required packages are properly installed.')
+    sys.exit(1)
 
 # Set up pipeline staging and rollback capabilities using dataclass - this is an OOP implementation
 @dataclass
