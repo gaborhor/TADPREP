@@ -567,7 +567,7 @@ def rename_features(df: pd.DataFrame) -> pd.DataFrame:
                     break
 
                 df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
-                logger.info(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
+                logger.info(f'Tagged the following feature(s) as ordinal: {", ".join(ord_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -612,7 +612,7 @@ def rename_features(df: pd.DataFrame) -> pd.DataFrame:
                     break
 
                 df = df.rename(columns=target_rename_map)  # Perform tagging
-                logger.info(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
+                logger.info(f'Tagged the following feature(s) as targets: {", ".join(target_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -702,7 +702,7 @@ def print_feature_stats(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
 
     # Print a notification of whether there are any ordinal-tagged features in the dataset
     if ord_cols:
-        print(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
+        print(f'NOTE: {len(ord_cols)} ordinal feature(s) are present in the dataset.')
         print('-' * 50)  # Visual separator
     else:
         print('NOTE: No ordinal features are tagged in the dataset.')
@@ -710,7 +710,7 @@ def print_feature_stats(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
 
     # Print the names of the categorical features
     if cat_cols:
-        print('The categorical non-target features are:')
+        print('The categorical non-target feature(s) are:')
         print(', '.join(cat_cols))
         print('-' * 50)  # Visual separator
     else:
@@ -719,13 +719,13 @@ def print_feature_stats(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
 
     # Print the names of the ordinal features (if present)
     if ord_cols:
-        print('The ordinal non-target features are:')
+        print('The ordinal non-target feature(s) are:')
         print(', '.join(ord_cols))
         print('-' * 50)  # Visual separator
 
     # Print the names of the numerical features ('The numerical non-target features are:')
     if num_cols:
-        print('The numerical non-target features are:')
+        print('The numerical non-target feature(s) are:')
         print(', '.join(num_cols))
         print('-' * 50)  # Visual separator
     else:
@@ -984,7 +984,7 @@ def impute_missing_data(df: pd.DataFrame) -> pd.DataFrame:
                 print('Invalid input. Enter a valid number.')
 
         if imp_method == 'Skip imputation for this feature':  # If user wants to skip a feature
-            logger.info(f'Skipping imputation for feature: {feature}')  # Log the choice
+            logger.info(f'Skipping imputation for feature: "{feature}"')  # Log the choice
             continue  # And restart the outer for loop with the next feature
 
         # Begin actual imputation process
@@ -1039,7 +1039,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             logger.info('No categorical features are present in the dataset. Skipping encoding.')  # Log this
             return  # And exit the process
 
-        print(f'The dataset contains {len(cat_cols)} categorical features.')  # Print # of categorical features
+        print(f'The dataset contains {len(cat_cols)} categorical feature(s).')  # Print # of categorical features
 
         # Notify user that TADPREPS only supports common encoding methods
         print('\nNOTE: TADPREPS only supports One-Hot and Dummy encoding.')
@@ -1056,15 +1056,15 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         if user_encode_refresh.lower() == 'y':  # If so, display refresher
             print('\nOverview of One-Hot vs. Dummy Encoding:'
                   '\nOne-Hot Encoding: '
-                  '\n- Creates a new binary column for every unique category. '
+                  '\n- Creates a new binary column for every unique category.'
                   '\n- No information is lost, which preserves interpretability, but more features are created.'
                   '\n- This method is preferred for non-linear models like decision trees.'
                   '\n'
                   '\nDummy Encoding:'
-                  '\n- Creates n-1 binary columns for n categories in the feature. '
-                  '\n- One category becomes the reference and is represented by all zeros. '
-                  '\n- Dummy encoding is preferred for linear models to avoid perfect multi-collinearity.'
-                  '\n- This method is more computationally- and space-efficient but is less interpretable.')
+                  '\n- Creates n-1 binary columns given n categories in the feature.'
+                  '\n- One category becomes the reference class, and is represented by all zeros.'
+                  '\n- Dummy encoding is preferred for linear models, as it avoids perfect multi-collinearity.'
+                  '\n- This method is more computationally- and space-efficient, but is less interpretable.')
 
         encoded_cols = []  # Instantiate an empty list to hold the encoded columns for final reporting
         encoded_dfs = []  # Instantiate an empty list to collect encoded DataFrames
@@ -1257,7 +1257,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(ord_cols)} ordinal features.')
+        print(f'The dataset contains {len(ord_cols)} ordinal feature(s).')
 
         # Create list to track which features get remapped for final reporting
         remapped_cols = []
@@ -1270,13 +1270,13 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             print('All ordinal features are already in a numerical format.')  # Note that fact
 
             # Print (do not log) a notification/explanation for the user
-            print('\nNOTE: Ordinal features in numerical format do not need to be scaled.')
+            print('\nNOTE: Ordinal features in numerical form do not need to be scaled.')
             print('Scaling ordinal features distorts the meaningful distances between values.')
             logger.info('Skipping remapping of ordinal features.')  # Log the auto-skip for the entire process
             return  # Return the unmodified data
 
         # If there are string-type ordinal features, ask if user wants to remap them with numerical values
-        print(f'{len(str_ords)} ordinal features contain non-numeric values.')
+        print(f'{len(str_ords)} ordinal feature(s) contain non-numeric values.')
         print('NOTE: Ordinal features should be expressed numerically to allow for proper analysis.')
         user_remap = input('\nDo you want to consider remapping any string-type ordinal features with '
                            'appropriate numerical values? (Y/N): ')
@@ -1307,13 +1307,13 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             # Validate unique values
             unique_vals = sorted(df[column].unique())
             if len(unique_vals) < 2:
-                print(f'Feature "{column}" has fewer than 2 unique values. Skipping remapping.')
+                print(f'Feature "{column}" has only 1 unique value. Skipping remapping.')
                 continue
 
             # Display the feature's current unique values
             print(f'\nCurrent unique values in "{column}" (alphabetized):')
-            for idx, value in enumerate(unique_vals, 1):  # Create enumerated list, starting at index 1
-                print(f'{idx}. {value}')
+            for value in unique_vals:
+                print(f'- {value}')
 
             while True:  # We can justify 'while True' because we have a cancel-out input option
                 try:
@@ -1377,7 +1377,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         # After all features are processed, log a summary of remapping results
         # If any features were remapped, log the encoded features
         if remapped_cols:
-            logger.info('The following ordinal features were remapped to numerical values:')
+            logger.info('The following ordinal feature(s) were remapped to numerical values:')
             for column in remapped_cols:
                 logger.info(f'- {column}')
 
@@ -1394,7 +1394,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             return  # Exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(num_cols)} non-target numerical features.')
+        print(f'The dataset contains {len(num_cols)} non-target numerical feature(s).')
 
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
@@ -1404,7 +1404,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
               'your own scaler code.')
         # Ask if the user wants to scale any numerical features
-        user_scale = input('Do you want to scale any of these numerical features? (Y/N): ')
+        user_scale = input('Do you want to scale any numerical features? (Y/N): ')
         if user_scale.lower() != 'y':
             logger.info('Skipping scaling of numerical features.')
             return  # Exit the process
@@ -1420,17 +1420,17 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
                   '\n- Good for methods that assume normally distributed data like linear regression.'
                   '\n- Not ideal when data has many extreme values or outliers.'
                   '\n'
-                  '\nRobust Scaler:'
+                  '\nRobust Scaler (Uses median and IQR):'
                   '\n- Scales using statistics that are resistant to extreme values.'
                   '\n- Great for data where outliers are meaningful (e.g., rare but important market events).'
                   '\n- Useful for survey data where some respondents give extreme ratings.'
                   '\n- A good choice when you can\'t simply remove outliers because they contain important information.'
                   '\n'
-                  '\nMinMax Scaler:'
+                  '\nMinMax Scaler (scales to 0-1 range):'
                   '\n- Scales all values to a fixed range between 0 and 1.'
                   '\n- Good for image pixel data or whenever features must be strictly positive.'
                   '\n- Good for visualization and neural networks that expect bounded inputs.'
-                  '\n- Works well with sparse data (data with many zeros).')
+                  '\n- Works well with sparse data (data with many zeros or nulls).')
 
         # For each numerical feature
         for column in num_cols:
@@ -1448,7 +1448,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
                 null_cnt = df[column].isnull().sum()
                 # If nulls are present, ask if user wants to proceed
                 if null_cnt > 0:
-                    print(f'Feature "{column}" contains {null_cnt} null values.')
+                    print(f'Feature "{column}" contains {null_cnt} null value(s).')
                     user_proceed = input('Do you still want to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':
                         print(f'Skipping scaling for feature: "{column}"')
@@ -1475,7 +1475,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
                 if abs(skewness) > 2:  # Using 2 as threshold for extreme skewness
                     # If skewness is extreme, log a warning and ask if user wants to proceed
                     logger.warning(f'Feature "{column}" is highly skewed (skewness={skewness:.2f}). '
-                                   'Consider transformation before scaling.')
+                                   'Consider transforming this feature before scaling.')
 
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':
@@ -1563,7 +1563,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         # After all features are processed, log a summary of scaling results
         if scaled_cols:
             print('-' * 50)  # Visual separator
-            logger.info('The following features were scaled:')
+            logger.info('The following feature(s) were scaled:')
             for col in scaled_cols:
                 logger.info(f'- {col}')
             print('-' * 50)  # Visual separator
@@ -1686,6 +1686,7 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
 
             # Append appropriate extension
             full_filename = filename + file_extension
+
             break  # Exit loop if we get valid input from user
 
         # Catch input errors
@@ -1942,7 +1943,7 @@ def main():
                     pipeline.save_state(PipelineState(
                         stage_name='Impute Missing Values',
                         dataframe=df,
-                        metadata={'missing_counts_before': pipeline.current_dataframe.isnull().sum().to_dict()}
+                        metadata={'missing_counts_prior': pipeline.current_dataframe.isnull().sum().to_dict()}
                     ))
 
                     # Check for user rollback after transformation
@@ -1977,7 +1978,7 @@ def main():
                     print('-' * 50)
                     save_dir = export_data(pipeline.current_dataframe)  # Assign save directory
 
-                    # Relocate log file is export succeeded
+                    # Relocate log file if export succeeded
                     if save_dir is not None:
                         relocate_log(save_dir)
 
