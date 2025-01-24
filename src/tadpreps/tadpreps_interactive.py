@@ -244,8 +244,9 @@ def load_file() -> pd.DataFrame:
 
         # Configure file types for the dialog
         filetypes = [
-            ('Tabular files', '*.csv;*.xls;*.xlsx'),
+            ('Tabular files', '*.csv;*.tsv;*.xls;*.xlsx'),
             ('CSV files', '*.csv'),
+            ('TSV files', '*.tsv'),
             ('Excel files', '*.xls;*.xlsx'),
             ('All files', '*.*')
         ]
@@ -307,8 +308,8 @@ def load_file() -> pd.DataFrame:
             sys.exit(1)
 
         # Validate file type
-        if filepath.suffix.lower() not in ['.csv', '.xls', '.xlsx']:
-            logger.error('TADPREPS only supports .csv, .xls, and .xlsx files.')
+        if filepath.suffix.lower() not in ['.csv', '.tsv', '.xls', '.xlsx']:
+            logger.error('TADPREPS only supports .csv, .tsv, .xls, and .xlsx files.')
             logger.error(f'The file at "{filepath}" does not appear to be of a compatible type.')
             print('Please resolve this issue and re-run TADPREPS.')
             sys.exit(1)
@@ -341,10 +342,15 @@ def load_file() -> pd.DataFrame:
                 else:
                     print('Invalid input. Please enter 1 or 2.')
 
-        # Set Pandas read method
+        # Set appropriate Pandas read method based on filetype
         if filepath.suffix.lower() == '.csv':
             file_type = 'CSV'
             df_full = pd.read_csv(filepath)
+
+        elif filepath.suffix.lower == '.tsv':
+            file_type = 'TSV'
+            df_full = pd.read_csv(filepath, sep='\t')
+
         else:
             file_type = 'Excel'
             df_full = pd.read_excel(filepath)
@@ -1627,10 +1633,11 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
     # Define supported export formats and their corresponding file extensions in a dictionary
     supported_formats = {
         '1': ('CSV (.csv)', '.csv'),
-        '2': ('Excel (.xlsx)', '.xlsx'),
-        '3': ('Pickle (.pkl)', '.pkl'),
-        '4': ('Parquet (.parquet)', '.parquet'),
-        '5': ('JSON (.json)', '.json')
+        '2': ('TSV (.tsv)', '.tsv'),
+        '3': ('Excel (.xlsx)', '.xlsx'),
+        '4': ('Pickle (.pkl)', '.pkl'),
+        '5': ('Parquet (.parquet)', '.parquet'),
+        '6': ('JSON (.json)', '.json')
     }
 
     # SELECTING EXPORT FORMAT
@@ -1769,13 +1776,16 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
         if format_choice == '1':  # CSV
             df_final.to_csv(save_path, index=False)
 
-        elif format_choice == '2':  # Excel
+        elif format_choice == '2':  # TSV
+            df_final.to_csv(save_path, index=False, sep='/t')
+
+        elif format_choice == '3':  # Excel
             df_final.to_excel(save_path, index=False)
 
-        elif format_choice == '3':  # Pickle
+        elif format_choice == '4':  # Pickle
             df_final.to_pickle(save_path)
 
-        elif format_choice == '4':  # Parquet
+        elif format_choice == '5':  # Parquet
             df_final.to_parquet(save_path, index=False)
 
         else:  # JSON
