@@ -1,4 +1,4 @@
-"""TADPREPS - Interactive Data Preparation Tool"""
+"""TADPREP - Interactive Data Preparation Tool"""
 
 # Import public-facing methods that users will access
 from .package import (
@@ -11,7 +11,7 @@ from .package import (
     encode_and_scale
 )
 
-# Define exposure if "from tadpreps import *" is called
+# Define exposure if "from tadprep import *" is called
 __all__ = [
     'prep_df',
     'info',
@@ -29,7 +29,7 @@ __author__ = 'Donald Smith'
 
 def main():
     """Entry point for running the full interactive version of the pipeline"""
-    from .tadpreps_interactive import main as interactive_main
+    from .tadprep_interactive import main as interactive_main
     interactive_main()
 
 
