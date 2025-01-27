@@ -656,29 +656,87 @@ def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
     return df  # Return the new dataframe with imputed values
 
 
-def _encode_and_scale_core(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str], num_cols: list[str]) -> pd.DataFrame:
+def _encode_and_scale_core(
+        df: pd.DataFrame,
+        cat_features: list[str] | None = None,
+        ord_features: list[str] | None = None,
+        num_features: list[str] | None = None
+) -> pd.DataFrame:
     """
-    This function allows the user to use appropriate encoding methods on the categorical and ordinal non-target
-    features in the dataset. It identifies the appropriate candidate features using the lists created by the
-    print_feature_stats function. Note that the actual 'engine' of this function is the set of three helper functions
+    This method allows the user to use appropriate encoding methods on the categorical and ordinal features in
+    the dataset. It also allows the user to apply scaling methods to the numerical features.
+    Lists of features by datatype may be directly passed to the method by the user. If no lists of features by type
+    are passed to the method, the method will work interactively with the user to define these lists.
+    Note that the actual 'engine' of this method is the set of three helper functions
     defined within its scope.
     Args:
-        df (pd.Dataframe): The dataframe with imputed values return by impute_missing_data().
-        cat_cols (list): The list of categorical non-target features created by print_feature_stats().
-        ord_cols (list): The list of ordinal non-target features created by print_feature_stats().
-        num_cols (list): The list of numerical non-target features created by print_feature_stats().
+        df (pd.Dataframe): Input dataframe.
+        cat_features (list[str], optional): List of categorical column names for encoding
+        ord_features (list[str], optional): List of ordinal column names
+        num_features (list[str], optional): List of numerical column names for scaling
     Returns:
-        df (pd.DataFrame): A final-form dataframe with encoded and scaled features.
+        df (pd.DataFrame): A dataframe with encoded and scaled features.
     """
+    # Fetch all features which have been type-specified
+    specified_features = set()
+    if cat_features:
+        specified_features.update(cat_features)
+    if ord_features:
+        specified_features.update(ord_features)
+    if num_features:
+        specified_features.update(num_features)
+
+    # Validate specified features exist in dataframe
+    if not all(col in df.columns for col in specified_features):
+        missing = [col for col in specified_features if col not in df.columns]
+        raise ValueError(f'Features not found in dataframe: {missing}')
+
+    # Initialize empty lists if None was provided
+    cat_features = cat_features or []
+    ord_features = ord_features or []
+    num_features = num_features or []
+
+    # Find features that haven't been categorized
+    uncat_features = [col for col in df.columns if col not in specified_features]
+
+    # If any features remain uncategorized, ask user about those specific features
+    if uncat_features:
+        print('Some features have not been categorized. Please identify their types:')
+
+        for col in uncat_features:
+            while True:
+                print(f'\nFeature: {col}')
+                print(f'Current dtype: {df[col].dtype}')
+                print('1. Categorical (Unordered categories)')
+                print('2. Ordinal (Ordered categories, e.g. a Likert scale)')
+                print('3. Numerical')
+                print('4. Skip this feature')
+
+                user_choice = input('Enter choice (1-4): ').strip()
+
+                if user_choice == '1':
+                    cat_features.append(col)
+                    break
+                elif user_choice == '2':
+                    ord_features.append(col)
+                    break
+                elif user_choice == '3':
+                    num_features.append(col)
+                    break
+                elif user_choice == '4':
+                    break
+                else:
+                    print('Invalid choice. Please enter 1, 2, 3, or 4.')
+
     def handle_cats():
         """This internal helper function facilitates the encoding of categorical features, if desired by the user."""
         nonlocal df  # Specify that this object comes from the outer scope
 
-        if not cat_cols:  # If the list of categorical columns is empty
-            print('No categorical features are present in the dataset. Skipping encoding.')  # Log this
+        if not cat_features:  # If the list of categorical columns is empty
+            print('No categorical features to process. Skipping encoding.')  # Note this
             return  # And exit the process
 
-        print(f'The dataset contains {len(cat_cols)} categorical feature(s).')  # Print # of categorical features
+        print(f'The dataset contains {len(cat_features)} categorical feature(s).')  # Print # of categorical features
 
         # Notify user that TADPREP only supports common encoding methods
         print('\nNOTE: TADPREP only supports One-Hot and Dummy encoding.')
@@ -710,7 +768,7 @@ def _encode_and_scale_core(df: pd.DataFrame, cat_cols: list[str], ord_cols: list
         columns_to_drop = []  # Instantiate an empty list to collect the original columns to drop
 
         # Begin encoding process at the feature level
-        for column in cat_cols:
+        for column in cat_features:
             print(f'\nProcessing feature: "{column}"')
 
             # Check if user wants to encode this feature
@@ -891,18 +949,18 @@ def _encode_and_scale_core(df: pd.DataFrame, cat_cols: list[str], ord_cols: list
         """This internal helper function facilitates the remapping of ordinal features, if desired by the user."""
         nonlocal df  # Specify that this object comes from the outer scope
 
-        if not ord_cols:  # If no columns are tagged as ordinal
-            print('No ordinal features are present in the dataset. Skipping remapping.')  # Log this
+        if not ord_features:  # If no columns are tagged as ordinal
+            print('No ordinal features to process. Skipping remapping.')  # Note this
             return  # And exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(ord_cols)} ordinal feature(s).')
+        print(f'The dataset contains {len(ord_features)} ordinal feature(s).')
 
         # Create list to track which features get remapped for final reporting
         remapped_cols = []
 
         # Create list of string-type ordinal features using Pandas' data-type methods
-        str_ords = [column for column in ord_cols if not pd.api.types.is_numeric_dtype(df[column])]
+        str_ords = [column for column in ord_features if not pd.api.types.is_numeric_dtype(df[column])]
 
         # If all ordinal features are already numerical, they don't need remapping
         if not str_ords:  # If there are no string-type ordinal features
@@ -1028,12 +1086,12 @@ def _encode_and_scale_core(df: pd.DataFrame, cat_cols: list[str], ord_cols: list
         """This internal helper function facilitates the scaling of numerical features, if desired by the user."""
         nonlocal df  # Specify that this object comes from the outer scope
 
-        if not num_cols:  # If no columns are tagged as numerical
-            print('No numerical features are present in the dataset. Skipping remapping.')  # Log this
+        if not num_features:  # If no columns are tagged as numerical
+            print('No numerical features to process. Skipping scaling.')  # Note this
             return  # Exit the process
 
         print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(num_cols)} non-target numerical feature(s).')
+        print(f'The dataset contains {len(num_features)} non-target numerical feature(s).')
 
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
@@ -1072,7 +1130,7 @@ def _encode_and_scale_core(df: pd.DataFrame, cat_cols: list[str], ord_cols: list
                   '\n- Works well with sparse data (data with many zeros or nulls).')
 
         # For each numerical feature
-        for column in num_cols:
+        for column in num_features:
             print(f'\nProcessing numerical feature: "{column}"')
 
             # Ask if user wants to scale this feature
