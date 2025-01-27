@@ -1390,7 +1390,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         nonlocal df  # Specify that this object comes from the outer scope
 
         if not num_cols:  # If no columns are tagged as numerical
-            logger.info('No numerical features are present in the dataset. Skipping remapping.')  # Log this
+            logger.info('No numerical features are present in the dataset. Skipping scaling.')  # Log this
             return  # Exit the process
 
         print('-' * 50)  # Visual separator
