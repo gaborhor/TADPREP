@@ -69,7 +69,7 @@ except Exception as exc:
 class PipelineState:
     """
     This class object is used to store a complete-state status of a pipeline stage.
-    Each state capture represents a snapshot of the data at that specific point in the TADPREPS pipeline.
+    Each state capture represents a snapshot of the data at that specific point in the TADPREP pipeline.
     """
     stage_name: str  # Name of pipeline stage
     dataframe: pd.DataFrame  # Full copy of the DataFrame at the specified stage
@@ -86,7 +86,7 @@ class PipelineManager:
         self.current_stage = 0  # Track current stage (NOTE: This is a 0-based index)
         self.current_dataframe = None  # Maintain a reference to the current DataFrame
 
-        # Define the sequence of stages in the TADPREPS pipeline
+        # Define the sequence of stages in the TADPREP pipeline
         self.stage_names = [
             'Load Data',
             'Trim Data',
@@ -123,7 +123,7 @@ class PipelineManager:
     def rollback(self) -> Optional[PipelineState]:
         """
         Class method of PipelineManager.
-        Handles the logic for rolling back to a previous state in the TADPREPS pipeline.
+        Handles the logic for rolling back to a previous state in the TADPREP pipeline.
         Returns the selected previous state in the pipeline, or None if the user cancels the rollback operation.
         """
         # Show user what states are available to roll back to
@@ -184,9 +184,9 @@ class PipelineManager:
 
 def check_rollback(pipeline: PipelineManager) -> Optional[PipelineState]:
     """
-    This is a global-scope unified function which checks if the user wants to roll back after each stage in TADPREPS.
+    This is a global-scope unified function which checks if the user wants to roll back after each stage in TADPREP.
     This ensures consistent rollback behavior throughout each 'pass' through the pipeline.
-    It returns the pipeline state to roll back to, or None to continue with the TADPREPS process.
+    It returns the pipeline state to roll back to, or None to continue with the TADPRE process.
     """
     user_input = input('\nWould you like to:'
                        '\n1. Continue to the next stage of data preparation'
@@ -197,7 +197,7 @@ def check_rollback(pipeline: PipelineManager) -> Optional[PipelineState]:
     if user_input == '2':
         return pipeline.rollback()  # Return the result of the .rollback() method
 
-    # Otherwise, proceed with TADPREPS
+    # Otherwise, proceed with TADPREP
     else:
         return None
 
@@ -206,7 +206,7 @@ def check_rollback(pipeline: PipelineManager) -> Optional[PipelineState]:
 timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 
 # Set up first-phase temporary log
-temp_log_name = f'tadpreps_runtime_{timestamp}.log'
+temp_log_name = f'tadprep_runtime_{timestamp}.log'
 temp_log_path = Path(temp_log_name)
 
 # Set up logging with time-at-execution
@@ -218,7 +218,7 @@ logging.basicConfig(
 
 # Instantiate log object
 logger = logging.getLogger(__name__)
-logger.info('Initiating TADPREPS...')
+logger.info('Initiating TADPREP...')
 
 
 def load_file() -> pd.DataFrame:
@@ -275,7 +275,7 @@ def load_file() -> pd.DataFrame:
         finally:
             root.destroy()
 
-    print('NOTE: TADPREPS supports only .csv and Excel files.')
+    print('NOTE: TADPREP supports only .csv, .tsv, and Excel files.')
 
     try:
         # Ask user for preferred input method
@@ -298,20 +298,20 @@ def load_file() -> pd.DataFrame:
         # Validate the path exists
         if not filepath.exists():
             logger.error(f'The supplied path "{filepath}" is invalid.')
-            logger.error('Please resolve this issue and re-run TADPREPS.')
+            logger.error('Please resolve this issue and re-run TADPREP.')
             sys.exit(1)
 
         # Validate the path leads to a single file
         if not filepath.is_file():
             logger.error(f'The supplied path "{filepath}" does not point to a single file.')
-            logger.error('Please resolve this issue and re-run TADPREPS.')
+            logger.error('Please resolve this issue and re-run TADPREP.')
             sys.exit(1)
 
         # Validate file type
         if filepath.suffix.lower() not in ['.csv', '.tsv', '.xls', '.xlsx']:
-            logger.error('TADPREPS only supports .csv, .tsv, .xls, and .xlsx files.')
+            logger.error('TADPREP only supports .csv, .tsv, .xls, and .xlsx files.')
             logger.error(f'The file at "{filepath}" does not appear to be of a compatible type.')
-            print('Please resolve this issue and re-run TADPREPS.')
+            print('Please resolve this issue and re-run TADPREP.')
             sys.exit(1)
 
         # Check file size and warn if it's too large
@@ -933,8 +933,8 @@ def impute_missing_data(df: pd.DataFrame) -> pd.DataFrame:
             print(f'Invalid input: {exc}')
             continue  # And restart the while loop
 
-    # Print warning that TADPREPS only supports simple imputation methods
-    print('\nWARNING: TADPREPS supports only mean, median, and mode imputation.')
+    # Print warning that TADPREP only supports simple imputation methods
+    print('\nWARNING: TADPREP supports only mean, median, and mode imputation.')
     print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
           'your own imputation code.')
 
@@ -1041,8 +1041,8 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
 
         print(f'The dataset contains {len(cat_cols)} categorical feature(s).')  # Print # of categorical features
 
-        # Notify user that TADPREPS only supports common encoding methods
-        print('\nNOTE: TADPREPS only supports One-Hot and Dummy encoding.')
+        # Notify user that TADPREP only supports common encoding methods
+        print('\nNOTE: TADPREP only supports One-Hot and Dummy encoding.')
         print('If you wish to use other, more complex encoding methods, skip this step and write your own code.')
 
         # Ask if user wants to proceed
@@ -1399,8 +1399,8 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
         # Create list to track which features get scaled for final reporting
         scaled_cols = []
 
-        # Print warning that TADPREPS only supports common scaling methods
-        print('\nWARNING: TADPREPS supports only the Standard, Robust, and MinMax scalers.')
+        # Print warning that TADPREP only supports common scaling methods
+        print('\nWARNING: TADPREP supports only the Standard, Robust, and MinMax scalers.')
         print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
               'your own scaler code.')
         # Ask if the user wants to scale any numerical features
@@ -1410,7 +1410,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
             return  # Exit the process
 
         # Ask if user wants a refresher on the three scaling methods
-        user_scale_refresh = input('Do you want to see a brief refresher on TADPREPS-supported scalers? (Y/N): ')
+        user_scale_refresh = input('Do you want to see a brief refresher on TADPREP-supported scalers? (Y/N): ')
         if user_scale_refresh.lower() == 'y':  # If so, display refresher
             print('\nOverview of the Standard, Robust, and MinMax Scalers:'
                   '\nStandard Scaler (Z-score normalization):'
@@ -1586,7 +1586,7 @@ def encode_and_scale(df: pd.DataFrame, cat_cols: list[str], ord_cols: list[str],
 def export_data(df_final: pd.DataFrame) -> Optional[Path]:
     """
     This function handles the exporting of the final, transformed dataset as created by the encode_and_scale()
-    function to a static location on disk in one of a few common tabular formats. It is the last step in the TADPREPS
+    function to a static location on disk in one of a few common tabular formats. It is the last step in the TADPREP
     pipeline.
     Args:
         df_final (pd.DataFrame): The final dataframe created by encode_and_scale().
@@ -1796,7 +1796,7 @@ def export_data(df_final: pd.DataFrame) -> Optional[Path]:
         logger.info(f'Successfully exported prepared dataset as {format_name}')
         logger.info(f'Filename: {full_filename}')
         logger.info(f'Datafile and log saved to: {save_path}')
-        logger.info('TADPREPS execution is complete.')
+        logger.info('TADPREP execution is complete.')
 
         return save_dir  # Return Path object for directory where user saved the file
 
@@ -1832,7 +1832,7 @@ def relocate_log(save_dir: Path) -> None:
 
 def main():
     """
-    This is the main function for the TADPREPS program.
+    This is the main function for the TADPREP interactive program.
     It orchestrates the data preparation workflow by calling the core functions in the proper sequence and managing the
     dataframe transformations throughout the pipeline.
 
@@ -1857,7 +1857,7 @@ def main():
     Args:
         None. This is a nullary function.
     Returns:
-        None. This function handles the entire TADPREPS workflow and ends with the file export process.
+        None. This function handles the entire TADPREP workflow and ends with the file export process.
     """
     # Instantiate a pipeline manager object for state tracking and rollback capabilities - ref. OOP code at top of file
     pipeline = PipelineManager()
@@ -1986,8 +1986,8 @@ def main():
 
     # Catch and log any unhandled exceptions that occur during pipeline execution
     except Exception as exc:
-        logger.error(f'An unexpected error occurred in the TADPREPS workflow: {exc}')
-        logger.error('TADPREPS execution terminated due to an error. See log for details.')
+        logger.error(f'An unexpected error occurred in the TADPREP workflow: {exc}')
+        logger.error('TADPREP execution terminated due to an error. See log for details.')
         sys.exit(1)
 
 
