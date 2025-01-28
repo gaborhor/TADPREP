@@ -54,7 +54,7 @@ So, we'd have these methods as part of the TADPREPS package:
 1. ~~Create a proper package directory structure under src/ _(Move current tadpreps.py into src/tadpreps/cli.py, create __init__.py files)_~~
 2. ~~Separate core transformation logic from I/O and pipeline management _(Move core functions into src/tadpreps/core/transforms.py, remove logging/pipeline dependencies)_~~
 3. Create package interface functions _(Build public-facing functions in src/tadpreps/package.py with proper docstrings)_
-4. Write package __init__.py _(Import and expose public functions, define __all__ and __version__)_
+4. ~~Write package __init__.py _(Import and expose public functions, define __all__ and __version__)_~~
 5. Create pyproject.toml _(Define metadata, dependencies, console script entry point for CLI)_
 6. Update README.md with installation and usage instructions _(Document both package import and CLI usage patterns)_
 7. Create proper test directory structure _(Set up tests/ directory with test files matching package structure)_
