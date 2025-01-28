@@ -46,24 +46,51 @@ def prep_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def file_info(df: pd.DataFrame) -> None:
+def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    Display information about the DataFrame's structure and contents.
+    Prints top-level information about a DataFrame's structure and contents.
+
+    Basic information (always shown):
+    - Total number of instances (rows)
+    - Total number of features (columns)
+    - Count and percentage of instances containing any missing values
+
+    When verbose=True, the method also displays:
+    - Names of all features
+    - Data type of each feature
+    - Non-null value count for each feature
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame to analyze
+        The DataFrame you want to analyze
+    verbose : bool, default=True
+        Controls whether detailed feature information is displayed
 
     Returns
     -------
     None
-        Prints information to console
+        This is a void method which prints file information to the console
+
+    Notes
+    -----
+    Use verbose=True (default) when you need to understand the structure and data types of your features.
+    Use verbose=False when you just need quick size and missingness statistics.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, None, 4],
+    ...     'B': ['x', 'y', 'z', 'w']
+    ... })
+    >>> tadprep.file_info(df, verbose=False)
     """
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
-    _file_info_core(df)
+    _file_info_core(df, verbose)
 
 
 def reshape(df: pd.DataFrame) -> pd.DataFrame:
