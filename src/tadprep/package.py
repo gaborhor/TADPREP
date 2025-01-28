@@ -63,7 +63,7 @@ def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame you want to analyze
+        The DataFrame to be analyzed
     verbose : bool, default=True
         Controls whether detailed feature information is displayed
 
@@ -85,33 +85,54 @@ def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
     ...     'A': [1, 2, None, 4],
     ...     'B': ['x', 'y', 'z', 'w']
     ... })
-    >>> tadprep.file_info(df, verbose=False)
+    >>> tadprep.file_info(df, verbose=True)  # Shows full file information
+    >>> tadprep.file_info(df, verbose=False)  # Shows reduced file information
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
 
     _file_info_core(df, verbose)
 
 
-def reshape(df: pd.DataFrame) -> pd.DataFrame:
+def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
-    Interactively reshape the DataFrame through deletion of missing values,
-    dropping columns, and/or random subsetting.
+    Interactively reshapes the input DataFrame according to user specification.
+    Allows deletion of missing values, dropping columns, and random sub-setting of instances.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame to reshape
+        The DataFrame to be reshaped
+    verbose : bool, default=True
+        Controls whether detailed process information is displayed
 
     Returns
     -------
     pandas.DataFrame
-        The reshaped DataFrame
+        The reshaped DataFrame as modified by user's specifications
+
+    Examples
+    --------
+        >>> import pandas as pd
+        >>> import tadprep
+        >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
+        >>> reshaped_df = tadprep.reshape(df)  # Shows detailed status messages
+        >>> quiet_df = tadprep.reshape(df, verbose=False)  # Shows only necessary user prompts
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
-    return _reshape_core(df)
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _reshape_core(df, verbose)
 
 
 def rename_and_tag(df: pd.DataFrame) -> pd.DataFrame:
