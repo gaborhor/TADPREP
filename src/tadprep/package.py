@@ -149,8 +149,13 @@ def rename_and_tag(df: pd.DataFrame) -> pd.DataFrame:
     pandas.DataFrame
         The DataFrame with renamed/tagged features
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
 
     return _rename_and_tag_core(df)
 
