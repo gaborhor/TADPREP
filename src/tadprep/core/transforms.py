@@ -7,10 +7,12 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 def _file_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    This function prints general top-level information about the full, unaltered datafile for the user.
+    Core function to print general top-level information about the full, unaltered datafile for the user.
+
     Args:
         df (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
         verbose (bool): Whether to print more detailed information about the file. Defaults to True.
+
     Returns:
         None. This is a void function.
     """
@@ -33,14 +35,20 @@ def _file_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
 
 
-def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
+def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
-    This function allows the user to delete instances with any missing values, to drop features from the
-    dataset, and to sub-set the data by deleting a specified proportion of the instances at random.
+    Core function for reshaping a DataFrame by handling missing values, dropping features, and subsetting data.
+
     Args:
-        df (pd.DataFrame): The original, unaltered dataset.
+        df (pd.DataFrame): Input DataFrame to reshape
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+
     Returns:
-        df (pd.DataFrame): The dataset after trimming/sub-setting.
+        pd.DataFrame: Reshaped DataFrame
+
+    Raises:
+        ValueError: If invalid indices are provided for column dropping
+        ValueError: If an invalid subsetting proportion is provided
     """
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
     # Ask if the user wants to delete *all* instances with any missing values, if any exist
@@ -48,7 +56,8 @@ def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
         user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
         if user_drop_na.lower() == 'y':
             df = df.dropna()
-            print(f'After deletion of instances with missing values, {len(df)} instances remain.')
+            if verbose:
+                print(f'After deletion of instances with missing values, {len(df)} instances remain.')
 
     # Ask if the user wants to drop any of the columns/features in the dataset
     user_drop_cols = input('Do you want to drop any of the features in the dataset? (Y/N): ')
@@ -64,7 +73,8 @@ def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if drop_cols_input.lower() == 'c':
-                    print('Feature deletion cancelled.')
+                    if verbose:
+                        print('Feature deletion cancelled.')
                     break
 
                 # Create list of column indices to drop
@@ -79,7 +89,8 @@ def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
 
                 # Drop the columns
                 df = df.drop(columns=drop_cols_names)
-                print(f'Dropped features: {",".join(drop_cols_names)}')  # Log dropped columns
+                if verbose:
+                    print(f'Dropped features: {",".join(drop_cols_names)}')  # Note dropped columns
                 break
 
             # Catch invalid user input
@@ -98,7 +109,8 @@ def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if subset_input.lower() == 'c':
-                    print('Random sub-setting cancelled.')
+                    if verbose:
+                        print('Random sub-setting cancelled.')
                     break
 
                 subset_rate = float(subset_input)  # Convert string input to float
@@ -107,7 +119,8 @@ def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
                     retain_row_cnt = int(len(df) * retain_rate)  # Select count of rows to keep in subset
 
                     df = df.sample(n=retain_row_cnt)  # No random state set b/c we want true randomness
-                    print(f'Randomly dropped {subset_rate}% of instances. {retain_row_cnt} instances remain.')
+                    if verbose:
+                        print(f'Randomly dropped {subset_rate}% of instances. {retain_row_cnt} instances remain.')
                     break
 
                 # Catch user input error for invalid/out-of-range float
