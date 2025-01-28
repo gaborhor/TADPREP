@@ -5,11 +5,12 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 
-def _file_info_core(df: pd.DataFrame) -> pd.DataFrame:
+def _file_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    This function prints and logs use information about the full, unaltered datafile for the user.
+    This function prints general top-level information about the full, unaltered datafile for the user.
     Args:
         df (pd.DataFrame): A Pandas dataframe containing the full, unaltered dataset.
+        verbose (bool): Whether to print more detailed information about the file. Defaults to True.
     Returns:
         None. This is a void function.
     """
@@ -17,18 +18,19 @@ def _file_info_core(df: pd.DataFrame) -> pd.DataFrame:
     print(f'The unaltered file has {df.shape[0]} instances.')  # [0] is rows
 
     # Print number of features in file
-    print(f'The unaltered file has {df.shape[1]} features.')  # [1] is columns
-    print('-' * 50)  # Visual separator
-
-    # Print names and datatypes of features in file
-    print('Names and datatypes of features:')
-    print(df.info(memory_usage=False, show_counts=False))
-    print('-' * 50)  # Visual separator
+    print(f'\nThe unaltered file has {df.shape[1]} features.')  # [1] is columns
 
     # Instances with missing values
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
     row_missing_rate = (row_missing_cnt / len(df) * 100).round(2)  # Compute rate
-    print(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
+    print(f'\n{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
+
+    if verbose:
+        print('-' * 50)  # Visual separator
+        # Print names and datatypes of features in file
+        print('Names and datatypes of features:')
+        print(df.info(memory_usage=False, show_counts=True))
+        print('-' * 50)  # Visual separator
 
 
 def _reshape_core(df: pd.DataFrame) -> pd.DataFrame:
@@ -261,7 +263,8 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
 
     return df  # Return dataframe with renamed and tagged columns
 
-
+#TODO: Change this function so no lists of strings are returned - make it purely informational - might need to remove or move handle_numeric_cats()
+#TODO: Start implementing 'Verbose' parametrization
 def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     """
     This function aggregates the features by class (i.e. feature type) and prints top-level missingness and
