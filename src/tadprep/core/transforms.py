@@ -306,6 +306,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 # TODO: Start implementing 'Verbose' parametrization
 # TODO: Remove all logging
 # TODO: Remove creation of column-type lists and simplify stats-by-class info so they're not necessary
+# TODO: Parametrize the cat_search so it only looks for false-numerics if the user wants it to
 
 def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     """
