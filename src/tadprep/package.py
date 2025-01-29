@@ -135,19 +135,32 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return _reshape_core(df, verbose)
 
 
-def rename_and_tag(df: pd.DataFrame) -> pd.DataFrame:
+def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
-    Interactively rename features and tag them as ordinal or target variables.
+    Interactively renames features and allows user to tag them as ordinal or target features, if desired.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame whose features need to be renamed/tagged
+        The DataFrame whose features need to be renamed and/or tagged
+    verbose : bool, default = True
+        Controls whether detailed process information is displayed
+    tag_features : default = False
+        Controls whether activate the feature-tagging process is activated
 
     Returns
     -------
     pandas.DataFrame
         The DataFrame with renamed/tagged features
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({'feature1': [1,2,3], 'feature2': ['a','b','c']})
+    >>> df_renamed = tadprep.rename_and_tag(df)  # Only rename features
+    >>> df_tagged = tadprep.rename_and_tag(df, tag_features=True)  # Rename and tag features
+    >>> df_quiet = rename_and_tag(df, verbose=False, tag_features=True)  # Rename and tag features with minimal output
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -157,7 +170,7 @@ def rename_and_tag(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    return _rename_and_tag_core(df)
+    return _rename_and_tag_core(df, verbose=verbose, tag_features=tag_features)
 
 
 def feature_stats(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
