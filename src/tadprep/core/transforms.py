@@ -418,7 +418,6 @@ def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
         print('-' * 50)  # Visual separator
 
     print('Producing key values at the feature level...')
-    print('NOTE: Key values at the feature level are printed but not logged.')  # Notify user
 
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
         """This helper function calculates and prints key values and missingness info at the feature level."""
@@ -458,7 +457,6 @@ def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
         # Move to feature-class level information
         print('-' * 50)  # Visual separator
         print('Producing aggregated key values for categorical features...')
-        print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
         # Build and log summary table for categorical features
@@ -480,7 +478,6 @@ def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
         # Move to feature-class level information and log
         print('-' * 50)  # Visual separator
         print('Producing aggregated key values for ordinal features...')
-        print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
         # Build and log summary table for ordinal features
@@ -502,7 +499,6 @@ def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[st
         # Move to feature-class level information and log
         print('-' * 50)  # Visual separator
         print('Producing aggregated key values for numerical features...')
-        print('NOTE: Key values at the feature-class level are both printed and logged.')
         print('-' * 50)  # Visual separator
 
         # Build and log summary table for numerical features
