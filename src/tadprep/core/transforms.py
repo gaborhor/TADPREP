@@ -135,63 +135,80 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return df  # Return the trimmed dataframe
 
 
-def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
+def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
-    This function allows the user to rename features and to append the '_ord' and/or '_target' suffixes
-    to ordinal or target columns.
+    Core function to rename features and to append the '_ord' and/or '_target' suffixes to ordinal or target features,
+    if desired by the user.
+
     Args:
-        df (pd.DataFrame): The 'trimmed' dataset created by trim_file().
+        df (pd.DataFrame): Input DataFrame to reshape
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+        tag_features (bool): Whether to activate the feature-tagging process. Defaults to False.
+
     Returns:
-        df (pd.DataFrame): The dataset with renamed columns.
+        pd.DataFrame: Reshaped DataFrame
+
+    Raises:
+        ValueError: If invalid indices are provided for column renaming
+        ValueError: If any other invalid input is provided
     """
-    # Ask if user wants to rename any columns
-    user_rename_cols = input('Do you want to rename any of the features in the dataset? (Y/N): ')
-    if user_rename_cols.lower() == 'y':
+    if verbose:
+        print('Beginning feature renaming process.')
         print('The list of features currently present in the dataset is:')
-        for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
-            print(f'{col_idx}. {column}')
 
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                rename_cols_input = input('\nEnter the index integer of the feature you wish to rename '
-                                          'or enter "C" to cancel: ')
+    else:
+        print('Features:')
 
-                # Check for user cancellation
-                if rename_cols_input.lower() == 'c':
+    for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
+        print(f'{col_idx}. {column}')
+
+    while True:  # We can justify 'while True' because we have a cancel-out input option
+        try:
+            rename_cols_input = input('\nEnter the index integer of the feature you wish to rename '
+                                      'or enter "C" to cancel: ')
+
+            # Check for user cancellation
+            if rename_cols_input.lower() == 'c':
+                if verbose:
                     print('Feature renaming cancelled.')
-                    break
+                break
 
-                col_idx = int(rename_cols_input)  # Convert input to integer
-                if not 1 <= col_idx <= len(df.columns):  # Validate entry
-                    raise ValueError('Column index is out of range.')
+            col_idx = int(rename_cols_input)  # Convert input to integer
+            if not 1 <= col_idx <= len(df.columns):  # Validate entry
+                raise ValueError('Column index is out of range.')
 
-                # Get new column name from user
-                col_name_old = df.columns[col_idx - 1]
-                col_name_new = input(f'Enter new name for feature "{col_name_old}": ').strip()
+            # Get new column name from user
+            col_name_old = df.columns[col_idx - 1]
+            col_name_new = input(f'Enter new name for feature "{col_name_old}": ').strip()
 
-                # Validate name to make sure it doesn't already exist
-                if col_name_new in df.columns:
-                    print(f'Feature name "{col_name_new}" already exists. Choose a different name.')
-                    continue  # Restart the loop
+            # Validate name to make sure it doesn't already exist
+            if col_name_new in df.columns:
+                print(f'Feature name "{col_name_new}" already exists. Choose a different name.')
+                continue  # Restart the loop
 
-                # Rename column in-place
-                df = df.rename(columns={col_name_old: col_name_new})
+            # Rename column in-place
+            df = df.rename(columns={col_name_old: col_name_new})
+            if verbose:
                 print(f'Renamed feature "{col_name_old}" to "{col_name_new}".')
 
-                # Ask if user wants to rename another column
-                if input('Do you want to rename another feature? (Y/N): ').lower() != 'y':
-                    break
+            # Ask if user wants to rename another column
+            if input('Do you want to rename another feature? (Y/N): ').lower() != 'y':
+                break
 
-            # Catch input errors
-            except ValueError as exc:
-                print(f'Invalid input: {exc}')
+        # Catch input errors
+        except ValueError as exc:
+            print(f'Invalid input: {exc}')
 
-    # Ask if user wants to perform batch-level appending of '_ord' tag to ordinal features
-    user_tag_ord = input('Do you want to tag any features as ordinal by appending the "_ord" suffix '
-                         'to their names? (Y/N): ')
+    if tag_features:
+        if verbose:
+            print('\nBeginning ordinal feature tagging process.')
+            print('You may now select any ordinal features which you know to be present in the dataset and append the '
+                  '"_ord" suffix to their feature names.')
+            print('If no ordinal features are present in the dataset, simply enter "C" to bypass this process.')
+        else:
+            print('\nOrdinal feature tagging:')
 
-    if user_tag_ord.lower() == 'y':
-        print('\nCurrent feature list:')
+        print('\nFeatures:')
         for col_idx, column in enumerate(df.columns, 1):
             print(f'{col_idx}. {column}')
 
@@ -201,7 +218,8 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
                                   'or enter "C" to cancel: ')
 
                 if ord_input.lower() == 'c':  # If user cancels
-                    print('Ordinal feature tagging cancelled.')  # Note the cancellation
+                    if verbose:
+                        print('Ordinal feature tagging cancelled.')  # Note the cancellation
                     break  # Exit the loop
 
                 ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
@@ -221,7 +239,8 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
                     break
 
                 df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
-                print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
+                if verbose:
+                    print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -229,12 +248,15 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
                 print(f'Invalid input: {exc}')
                 continue
 
-    # Ask if user wants to perform batch-level appending of '_target' tag to target features
-    user_tag_target = input('Do you want to tag any features as targets by appending the "_target" suffix '
-                            'to their names? (Y/N): ')
+        if verbose:
+            print('\nBeginning target feature tagging process.')
+            print('You may now select any target features which you know to be present in the dataset and append the '
+                  '"_target" suffix to their feature names.')
+            print(' If no target features are present in the dataset, simply enter "C" to bypass this process.')
+        else:
+            print('\nTarget feature tagging:')
 
-    if user_tag_target.lower() == 'y':
-        print('\nCurrent features:')
+        print('\nFeatures:')
         for col_idx, column in enumerate(df.columns, 1):
             print(f'{col_idx}. {column}')
 
@@ -245,7 +267,8 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
 
                 # Check for user cancellation
                 if target_input.lower() == 'c':
-                    print('Target feature tagging cancelled.')
+                    if verbose:
+                        print('Target feature tagging cancelled.')
                     break
 
                 target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
@@ -266,7 +289,8 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
                     break
 
                 df = df.rename(columns=target_rename_map)  # Perform tagging
-                print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
+                if verbose:
+                    print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
                 break
 
             # Catch invalid input
@@ -275,6 +299,7 @@ def _rename_and_tag_core(df: pd.DataFrame) -> pd.DataFrame:
                 continue  # Restart the loop
 
     return df  # Return dataframe with renamed and tagged columns
+
 
 #TODO: Change this function so no lists of strings are returned - make it purely informational - might need to remove or move handle_numeric_cats()
 #TODO: Start implementing 'Verbose' parametrization
