@@ -301,8 +301,12 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     return df  # Return dataframe with renamed and tagged columns
 
 
-#TODO: Change this function so no lists of strings are returned - make it purely informational - might need to remove or move handle_numeric_cats()
-#TODO: Start implementing 'Verbose' parametrization
+# TODO: Significant refactor is needed for feature_stats_core
+# TODO: Change this function so no lists of strings are returned - make it purely informational - might need to remove or move handle_numeric_cats()
+# TODO: Start implementing 'Verbose' parametrization
+# TODO: Remove all logging
+# TODO: Remove creation of column-type lists and simplify stats-by-class info so they're not necessary
+
 def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
     """
     This function aggregates the features by class (i.e. feature type) and prints top-level missingness and
@@ -685,7 +689,7 @@ def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
             # Impute missing values at feature level
             feature_missing_cnt = missingness_vals[feature]['count']
             print(f'Replacing {feature_missing_cnt} missing values for {feature} '
-                        f'using {imp_method} value of {imp_val}.')
+                  f'using {imp_method} value of {imp_val}.')
             df = df.fillna({feature: imp_val})  # Replace empty values with imputed value in-place
 
         # Catch all other exceptions
@@ -1213,7 +1217,7 @@ def _encode_and_scale_core(
                 if abs(skewness) > 2:  # Using 2 as threshold for extreme skewness
                     # If skewness is extreme, log a warning and ask if user wants to proceed
                     print(f'Feature "{column}" is highly skewed (skewness={skewness:.2f}). '
-                                   'Consider transforming this feature before scaling.')
+                          'Consider transforming this feature before scaling.')
 
                     user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
                     if user_proceed.lower() != 'y':
