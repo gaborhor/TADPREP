@@ -301,235 +301,158 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     return df  # Return dataframe with renamed and tagged columns
 
 
-# TODO: Significant refactor is needed for feature_stats_core
-# TODO: Change this function so no lists of strings are returned - make it purely informational - might need to remove or move handle_numeric_cats()
-# TODO: Start implementing 'Verbose' parametrization
-# TODO: Remove all logging
-# TODO: Remove creation of column-type lists and simplify stats-by-class info so they're not necessary
-# TODO: Parametrize the cat_search so it only looks for false-numerics if the user wants it to
-
-def _feature_stats_core(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
+def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: bool = False) -> None:
     """
-    This function aggregates the features by class (i.e. feature type) and prints top-level missingness and
-    descriptive statistics information at the feature level. It then builds and logs summary tables at the feature-class
-    level.
+    Core function to aggregate the features by class (i.e. feature type) and print top-level missingness and
+    descriptive statistics information at the feature level.
+    It can build and display summary tables at the feature-class level if requested by the user.
+
     Args:
-        df (pd.DataFrame): The renamed/tagged dataframe created by rename_features().
+        df (pd.DataFrame): The input dataframe for analysis.
+        verbose (bool): Whether to print more detailed information/visuals for each feature. Defaults to True.
+        feature_class (bool): Whether to print aggregate statistics at the feature-class level. Defaults to False.
+
     Returns:
-        A tuple of lists of strings for the non-target features at the feature-class level. These are used by the
-        scaling and encoding functions.
+        None. This is a void function.
     """
-    print('Displaying top-level information for features in dataset...')
-    print('-' * 50)  # Visual separator
+    if verbose:
+        print('Displaying top-level information for features in dataset...')
+        print('-' * 50)  # Visual separator
 
-    # Create a list of columns which are categorical and do NOT have the '_ord' or '_target' suffixes
-    cat_cols = [column for column in df.columns
-                if df[column].dtype == 'object'
-                and not column.endswith('_ord')
-                and not column.endswith('_target')
-                ]
+    # Create a list of columns which are categorical (object or categorical dtype)
+    cat_cols = [column for column in df.columns if isinstance(df[column].dtype, pd.CategoricalDtype)]
 
-    # Create a list of ordinal columns (i.e. having the '_ord') suffix if any are present
-    # NOTE: The ordinal columns must NOT have the '_target' suffix - they must not be target features
-    ord_cols = [column for column in df.columns
-                if column.endswith('_ord')
-                and not column.endswith('_target')
-                ]
-
-    # Create a list of columns which are numerical, not ordinal, and do NOT have the '_target' suffix
+    # Create a list of columns which are numerical
     num_cols = [column for column in df.columns
-                if pd.api.types.is_numeric_dtype(df[column])  # Use pandas' built-in numeric type checking
-                and not column.endswith('_target')
-                and not column.endswith('_ord')]
+                if isinstance(df[column].dtype, (np.number, pd.Float64Dtype, pd.Int64Dtype))]
 
-    # Create a list of target columns (columns with '_target' suffix)
-    target_cols = [column for column in df.columns if column.endswith('_target')]
+    if verbose:
+        if cat_cols:
+            print('The categorical features are:')
+            print(', '.join(cat_cols))
+            print('-' * 50)
+        else:
+            print('No categorical features were found in the dataset.')
+            print('-' * 50)
 
-    def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
-        """
-        This internal helper function identifies numerical features that might actually be categorical in function.
-        If such a feature is identified as categorical, the function converts its values to strings in-place.
-        It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
-        """
-        # Instantiate empty lists to hold the features after parsing
-        true_num_cols = []
-        true_cat_cols = []
+        if num_cols:
+            print('The numerical features are:')
+            print(', '.join(num_cols))
+            print('-' * 50)
+        else:
+            print('No numerical features were found in the dataset.')
+            print('-' * 50)
 
-        for column in init_num_cols:  # For each feature that was initially identified as numeric
-            unique_vals = sorted(df[column].unique())  # Calculate number of unique values
-            if (len(unique_vals) <= 5 and  # If that value is small
-                    all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
-
-                print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
-                print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
-                      'Yes/No values.')
-
-                user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
-                if user_cat.lower() == 'y':
-                    df[column] = df[column].astype(str)  # Cast the values to strings in-place
-                    true_cat_cols.append(column)  # Add the identified feature to the true_cat_cols list
-                    print(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
-                    print('-' * 50)  # Visual separator
-
-                # Otherwise, if user says no, treat the feature as truly numeric
-                else:
-                    true_num_cols.append(column)
-
-            # If the feature fails the checks, treat the feature as truly numeric
-            else:
-                true_num_cols.append(column)
-
-        return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
-
-    # Call the helper function
-    num_cols, new_cat_cols = handle_numeric_cats(df, num_cols)
-    cat_cols.extend(new_cat_cols)  # Add any new identified categorical features to cat_cols
-
-    # Print a notification of whether there are any ordinal-tagged features in the dataset
-    if ord_cols:
-        print(f'NOTE: {len(ord_cols)} ordinal features are present in the dataset.')
-        print('-' * 50)  # Visual separator
-    else:
-        print('NOTE: No ordinal features are tagged in the dataset.')
-        print('-' * 50)  # Visual separator
-
-    # Print the names of the categorical features
-    if cat_cols:
-        print('The categorical non-target features are:')
-        print(', '.join(cat_cols))
-        print('-' * 50)  # Visual separator
-    else:
-        print('No categorical non-target features were found in the dataset.')
-        print('-' * 50)  # Visual separator
-
-    # Print the names of the ordinal features (if present)
-    if ord_cols:
-        print('The ordinal non-target features are:')
-        print(', '.join(ord_cols))
-        print('-' * 50)  # Visual separator
-
-    # Print the names of the numerical features ('The numerical non-target features are:')
-    if num_cols:
-        print('The numerical non-target features are:')
-        print(', '.join(num_cols))
-        print('-' * 50)  # Visual separator
-    else:
-        print('No numerical non-target features were found in the dataset.')
-        print('-' * 50)  # Visual separator
-
-    print('Producing key values at the feature level...')
+        print('Producing key values at the feature level...')
 
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
         """This helper function calculates and prints key values and missingness info at the feature level."""
-        print('-' * 50)  # Visual separator
-        print(f'Key values for {feature_type} feature "{column}":')
-        print('-' * 50)  # Visual separator
+        if verbose:
+            print('-' * 50)
+            print(f'Key values for {feature_type} feature "{column}":')
+            print('-' * 50)
+        else:
+            print(f'\nFeature: {column} ({feature_type})')
 
         # Calculate missingness at feature level
         missing_cnt = df[column].isnull().sum()  # Total count
         missing_rate = (missing_cnt / len(df) * 100).round(2)  # Missingness rate
-        print(f'Missingness information for "{column}":')
-        print(f'{missing_cnt} missing values - ({missing_rate}% missing)')
+        print(f'Missing values: {missing_cnt} ({missing_rate}%)')
 
         # Ensure the feature is not fully null before producing value counts
         if not df[column].isnull().all():
-            if feature_type in ['Categorical', 'Ordinal']:  # Note: these are generated and passed in the outer function
-                print(f'\nValue counts:')
-                print(df[column].value_counts())  # Print value counts
-                # Print mode value if present - if multiple modes exist we produce the first mode
-                print(f'Mode: {df[column].mode().iloc[0] if not df[column].mode().empty else "No mode value exists."}')
+            if feature_type == 'Categorical':
+                value_counts = df[column].value_counts()
+                mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else 'No mode exists'
+                print(f'Unique values: {df[column].nunique()}')
+                print(f'Mode: {mode_val}')
+                if verbose:
+                    print('\nValue counts:')
+                    print(value_counts)
 
-            # Produce additional key stats for numerical features
             if feature_type == 'Numerical':
-                print(f'\nMean: {df[column].mean():.4f}')
-                print(f'Median: {df[column].median():.4f}')
-                print(f'Standard deviation: {df[column].std():.4f}')
-                print(f'Minimum: {df[column].min():.4f}')
-                print(f'Maximum: {df[column].max():.4f}')
+                stats = df[column].describe()
+                print(f'Mean: {stats["mean"]:.4f}')
+                print(f'Median: {stats["50%"]:.4f}')
+                print(f'Std Dev: {stats["std"]:.4f}')
+                print(f'Min: {stats["min"]:.4f}')
+                print(f'Max: {stats["max"]:.4f}')
 
-    # Call helper function for each feature class
-    if cat_cols:  # If categorical features are present
-        print('-' * 50)  # Visual separator
-        print('KEY VALUES FOR CATEGORICAL FEATURES:')
+    # Display feature-level statistics
+    if cat_cols:
+        if verbose:
+            print('\nKEY VALUES FOR CATEGORICAL FEATURES:')
         for column in cat_cols:
             show_key_vals(column, df, 'Categorical')
 
-        # Move to feature-class level information
-        print('-' * 50)  # Visual separator
-        print('Producing aggregated key values for categorical features...')
-        print('-' * 50)  # Visual separator
-
-        # Build and log summary table for categorical features
-        cat_summary = pd.DataFrame({
-            'Unique_values': [df[column].nunique() for column in cat_cols],
-            'Missing_count': [df[column].isnull().sum() for column in cat_cols],
-            'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
-                             for column in cat_cols]
-        }, index=cat_cols)
-        print('Categorical Features Summary Table:')
-        print(str(cat_summary))
-
-    if ord_cols:  # If ordinal features are present
-        print('-' * 50)  # Visual separator
-        print('KEY VALUES FOR ORDINAL FEATURES:')
-        for column in ord_cols:
-            show_key_vals(column, df, 'Ordinal')
-
-        # Move to feature-class level information and log
-        print('-' * 50)  # Visual separator
-        print('Producing aggregated key values for ordinal features...')
-        print('-' * 50)  # Visual separator
-
-        # Build and log summary table for ordinal features
-        ord_summary = pd.DataFrame({
-            'Unique_values': [df[column].nunique() for column in ord_cols],
-            'Missing_count': [df[column].isnull().sum() for column in ord_cols],
-            'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
-                             for column in ord_cols]
-        }, index=ord_cols)
-        print('Ordinal Features Summary Table:')
-        print(str(ord_summary))
-
-    if num_cols:  # If numerical features are present
-        print('-' * 50)  # Visual separator
-        print('KEY VALUES FOR NUMERICAL FEATURES:')
+    if num_cols:
+        if verbose:
+            print('\nKEY VALUES FOR NUMERICAL FEATURES:')
         for column in num_cols:
             show_key_vals(column, df, 'Numerical')
 
-        # Move to feature-class level information and log
-        print('-' * 50)  # Visual separator
-        print('Producing aggregated key values for numerical features...')
-        print('-' * 50)  # Visual separator
+    # Display feature-class level statistics if requested
+    if feature_class:
+        if cat_cols:
+            if verbose:
+                print('\nCATEGORICAL FEATURES SUMMARY:')
+                print('-' * 50)
 
-        # Build and log summary table for numerical features
-        num_summary = df[num_cols].describe()
-        print('Numerical Features Summary Table:')
-        print(str(num_summary))
+            cat_summary = pd.DataFrame({
+                'Unique_values': [df[column].nunique() for column in cat_cols],
+                'Missing_count': [df[column].isnull().sum() for column in cat_cols],
+                'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
+                                 for column in cat_cols]
+            }, index=cat_cols)
+            print('\nCategorical Features Summary Table:')
+            print(str(cat_summary))
 
-    # Print key values for target features
-    if target_cols:  # If target features are present
-        print('-' * 50)  # Visual separator
-        print('TARGET FEATURE STATISTICS')
-        for column in target_cols:
-            # Note that we use the pandas type-assessment method to choose the string to pass to show_key_vals
-            show_key_vals(column, df,
-                          'Numerical' if pd.api.types.is_numeric_dtype(df[column]) else 'Categorical')
+        if num_cols:
+            if verbose:
+                print('\nNUMERICAL FEATURES SUMMARY:')
+                print('-' * 50)
 
-        # Build and log summary table for target features
-        # We call .describe() for numerical target features and produce value counts otherwise
-        print('-' * 50)  # Visual separator
-        print('Target Features Summary Table:')
-        for column in target_cols:
-            if pd.api.types.is_numeric_dtype(df[column]):
-                print(f'Summary statistics for target feature {column}:')
-                print(df[column].describe())
+            num_summary = df[num_cols].describe()
+            print('\nNumerical Features Summary Table:')
+            print(str(num_summary))
 
+
+# TODO: This helper function should get folded into both the impute and encode functions
+def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
+    """
+    This internal helper function identifies numerical features that might actually be categorical in function.
+    If such a feature is identified as categorical, the function converts its values to strings in-place.
+    It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
+    """
+    # Instantiate empty lists to hold the features after parsing
+    true_num_cols = []
+    true_cat_cols = []
+
+    for column in init_num_cols:  # For each feature that was initially identified as numeric
+        unique_vals = sorted(df[column].unique())  # Calculate number of unique values
+        if (len(unique_vals) <= 5 and  # If that value is small
+                all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
+
+            print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+            print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                  'Yes/No values.')
+
+            user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
+            if user_cat.lower() == 'y':
+                df[column] = df[column].astype(str)  # Cast the values to strings in-place
+                true_cat_cols.append(column)  # Add the identified feature to the true_cat_cols list
+                print(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
+                print('-' * 50)  # Visual separator
+
+            # Otherwise, if user says no, treat the feature as truly numeric
             else:
-                print(f'Value counts for target feature {column}:')
-                print(df[column].value_counts())
+                true_num_cols.append(column)
 
-    # Return the tuple of the lists of columns by type for use in the encoding and scaling functions
-    return cat_cols, ord_cols, num_cols
+        # If the feature fails the checks, treat the feature as truly numeric
+        else:
+            true_num_cols.append(column)
+
+    return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
 
 
 def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
