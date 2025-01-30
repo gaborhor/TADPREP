@@ -301,7 +301,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     return df  # Return dataframe with renamed and tagged columns
 
 
-def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: bool = False) -> None:
+def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = False) -> None:
     """
     Core function to aggregate the features by class (i.e. feature type) and print top-level missingness and
     descriptive statistics information at the feature level.
@@ -310,7 +310,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: b
     Args:
         df (pd.DataFrame): The input dataframe for analysis.
         verbose (bool): Whether to print more detailed information/visuals for each feature. Defaults to True.
-        feature_class (bool): Whether to print aggregate statistics at the feature-class level. Defaults to False.
+        summary_stats (bool): Whether to print summary statistics at the feature-class level. Defaults to False.
 
     Returns:
         None. This is a void function.
@@ -352,7 +352,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: b
             print(f'Key values for {feature_type} feature "{column}":')
             print('-' * 50)
         else:
-            print(f'\nFeature: {column} ({feature_type})')
+            print(f'\nFeature: "{column}" - ({feature_type})')
 
         # Calculate missingness at feature level
         missing_cnt = df[column].isnull().sum()  # Total count
@@ -373,8 +373,11 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: b
             if feature_type == 'Numerical':
                 stats = df[column].describe()
                 print(f'Mean: {stats["mean"]:.4f}')
-                print(f'Median: {stats["50%"]:.4f}')
-                print(f'Std Dev: {stats["std"]:.4f}')
+
+                if verbose:
+                    print(f'Median: {stats["50%"]:.4f}')
+                    print(f'Std Dev: {stats["std"]:.4f}')
+
                 print(f'Min: {stats["min"]:.4f}')
                 print(f'Max: {stats["max"]:.4f}')
 
@@ -392,10 +395,10 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: b
             show_key_vals(column, df, 'Numerical')
 
     # Display feature-class level statistics if requested
-    if feature_class:
+    if summary_stats:
         if cat_cols:
             if verbose:
-                print('\nCATEGORICAL FEATURES SUMMARY:')
+                print('\nCATEGORICAL FEATURES SUMMARY STATISTICS:')
                 print('-' * 50)
 
             cat_summary = pd.DataFrame({
@@ -409,7 +412,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, feature_class: b
 
         if num_cols:
             if verbose:
-                print('\nNUMERICAL FEATURES SUMMARY:')
+                print('\nNUMERICAL FEATURES SUMMARY STATISTICS:')
                 print('-' * 50)
 
             num_summary = df[num_cols].describe()
