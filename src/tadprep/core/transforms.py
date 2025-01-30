@@ -458,6 +458,13 @@ def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[lis
     return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
 
 
+# TODO: Remove "Do you want to impute" section b/c they wouldn't call the method otherwise
+# TODO: Fold handle_numeric_cats helper function into imputation to guard against poor imputation practice
+# TODO: What I mean by that is that we want to make sure all "actually categorical" numerical features are set to strings before imputation so that only mode imputation is offered
+# TODO: Add verbose conditionals for visual separators and method warnings/explanations, and parametrize appropriately
+# TODO: Add a skip_warnings parameter which defaults to False which skips the whole "good candidates for imputation" section
+# TODO: I.e. if the user sets skip_warnings to true, they'll just get the full feature list as imputation candidates without any fuss
+# TODO: Basically, change this so an experienced data scientist will see minimal warnings or explanations and it will all be as streamlined as possible
 def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
     """
     This function allows the user to perform simple imputation for missing values at the feature level. Three imputation
@@ -623,7 +630,17 @@ def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
 
     return df  # Return the new dataframe with imputed values
 
-
+# TODO: Major refactor is needed
+# TODO: This needs to be broken out into separate encode and scale functions, which will drive two separate methods
+# TODO: We should probably not ask the user for lists-by-type but rather a list of the features they want to encode
+# TODO: The encoding function needs to also use handle_numeric_cats to make sure "actually categorical numeric features" are presented as encoding candidates
+# TODO: Rather than make the user categorize every feature (if they don't pass a list of features to encode), we should use datatypes to pre-fill the lists, ask user if the lists of feature-by-type are correct, and if not, ask which features need to have their datatypes changed
+# TODO: We also need a line in the docstring and a 'verbose' print statement which reminds the user that target features should not be encoded
+# TODO: There are a lot of explanatory print statements and offers of explanation which need to get housed inside verbose conditionals
+# TODO: We need a skip_warnings boolean parameter which doesn't show the print statements about null values, low frequency categories, high cardinality, etc.
+# TODO: We actually can't have unclassified features, so the 'skip this feature' option in the categorization process needs to go
+# TODO: Additionally, we need the ability to get some simple descriptives printed for each feature during categorization in case the user doesn't know anything about the feature
+# TODO: We also need a line in the docstring and a 'verbose' print statement which reminds the user that the original features are dropped once they've been encoded
 def _encode_and_scale_core(
         df: pd.DataFrame,
         cat_features: list[str] | None = None,
