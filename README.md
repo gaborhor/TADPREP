@@ -9,7 +9,7 @@ datafiles before advanced data analysis is applied is reasonably consistent and 
 reproduction of older, potentially-deprecated data preprocessing code. The TADPREP library helps to obviate that 
 code reproduction and to save a busy data scientist time and effort.
 
-While every analytical use case inevitably has its own particular corner cases and unique challenges, the core steps 
+While every analytical task inevitably has its own particular corner cases and unique challenges, the core steps 
 involved in tabular data preparation (especially assuming a naive-case approach) are consistent in form and order.
 Writing fresh code to handle data preparation for each new project is labor-intensive and time-inefficient. 
 
