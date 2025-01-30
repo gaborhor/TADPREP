@@ -102,6 +102,7 @@ def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
 def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
     Interactively reshapes the input DataFrame according to user specification.
+
     Allows deletion of missing values, dropping columns, and random sub-setting of instances.
 
     Parameters
@@ -173,24 +174,49 @@ def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = 
     return _rename_and_tag_core(df, verbose=verbose, tag_features=tag_features)
 
 
-def feature_stats(df: pd.DataFrame) -> tuple[list[str], list[str], list[str]]:
+def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = False) -> None:
     """
-    Analyze and display feature-level statistics and return feature type classifications.
+    Displays feature-level statistics for each feature in the DataFrame.
+
+    For each feature, displays missingness information and appropriate descriptive statistics
+    based on the feature's datatype (categorical or numerical).
+
+    Can optionally display summary statistics tables grouped by feature type.
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame to analyze
+    verbose : bool, default=True
+        Whether to print detailed information and visual formatting
+    summary_stats : bool, default=False
+        Whether to print summary statistics tables grouped by feature type
 
     Returns
     -------
-    tuple[list[str], list[str], list[str]]
-        Lists of categorical, ordinal, and numerical column names
+    None
+        This is a void method that prints information to the console
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, None, 4],
+    ...     'B': ['x', 'y', 'z', 'w']
+    ... })
+    >>> tadprep.feature_stats(df)  # Show detailed statistics with formatting
+    >>> tadprep.feature_stats(df, verbose=False)  # Show just the key statistics
+    >>> tadprep.feature_stats(df, summary_stats=True)  # Include feature type summaries
     """
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
-    return _feature_stats_core(df)
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    _feature_stats_core(df, verbose=verbose, summary_stats=summary_stats)
 
 
 def impute(df: pd.DataFrame) -> pd.DataFrame:
