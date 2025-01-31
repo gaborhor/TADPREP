@@ -471,6 +471,11 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     Returns:
         pd.DataFrame: DataFrame with imputed values where specified by user.
     """
+    # Check if there are no missing values - if no missing values exist, skip imputation
+    if not df.isnull().any().any():
+        print('No missing values present in dataset. Skipping imputation.')
+        return df
+
     # Instantiate empty lists for features
     categorical_cols = []
     numeric_cols = []
@@ -490,7 +495,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         print('-' * 50)
 
     # Check for numeric features that might actually be categorical in function/intent
-    true_numeric = []
+    true_numeric = numeric_cols.copy()  # Start with all numeric columns
     for col in numeric_cols:
         unique_vals = sorted(df[col].dropna().unique())
 
@@ -500,30 +505,26 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
                 print(f'\nFeature "{col}" has only {len(unique_vals)} unique integer values: {unique_vals}')
                 print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                       'Yes/No values.')
+                print('-' * 50)
 
+            # Ask the user to assess and reply
             user_cat = input(f'Should "{col}" actually be treated as categorical? (Y/N): ')
+
+            # If user agrees, recast the feature to string-type and append to list of categorical features
             if user_cat.lower() == 'y':
                 df[col] = df[col].astype(str)
                 categorical_cols.append(col)
+                true_numeric.remove(col)  # Remove from numeric if identified as categorical
                 if verbose:
                     print(f'Converted numerical feature "{col}" to categorical type.')
                     print('-' * 50)
-            else:
-                true_numeric.append(col)
-        else:
-            true_numeric.append(col)
 
+    # Final feature classification info if Verbose is True
     if verbose:
-        print("\nFinal feature type classification:")
-        print(f"Categorical features: {', '.join(categorical_cols) if categorical_cols else 'None'}")
-        print(f"Numerical features: {', '.join(true_numeric) if true_numeric else 'None'}")
+        print('\nFinal feature type classification:')
+        print(f'Categorical features: {", ".join(categorical_cols) if categorical_cols else "None"}')
+        print(f'Numerical features: {", ".join(true_numeric) if true_numeric else "None"}')
         print('-' * 50)
-
-    # Check if there are any missing values
-    if not df.isnull().any().any():
-        if verbose:
-            print('No missing values present in dataset. Skipping imputation.')
-        return df
 
     # For each feature, calculate missingness statistics
     if verbose:
@@ -562,29 +563,31 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
                                   '3. Skip imputation\n'
                                   'Enter choice: ').strip()
 
+            # Catch bad input
             if user_override not in ['1', '2', '3']:
                 raise ValueError('Please enter 1, 2, or 3.')
 
             if user_override == '3':
-                if verbose:
-                    print('Skipping imputation. No changes made to dataset.')
+                print('Skipping imputation. No changes made to dataset.')
                 return df
 
             # Build list of features to be imputed
             imp_features = (imp_candidates if user_override == '1'
                             else [key for key, value in missingness_vals.items() if value['count'] > 0])
 
+            # If user wants to follow guidelines and no good candidates exist, skip imputation
             if not imp_features:
-                if verbose:
-                    print('No features available for imputation given user input. Skipping imputation.')
+                print('No features available for imputation given user input. Skipping imputation.')
                 return df
 
             break
 
+        # Catch all other input errors
         except ValueError as exc:
             print(f'Invalid input: {exc}')
-            continue
+            continue  # Restart loop
 
+    # Offer methodology explanations if desired by user if Verbose is True
     if verbose:
         print('\nWARNING: TADPREP supports only mean, median, and mode imputation.')
         print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
@@ -613,21 +616,26 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         # Prompt user to select an imputation method
         while True:
             method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
-            method_prompt = f'Choose imputation method:\n{chr(10).join(method_items)}\nEnter the number of your choice: '
+            method_prompt = f'Choose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
             user_imp_choice = input(method_prompt)
 
+            # Reset method index
             try:
                 method_idx = int(user_imp_choice) - 1
 
+                # Choose imputation method and exit loop
                 if 0 <= method_idx < len(val_methods):
                     imp_method = val_methods[method_idx]
                     break
+
+                # Catch bad user input
                 else:
                     print('Invalid input. Enter a valid number.')
 
             except ValueError:
                 print('Invalid input. Enter a valid number.')
 
+        # Notify user of skips if Verbose is True
         if imp_method == 'Skip imputation for this feature':
             if verbose:
                 print(f'Skipping imputation for feature: "{feature}"')
@@ -638,15 +646,20 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             # Calculate impute values based on method selection
             if imp_method == 'Mean':
                 imp_val = df[feature].mean()
+
             elif imp_method == 'Median':
                 imp_val = df[feature].median()
+
             else:  # Mode
                 mode_vals = df[feature].mode()
+
+                # Catch and notify if no mode value exists
                 if len(mode_vals) == 0:
                     if verbose:
                         print(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
                     continue
-                imp_val = mode_vals[0]
+
+                imp_val = mode_vals[0]  # Note that we select the first mode
 
             # Impute missing values at feature level
             feature_missing_cnt = missingness_vals[feature]['count']
@@ -655,13 +668,14 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
                       f'using {imp_method} value of {imp_val}.')
             df = df.fillna({feature: imp_val})
 
+        # Catch all other imputation errors
         except Exception as exc:
+            print(f'Error during imputation for feature {feature}: {exc}')
             if verbose:
-                print(f'Error during imputation for feature {feature}: {exc}')
                 print('Skipping imputation for this feature.')
-            continue
+            continue  # Restart loop
 
-    return df
+    return df  # Return dataframe with imputed values
 
 
 # TODO: Major refactor is needed
