@@ -473,19 +473,14 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     """
     # Check if there are no missing values - if no missing values exist, skip imputation
     if not df.isnull().any().any():
-        print('No missing values present in dataset. Skipping imputation.')
+        print('WARNING: No missing values present in dataset. Skipping imputation. Dataframe was not modified.')
         return df
 
-    # Instantiate empty lists for features
-    categorical_cols = []
-    numeric_cols = []
+    # Identify initial feature types using list comprehensions
+    categorical_cols = [col for col in df.columns if pd.api.types.is_object_dtype(df[col])
+                        or isinstance(df[col].dtype, pd.CategoricalDtype)]
 
-    # Identify initial feature types and append to lists
-    for col in df.columns:
-        if pd.api.types.is_object_dtype(df[col]) or isinstance(df[col].dtype, pd.CategoricalDtype):
-            categorical_cols.append(col)
-        elif pd.api.types.is_numeric_dtype(df[col]):
-            numeric_cols.append(col)
+    numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
 
     # Top-level feature classification information if Verbose is True
     if verbose:
@@ -530,13 +525,16 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     if verbose:
         print('Count and rate of missingness for each feature:')
 
+    # Calculate missingness values
     missingness_vals = {}
     for column in df.columns:
         missing_cnt = df[column].isnull().sum()
         missing_rate = (missing_cnt / len(df) * 100).round(2)
         missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}
-        if verbose:
-            print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')
+
+    if verbose:
+        for column, vals in missingness_vals.items():
+            print(f'Feature {column} has {vals["count"]} missing values. ({vals["rate"]}% missing)')
 
     if not skip_warnings and verbose:
         print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
@@ -545,6 +543,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     # Build list of good candidates for imputation
     imp_candidates = [key for key, value in missingness_vals.items() if 0 < value['rate'] <= 10]
 
+    # We only walk through the imputation missingess-rate guidance if the user hasn't set skip_warnings to False
     if not skip_warnings:
         if imp_candidates and verbose:
             print('Based on missingness rates, the following features are good candidates for imputation:')
@@ -575,11 +574,12 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             imp_features = (imp_candidates if user_override == '1'
                             else [key for key, value in missingness_vals.items() if value['count'] > 0])
 
-            # If user wants to follow guidelines and no good candidates exist, skip imputation
+            # If user wants to follow missingness guidelines and no good candidates exist, skip imputation
             if not imp_features:
                 print('No features available for imputation given user input. Skipping imputation.')
                 return df
 
+            # Exit the loop once the imp_features list is built
             break
 
         # Catch all other input errors
