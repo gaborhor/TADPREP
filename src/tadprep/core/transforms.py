@@ -458,64 +458,103 @@ def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[lis
     return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
 
 
-# TODO: Remove "Do you want to impute" section b/c they wouldn't call the method otherwise
-# TODO: Fold handle_numeric_cats helper function into imputation to guard against poor imputation practice
-# TODO: What I mean by that is that we want to make sure all "actually categorical" numerical features are set to strings before imputation so that only mode imputation is offered
-# TODO: Add verbose conditionals for visual separators and method warnings/explanations, and parametrize appropriately
-# TODO: Add a skip_warnings parameter which defaults to False which skips the whole "good candidates for imputation" section
-# TODO: I.e. if the user sets skip_warnings to true, they'll just get the full feature list as imputation candidates without any fuss
-# TODO: Basically, change this so an experienced data scientist will see minimal warnings or explanations and it will all be as streamlined as possible
-def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
+def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
-    This function allows the user to perform simple imputation for missing values at the feature level. Three imputation
-    methods are offered: mean, median, and mode imputation. The missingness rate for each feature is used to select
-    features which are good candidates for imputation.
+    Core function to perform simple imputation for missing values at the feature level.
+    Supports mean, median, and mode imputation based on feature type.
+
     Args:
-        df (pd.DataFrame): The dataframe containing the trimmed and renamed data.
+        df (pd.DataFrame): Input DataFrame containing features to impute.
+        verbose (bool): Whether to display detailed guidance and explanations. Defaults to True.
+        skip_warnings (bool): Whether to skip missingness threshold warnings. Defaults to False.
+
     Returns:
-        df (pd.DataFrame): The dataframe after imputation is performed.
+        pd.DataFrame: DataFrame with imputed values where specified by user.
     """
-    imp_features = []  # Instantiate list of features for imputation before the try block begins (assignment resilience)
+    # Instantiate empty lists for features
+    categorical_cols = []
+    numeric_cols = []
 
-    # Check if there are no missing values anywhere in the dataset
-    if not df.isnull().any().any():  # Stacking calls to .any() to return a single Boolean for the series
-        print('No missing values present in dataset. Skipping imputation.')
-        return df  # Return the unmodified dataframe
+    # Identify initial feature types and append to lists
+    for col in df.columns:
+        if pd.api.types.is_object_dtype(df[col]) or isinstance(df[col].dtype, pd.CategoricalDtype):
+            categorical_cols.append(col)
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols.append(col)
 
-    # Ask user if they want to perform imputation
-    user_impute = input('Do you want to impute missing values? (Y/N): ')
-    if user_impute.lower() != 'y':
-        print('Skipping imputation.')
-        return df  # Return the unmodified dataframe
+    # Top-level feature classification information if Verbose is True
+    if verbose:
+        print('\nInitial feature type identification:')
+        print(f'Categorical features: {", ".join(categorical_cols) if categorical_cols else "None"}')
+        print(f'Numerical features: {", ".join(numeric_cols) if numeric_cols else "None"}')
+        print('-' * 50)
 
-    # For each feature, print the count and rate of missingness
-    print('-' * 50)  # Visual separator
-    print('Count and rate of missingness for each feature:')
-    missingness_vals = {}  # Instantiate an empty dictionary to hold the feature-level missingness values
+    # Check for numeric features that might actually be categorical in function/intent
+    true_numeric = []
+    for col in numeric_cols:
+        unique_vals = sorted(df[col].dropna().unique())
+
+        # We suspect that any all-integer column with five or fewer unique values is actually categorical
+        if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
+            if verbose:
+                print(f'\nFeature "{col}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                      'Yes/No values.')
+
+            user_cat = input(f'Should "{col}" actually be treated as categorical? (Y/N): ')
+            if user_cat.lower() == 'y':
+                df[col] = df[col].astype(str)
+                categorical_cols.append(col)
+                if verbose:
+                    print(f'Converted numerical feature "{col}" to categorical type.')
+                    print('-' * 50)
+            else:
+                true_numeric.append(col)
+        else:
+            true_numeric.append(col)
+
+    if verbose:
+        print("\nFinal feature type classification:")
+        print(f"Categorical features: {', '.join(categorical_cols) if categorical_cols else 'None'}")
+        print(f"Numerical features: {', '.join(true_numeric) if true_numeric else 'None'}")
+        print('-' * 50)
+
+    # Check if there are any missing values
+    if not df.isnull().any().any():
+        if verbose:
+            print('No missing values present in dataset. Skipping imputation.')
+        return df
+
+    # For each feature, calculate missingness statistics
+    if verbose:
+        print('Count and rate of missingness for each feature:')
+
+    missingness_vals = {}
     for column in df.columns:
-        missing_cnt = df[column].isnull().sum()  # Calculate missing count
-        missing_rate = (missing_cnt / len(df) * 100).round(2)  # Calculate missing rate
-        missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}  # Add those values to the dictionary
-        print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')  # Print this info
+        missing_cnt = df[column].isnull().sum()
+        missing_rate = (missing_cnt / len(df) * 100).round(2)
+        missingness_vals[column] = {'count': missing_cnt, 'rate': missing_rate}
+        if verbose:
+            print(f'Feature {column} has {missing_cnt} missing values. ({missing_rate}% missing)')
 
-    # Warn user about imputation thresholds
-    print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
-          'due to potential bias introduction.')
+    if not skip_warnings and verbose:
+        print('\nWARNING: Imputing missing values for features with a missing rate over 10% is not recommended '
+              'due to potential bias introduction.')
 
-    # Build a list of good candidate features for imputation (missingness rate >0% but <=10%) using the dictionary
+    # Build list of good candidates for imputation
     imp_candidates = [key for key, value in missingness_vals.items() if 0 < value['rate'] <= 10]
 
-    if imp_candidates:  # If any candidate features exist
-        print('Based on missingness rates, the following features are good candidates for imputation:')
-        for key in imp_candidates:
-            print(f'- {key}: {missingness_vals[key]["rate"]}% missing')
-
-    else:  # If no good candidate features are present
-        print('No features fall within the recommended rate range for imputation.')  # Log that fact
-        print('WARNING: Statistical best practices indicate you should not perform imputation.')
+    if not skip_warnings:
+        if imp_candidates and verbose:
+            print('Based on missingness rates, the following features are good candidates for imputation:')
+            for key in imp_candidates:
+                print(f'- {key}: {missingness_vals[key]["rate"]}% missing')
+        elif verbose:
+            print('No features fall within the recommended rate range for imputation.')
+            print('WARNING: Statistical best practices indicate you should not perform imputation.')
 
     # Ask if user wants to override the recommendation
-    while True:  # We can justify 'while True' because we have a cancel-out input option
+    while True:
         try:
             user_override = input('\nDo you wish to:\n'
                                   '1. Impute only for recommended features (<= 10% missing)\n'
@@ -523,83 +562,76 @@ def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
                                   '3. Skip imputation\n'
                                   'Enter choice: ').strip()
 
-            # Validate input
             if user_override not in ['1', '2', '3']:
                 raise ValueError('Please enter 1, 2, or 3.')
 
-            # Check for cancellation
-            if user_override.lower() == '3':
-                print('Skipping imputation. No changes made to dataset.')
-                return df  # Return the unmodified dataset
+            if user_override == '3':
+                if verbose:
+                    print('Skipping imputation. No changes made to dataset.')
+                return df
 
             # Build list of features to be imputed
             imp_features = (imp_candidates if user_override == '1'
                             else [key for key, value in missingness_vals.items() if value['count'] > 0])
 
-            # Validate that the list of features for imputation isn't empty
             if not imp_features:
-                print('No features available for imputation given user input. Skipping imputation.')  # Note this
-                return df  # Return the unmodified dataset
+                if verbose:
+                    print('No features available for imputation given user input. Skipping imputation.')
+                return df
 
-            break  # Exit the while loop if we get valid user input
+            break
 
-        except ValueError as exc:  # Catch invalid input
+        except ValueError as exc:
             print(f'Invalid input: {exc}')
-            continue  # And restart the while loop
+            continue
 
-    # Print warning that TADPREP only supports simple imputation methods
-    print('\nWARNING: TADPREP supports only mean, median, and mode imputation.')
-    print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
-          'your own imputation code.')
+    if verbose:
+        print('\nWARNING: TADPREP supports only mean, median, and mode imputation.')
+        print('For more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
+              'your own imputation code.')
 
-    # Allow the user to exit the process if they don't want to use simple imputation methods
-    user_imp_proceed = input('Do you want to proceed using simple imputation methods? (Y/N): ')
-    if user_imp_proceed.lower() != 'y':  # If the user wants to skip imputation
-        print('Skipping imputation. No changes made to dataset.')  # Log this
-        return df  # Return the unmodified dataset
-
-    # Ask the user if they want a refresher on the three imputation methods offered
-    user_impute_refresh = input('Do you want to see a brief refresher on these imputation methods? (Y/N): ')
-    if user_impute_refresh.lower() == 'y':
-        print('\nSimple Imputation Methods Overview:'
-              '\n- Mean: Best for normally-distributed data. Theoretically practical. Highly sensitive to outliers.'
-              '\n- Median: Better for skewed numerical data. Robust to outliers.'
-              '\n- Mode: Useful for categorical and fully-discrete numerical data.')
+        user_impute_refresh = input('Do you want to see a brief refresher on these imputation methods? (Y/N): ')
+        if user_impute_refresh.lower() == 'y':
+            print('\nSimple Imputation Methods Overview:'
+                  '\n- Mean: Best for normally-distributed data. Theoretically practical. Highly sensitive to outliers.'
+                  '\n- Median: Better for skewed numerical data. Robust to outliers.'
+                  '\n- Mode: Useful for categorical and fully-discrete numerical data.')
 
     # Begin imputation at feature level
     for feature in imp_features:
-        print(f'\nProcessing feature {feature}...')
-        print(f'- Datatype: {df[feature].dtype}')
-        print(f'- Missing rate: {missingness_vals[feature]["rate"]}%')
+        if verbose:
+            print(f'\nProcessing feature {feature}...')
+            print(f'- Datatype: {df[feature].dtype}')
+            print(f'- Missing rate: {missingness_vals[feature]["rate"]}%')
 
         # Build list of available/valid imputation methods based on feature datatype
-        if pd.api.types.is_numeric_dtype(df[feature]):  # For numerical features
+        if feature in true_numeric:
             val_methods = ['Mean', 'Median', 'Mode', 'Skip imputation for this feature']
         else:
-            val_methods = ['Mode', 'Skip imputation for this feature']  # Only mode is valid for non-numeric data
+            val_methods = ['Mode', 'Skip imputation for this feature']
 
         # Prompt user to select an imputation method
         while True:
             method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
-            method_prompt = f'Choose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
+            method_prompt = f'Choose imputation method:\n{chr(10).join(method_items)}\nEnter the number of your choice: '
             user_imp_choice = input(method_prompt)
 
             try:
-                method_idx = int(user_imp_choice) - 1  # Find correct integer value for index of selected method
+                method_idx = int(user_imp_choice) - 1
 
-                if 0 <= method_idx < len(val_methods):  # Validate input
-                    imp_method = val_methods[method_idx]  # Select imputation method
+                if 0 <= method_idx < len(val_methods):
+                    imp_method = val_methods[method_idx]
                     break
-                else:  # Catch invalid integers
+                else:
                     print('Invalid input. Enter a valid number.')
 
-            # Catch other input errors
             except ValueError:
                 print('Invalid input. Enter a valid number.')
 
-        if imp_method == 'Skip imputation for this feature':  # If user wants to skip a feature
-            print(f'Skipping imputation for feature: "{feature}"')  # Log the choice
-            continue  # And restart the outer for loop with the next feature
+        if imp_method == 'Skip imputation for this feature':
+            if verbose:
+                print(f'Skipping imputation for feature: "{feature}"')
+            continue
 
         # Begin actual imputation process
         try:
@@ -608,27 +640,29 @@ def _impute_core(df: pd.DataFrame) -> pd.DataFrame:
                 imp_val = df[feature].mean()
             elif imp_method == 'Median':
                 imp_val = df[feature].median()
-            else:  # If only mode is a valid method
+            else:  # Mode
                 mode_vals = df[feature].mode()
-                if len(mode_vals) == 0:  # If no mode values exist
-                    # Print a warning
-                    print(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
-                    continue  # Restart outer for loop with next feature
-                imp_val = mode_vals[0]  # Select first mode
+                if len(mode_vals) == 0:
+                    if verbose:
+                        print(f'No mode value exists for feature {feature}. Skipping imputation for this feature.')
+                    continue
+                imp_val = mode_vals[0]
 
             # Impute missing values at feature level
             feature_missing_cnt = missingness_vals[feature]['count']
-            print(f'Replacing {feature_missing_cnt} missing values for {feature} '
-                  f'using {imp_method} value of {imp_val}.')
-            df = df.fillna({feature: imp_val})  # Replace empty values with imputed value in-place
+            if verbose:
+                print(f'Replacing {feature_missing_cnt} missing values for {feature} '
+                      f'using {imp_method} value of {imp_val}.')
+            df = df.fillna({feature: imp_val})
 
-        # Catch all other exceptions
         except Exception as exc:
-            print(f'Error during imputation for feature {feature}: {exc}')
-            print('Skipping imputation for this feature.')
-            continue  # Restart outer for loop with next feature
+            if verbose:
+                print(f'Error during imputation for feature {feature}: {exc}')
+                print('Skipping imputation for this feature.')
+            continue
 
-    return df  # Return the new dataframe with imputed values
+    return df
+
 
 # TODO: Major refactor is needed
 # TODO: This needs to be broken out into separate encode and scale functions, which will drive two separate methods
