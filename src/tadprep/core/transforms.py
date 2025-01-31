@@ -420,44 +420,6 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             print(str(num_summary))
 
 
-# TODO: This helper function should get folded into both the impute and encode functions
-def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
-    """
-    This internal helper function identifies numerical features that might actually be categorical in function.
-    If such a feature is identified as categorical, the function converts its values to strings in-place.
-    It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
-    """
-    # Instantiate empty lists to hold the features after parsing
-    true_num_cols = []
-    true_cat_cols = []
-
-    for column in init_num_cols:  # For each feature that was initially identified as numeric
-        unique_vals = sorted(df[column].unique())  # Calculate number of unique values
-        if (len(unique_vals) <= 5 and  # If that value is small
-                all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
-
-            print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
-            print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
-                  'Yes/No values.')
-
-            user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
-            if user_cat.lower() == 'y':
-                df[column] = df[column].astype(str)  # Cast the values to strings in-place
-                true_cat_cols.append(column)  # Add the identified feature to the true_cat_cols list
-                print(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
-                print('-' * 50)  # Visual separator
-
-            # Otherwise, if user says no, treat the feature as truly numeric
-            else:
-                true_num_cols.append(column)
-
-        # If the feature fails the checks, treat the feature as truly numeric
-        else:
-            true_num_cols.append(column)
-
-    return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
-
-
 def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
     Core function to perform simple imputation for missing values at the feature level.
@@ -676,6 +638,44 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             continue  # Restart loop
 
     return df  # Return dataframe with imputed values
+
+
+# TODO: This helper function should get folded into both the impute and encode functions
+def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
+    """
+    This internal helper function identifies numerical features that might actually be categorical in function.
+    If such a feature is identified as categorical, the function converts its values to strings in-place.
+    It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
+    """
+    # Instantiate empty lists to hold the features after parsing
+    true_num_cols = []
+    true_cat_cols = []
+
+    for column in init_num_cols:  # For each feature that was initially identified as numeric
+        unique_vals = sorted(df[column].unique())  # Calculate number of unique values
+        if (len(unique_vals) <= 5 and  # If that value is small
+                all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
+
+            print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+            print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                  'Yes/No values.')
+
+            user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
+            if user_cat.lower() == 'y':
+                df[column] = df[column].astype(str)  # Cast the values to strings in-place
+                true_cat_cols.append(column)  # Add the identified feature to the true_cat_cols list
+                print(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
+                print('-' * 50)  # Visual separator
+
+            # Otherwise, if user says no, treat the feature as truly numeric
+            else:
+                true_num_cols.append(column)
+
+        # If the feature fails the checks, treat the feature as truly numeric
+        else:
+            true_num_cols.append(column)
+
+    return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
 
 
 # TODO: Major refactor is needed
