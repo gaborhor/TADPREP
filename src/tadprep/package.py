@@ -70,7 +70,7 @@ def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
     Returns
     -------
     None
-        This is a void method which prints file information to the console
+        This is a void method which prints file information to the console.
 
     Notes
     -----
@@ -209,6 +209,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
     >>> tadprep.feature_stats(df, verbose=False)  # Show just the key statistics
     >>> tadprep.feature_stats(df, summary_stats=True)  # Include feature type summaries
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
@@ -219,26 +220,45 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
     _feature_stats_core(df, verbose=verbose, summary_stats=summary_stats)
 
 
-def impute(df: pd.DataFrame) -> pd.DataFrame:
+def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
-    Interactively impute missing values in the DataFrame.
+    Interactively impute missing values in the DataFrame using simple imputation methods.
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame containing missing values to impute
+    verbose : bool, default = True
+        Controls whether detailed process information is displayed
+    skip_warnings : bool, default = False
+        Controls whether missingness threshold warnings are displayed
 
     Returns
     -------
     pandas.DataFrame
         The DataFrame with imputed values
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({'A': [1, None, 3], 'B': ['x', 'y', None]})
+    >>> df_imputed = tadprep.impute(df)  # Full guidance and warnings
+    >>> df_quiet = tadprep.impute(df, verbose=False)  # Minimize output
+    >>> df_nowarn = tadprep.impute(df, skip_warnings=True)  # Skip missingness warnings
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
-    return _impute_core(df)
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _impute_core(df, verbose=verbose, skip_warnings=skip_warnings)
 
 
+# TODO: Split into separate encode and scale methods
 def encode_and_scale(df: pd.DataFrame, cat_cols: list[str],
                      ord_cols: list[str], num_cols: list[str]) -> pd.DataFrame:
     """
