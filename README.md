@@ -48,7 +48,7 @@ The script has extensive error handling, and in addition to its console output, 
 log which describes the major decisions made during the process. (The log also documents any major errors that occur.)
 The log file is automatically saved in the same directory as the final exported datafile.
 
-**Note:**
+**Notes:**
 - The interactive pipeline script can only ingest locally-stored files.
 - Users may identify the file to import and the export save directory either by passing an absolute filepath or by 
 using a file browser window.
@@ -63,12 +63,123 @@ Explain how the methods operate on dataframes as separate entities. Explain the 
 core TADPREP methods together and basically functions like the CLI script without the I/O process.
 
 ### Method List
-List methods and what they're for in a top-line level of detail.
 
-### Provisos
-Discuss the library's limitations re: imputation, encoding, and scaling techniques. Explain how the methods should be
-used 'as practical' - i.e. if a user wants to do fancy imputation, they can use TADPREP to trim, rename, and pull info
-from the dataset, and then write their own imputation code.
+TADPREP provides a suite of interactive methods for data preparation, each focused on a specific aspect of the preparation process:
+
+#### Core Pipeline Method
+
+`prep_df(df)`
+- Runs the complete TADPREP pipeline on an existing DataFrame
+- Guides users through all preparation steps interactively
+- Returns the fully prepared DataFrame
+- Ideal for users who want to prepare their data in a single cohesive workflow
+- This method (in essence) runs the full interactive script without the file I/O process
+
+#### Individual Data Preparation Methods
+
+`file_info(df, verbose=True)`
+- Displays comprehensive information about DataFrame structure and contents
+- Shows feature counts, data types, and missingness statistics
+- Helps users understand their data before making preparation decisions
+- Set `verbose=False` for condensed output
+
+`reshape(df, verbose=True)`
+- Handles missing value deletion and feature deletion
+- Allows random sub-setting of data
+- Returns reshaped DataFrame
+- Set `verbose=False` for minimal process output
+
+`rename_and_tag(df, verbose=True, tag_features=False)`
+- Facilitates feature renaming
+- Optionally tags features as ordinal or target features when `tag_features=True`
+- Returns DataFrame with updated feature names
+- Set `verbose=False` for streamlined interaction
+
+`feature_stats(df, verbose=True, summary_stats=False)`
+- Analyzes features by type (categorical, ordinal, numerical)
+- Displays missingness information and appropriate descriptive statistics
+- Set `summary_stats=True` to include aggregate statistics by feature type
+- Set `verbose=False` for key statistics only
+
+`impute(df, verbose=True, skip_warnings=False)`
+- Handles missing value imputation using mean, median, or mode
+- Provides guidance on appropriate imputation methods
+- Returns DataFrame with imputed values
+- Set `skip_warnings=False` to bypass missingness threshold warnings
+
+`encode_and_scale(df, cat_cols, ord_cols, num_cols)`
+- Encodes categorical features using One-Hot or Dummy encoding
+- Scales numerical features using Standard, Robust, or MinMax scaling
+- Returns DataFrame with transformed features
+- Requires lists of categorical, ordinal, and numerical column names
+
+#### Notes on Method Usage
+
+- All methods include interactive prompts to guide users through the preparation process
+- Methods with `verbose` parameters allow control over output detail level
+- Each method can be used independently or as part of the full pipeline via `prep_df()`
+- Methods preserve the original DataFrame and return a new copy with applied transformations
+
+### Provisos and Limitations
+TADPREP is designed to be a practical, educational tool for basic data preparation tasks. 
+While it provides interactive guidance throughout the data preparation process, it intentionally implements only 
+fundamental techniques for certain operations:
+
+#### Imputation
+- Supports only simple imputation methods: mean, median, and mode
+- Does not implement more sophisticated approaches like:
+  - Multiple imputation
+  - K-Nearest Neighbors imputation
+  - Regression-based imputation
+  - Machine learning models for imputation
+
+#### Encoding
+- Limited to One-Hot and Dummy encoding for categorical features
+- Does not implement advanced encoding techniques such as:
+  - Target encoding
+  - Weight of Evidence encoding
+  - Feature hashing
+  - Embedding techniques
+
+#### Scaling
+- Implements three common scaling methods: Standard (Z-score), Robust, and MinMax scaling
+- Does not include more specialized techniques like:
+  - Quantile transformation
+  - Power transformations (e.g., Box-Cox, Yeo-Johnson)
+  - Custom scaling methods
+
+#### Intended Use
+
+TADPREP is most effectively used as part of a larger data preparation workflow.
+1. Use TADPREP for initial data exploration and basic preparation, such as:
+   - Understanding feature distributions and relationships
+   - Identifying and handling missing values
+   - Basic feature renaming and organization
+   - Simple transformations using supported methods
+
+2. For more complex operations:
+   - Use TADPREP to prepare and clean your data
+   - Export a partially prepared dataset
+   - Apply your own custom transformations using specialized libraries like scikit-learn, feature-engine, 
+   or category_encoders
+
+Using the library in a deliberate, as-needed manner allows you to leverage TADPREP's interactive guidance for basic 
+tasks while maintaining the flexibility to implement more sophisticated methods as required for your specific use case.
+
+For example, if you need to use advanced imputation techniques:
+```python
+# 1. Use TADPREP for initial preparation
+import tadprep as tp
+df_initial = tp.prep_df(df)  # Handle basic cleaning and preparation
+
+# 2. Export and apply custom imputation
+from sklearn.impute import KNNImputer
+imputer = KNNImputer(n_neighbors=5)
+df_imputed = pd.DataFrame(
+    imputer.fit_transform(df_initial),
+    columns=df_initial.columns
+)
+```
 
 ### Non-Native Dependencies
 - numpy
