@@ -5,7 +5,7 @@ from .core.transforms import (
     _rename_and_tag_core,
     _feature_stats_core,
     _impute_core,
-    _encode_and_scale_core
+    _encode_core
 )
 
 
@@ -206,7 +206,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
     ...     'B': ['x', 'y', 'z', 'w']
     ... })
     >>> tadprep.feature_stats(df)  # Show detailed statistics with formatting
-    >>> tadprep.feature_stats(df, verbose=False)  # Show just the key statistics
+    >>> tadprep.feature_stats(df, verbose=False)  # Show only key feature-level statistics
     >>> tadprep.feature_stats(df, summary_stats=True)  # Include feature type summaries
     """
     # Ensure input is a Pandas dataframe
@@ -256,6 +256,44 @@ def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
         raise ValueError('Input DataFrame is empty')
 
     return _impute_core(df, verbose=verbose, skip_warnings=skip_warnings)
+
+
+def encode(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
+    """
+    Interactively encode categorical features in the DataFrame using simple encoding methods.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing missing values to impute
+    verbose : bool, default = True
+        Controls whether detailed guidance and explanations are displayed
+    skip_warnings : bool, default = False
+        Controls whether all best-practice-related warnings about encoding are skipped
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame with encoded categorical features
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({'A': [1, None, 3], 'B': ['x', 'y', None]})
+    >>> df_encoded = tadprep.encode(df)  # Full guidance and warnings
+    >>> df_quiet = tadprep.encode(df, verbose=False)  # Minimize output
+    >>> df_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _encode_core(df, verbose=verbose, skip_warnings=skip_warnings)
 
 
 # TODO: Split into separate encode and scale methods
