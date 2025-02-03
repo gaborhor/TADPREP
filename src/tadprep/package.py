@@ -6,45 +6,9 @@ from .core.transforms import (
     _feature_stats_core,
     _impute_core,
     _encode_core,
-    _scale_core
+    _scale_core,
+    _prep_df_core
 )
-
-
-def prep_df(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Run the full TADPREPS pipeline on an existing DataFrame.
-
-    This function provides the complete TADPREPS interactive experience without file I/O
-    or logging, allowing users to prepare their data through a series of guided steps.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The DataFrame to be prepared
-
-    Returns
-    -------
-    pandas.DataFrame
-        The prepared DataFrame after all user-selected transformations
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from tadpreps import prep_df
-    >>> df_raw = pd.DataFrame(...)
-    >>> df_prepared = prep_df(df_raw)
-    """
-    # Input validation
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError('Input must be a pandas DataFrame')
-
-    df = reshape(df)
-    df = rename_and_tag(df)
-    cat_cols, ord_cols, num_cols = feature_stats(df)
-    df = impute(df)
-    df = encode_and_scale(df, cat_cols, ord_cols, num_cols)
-
-    return df
 
 
 def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
@@ -383,3 +347,92 @@ def scale(
         verbose=verbose,
         skip_warnings=skip_warnings
     )
+
+
+def prep_df(
+        df: pd.DataFrame,
+        features_to_encode: list[str] | None = None,
+        features_to_scale: list[str] | None = None
+) -> pd.DataFrame:
+    """
+    Run the complete TADPREP pipeline with user control over each step.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to process using the TADPREP pipeline
+    features_to_encode : list[str] | None, default=None
+        Optional pre-defined list of features to encode. If None, the function facilitates user selection.
+    features_to_scale : list[str] | None, default=None
+        Optional pre-defined list of features to scale. If None, the function facilitates user selection.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The processed DataFrame after running the specified pipeline steps
+
+    Notes
+    -----
+    - At each step, users can:
+      - Enter 'Y' to run a given step
+      - Enter 'N' to skip a given step
+      - Enter 'Q' to quit the pipeline altogether
+    - For boolean parameters:
+      - Press Enter to accept the default value
+      - Enter '1' to set the parameter to True
+      - Enter '2' to set the parameter to False
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, None, 4],
+    ...     'B': ['x', 'y', 'z', 'w']
+    ... })
+    >>> processed_df = tadprep.prep_df(df)  # Run pipeline with interactive feature selection
+    >>> processed_df = tadprep.prep_df(df, features_to_encode=['B'])  # Run pipeline with pre-defined features
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate features_to_encode if provided
+    if features_to_encode is not None:
+        if not isinstance(features_to_encode, list):
+            raise TypeError('The "features_to_encode" object must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_encode):
+            raise TypeError('All feature names in features_to_encode must be strings')
+
+        if not all(col in df.columns for col in features_to_encode):
+            missing = [col for col in features_to_encode if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    # Validate features_to_scale if provided
+    if features_to_scale is not None:
+        if not isinstance(features_to_scale, list):
+            raise TypeError('The "features_to_scale" object must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_scale):
+            raise TypeError('All feature names in features_to_scale must be strings')
+
+        if not all(col in df.columns for col in features_to_scale):
+            missing = [col for col in features_to_scale if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    print('Welcome to the TADPREP pipeline!')
+    print('At each step you can:')
+    print("- Enter 'Y' to execute the step")
+    print("- Enter 'N' to skip the step")
+    print("- Enter 'Q' to quit the pipeline")
+    print('\nFor boolean parameters:')
+    print('- Press Enter to accept the default value')
+    print("- Enter '1' to set the parameter to True")
+    print("- Enter '2' to set the parameter to False")
+
+    return _prep_df_core(df, features_to_encode=features_to_encode, features_to_scale=features_to_scale)
