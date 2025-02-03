@@ -16,6 +16,6 @@ __all__ = [
     '_rename_and_tag_core',
     '_feature_stats_core',
     '_impute_core',
-    '_encode__core',
+    '_encode_core',
     '_scale_core'
 ]
