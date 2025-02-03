@@ -172,7 +172,7 @@ For example, if you need to use advanced imputation techniques:
 import tadprep as tp
 df_initial = tp.prep_df(df)  # Handle basic cleaning and preparation
 
-# 2. Export and apply custom imputation
+# 2. Import and apply custom imputation
 from sklearn.impute import KNNImputer
 imputer = KNNImputer(n_neighbors=5)
 df_imputed = pd.DataFrame(
