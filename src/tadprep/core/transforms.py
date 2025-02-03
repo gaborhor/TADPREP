@@ -1099,7 +1099,7 @@ def _prep_df_core(
             print(f'\nSet {param_name} parameter:')
             print(f'1. True (default: {default})')
             print('2. False')
-            choice = input('Enter choice (1/2) or press Enter for default: ').strip()
+            choice = input('Enter choice (1/2) or press Enter to accept default setting: ').strip()
 
             # Handle the three valid input cases
             if not choice:  # User accepts default
@@ -1135,7 +1135,7 @@ def _prep_df_core(
                 # Get and validate feature selection
                 while True:
                     selections = input(
-                        '\nEnter feature numbers (comma-separated) or press Enter for auto-detect: ').strip()
+                        '\nEnter feature numbers (comma-separated) or press Enter to auto-detect: ').strip()
 
                     if not selections:  # User wants auto-detect
                         return None
@@ -1195,7 +1195,7 @@ def _prep_df_core(
         return df
 
     # Step 5: Impute - handles missing value imputation
-    user_choice = input('\nRun imputation process? (Y/N/Q): ').lower()
+    user_choice = input('\nPerform imputation? (Y/N/Q): ').lower()
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
         skip_warnings = get_bool_param('skip_warnings', default=False)
