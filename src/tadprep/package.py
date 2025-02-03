@@ -5,7 +5,8 @@ from .core.transforms import (
     _rename_and_tag_core,
     _feature_stats_core,
     _impute_core,
-    _encode_core
+    _encode_core,
+    _scale_core
 )
 
 
@@ -258,17 +259,24 @@ def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
     return _impute_core(df, verbose=verbose, skip_warnings=skip_warnings)
 
 
-def encode(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
+def encode(
+    df: pd.DataFrame,
+    features_to_encode: list[str] | None = None,
+    verbose: bool = True,
+    skip_warnings: bool = False
+) -> pd.DataFrame:
     """
     Interactively encode categorical features in the DataFrame using simple encoding methods.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame containing missing values to impute
-    verbose : bool, default = True
+        The DataFrame containing features to encode
+    features_to_encode : list[str] | None, default=None
+        Optional list of features to encode - if None, function will help identify categorical features
+    verbose : bool, default=True
         Controls whether detailed guidance and explanations are displayed
-    skip_warnings : bool, default = False
+    skip_warnings : bool, default=False
         Controls whether all best-practice-related warnings about encoding are skipped
 
     Returns
@@ -280,8 +288,9 @@ def encode(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
     --------
     >>> import pandas as pd
     >>> import tadprep
-    >>> df = pd.DataFrame({'A': [1, None, 3], 'B': ['x', 'y', None]})
-    >>> df_encoded = tadprep.encode(df)  # Full guidance and warnings
+    >>> df = pd.DataFrame({'A': ['cat', 'dog', 'horse'], 'B': [1, 2, 3]})
+    >>> df_encoded = tadprep.encode(df)  # Let function identify categorical features
+    >>> df_specific = tadprep.encode(df, features_to_encode=['A'])  # Specify features to encode
     >>> df_quiet = tadprep.encode(df, verbose=False)  # Minimize output
     >>> df_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
     """
@@ -293,32 +302,84 @@ def encode(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    return _encode_core(df, verbose=verbose, skip_warnings=skip_warnings)
+    # Validate features_to_encode if provided by user
+    if features_to_encode is not None:
+        if not isinstance(features_to_encode, list):
+            raise TypeError('features_to_encode must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_encode):
+            raise TypeError('All feature names in features_to_encode must be strings')
+
+        if not all(col in df.columns for col in features_to_encode):
+            missing = [col for col in features_to_encode if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    return _encode_core(
+        df,
+        features_to_encode=features_to_encode,
+        verbose=verbose,
+        skip_warnings=skip_warnings
+    )
 
 
-# TODO: Split into separate encode and scale methods
-def encode_and_scale(df: pd.DataFrame, cat_cols: list[str],
-                     ord_cols: list[str], num_cols: list[str]) -> pd.DataFrame:
+def scale(
+    df: pd.DataFrame,
+    features_to_scale: list[str] | None = None,
+    verbose: bool = True,
+    skip_warnings: bool = False
+) -> pd.DataFrame:
     """
-    Interactively encode categorical features and scale numerical features.
+    Interactively scale numerical features in the DataFrame using standard scaling methods.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame to encode and scale
-    cat_cols : list[str]
-        List of categorical column names
-    ord_cols : list[str]
-        List of ordinal column names
-    num_cols : list[str]
-        List of numerical column names
+        The DataFrame containing features to scale
+    features_to_scale : list[str] | None, default=None
+        Optional list of features to scale - if None, function will help identify numerical features.
+    verbose : bool, default=True
+        Controls whether detailed guidance and explanations are displayed
+    skip_warnings : bool, default=False
+        Controls whether all best-practice-related warnings about scaling are skipped
 
     Returns
     -------
     pandas.DataFrame
-        The DataFrame with encoded and scaled features
+        The DataFrame with scaled numerical features
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep
+    >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': ['x', 'y', 'z']})
+    >>> df_scaled = tadprep.scale(df)  # Let function identify numerical features
+    >>> df_specific = tadprep.scale(df, features_to_scale=['A'])  # Specify features to scale
+    >>> df_quiet = tadprep.scale(df, verbose=False)  # Minimize output
+    >>> df_nowarn = tadprep.scale(df, skip_warnings=True)  # Skip best-practice warnings
     """
+    # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Input must be a pandas DataFrame')
 
-    return _encode_and_scale_core(df, cat_cols, ord_cols, num_cols)
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate features_to_scale if provided
+    if features_to_scale is not None:
+        if not isinstance(features_to_scale, list):
+            raise TypeError('features_to_scale must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_scale):
+            raise TypeError('All feature names in features_to_scale must be strings')
+
+        if not all(col in df.columns for col in features_to_scale):
+            missing = [col for col in features_to_scale if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    return _scale_core(
+        df,
+        features_to_scale=features_to_scale,
+        verbose=verbose,
+        skip_warnings=skip_warnings
+    )
