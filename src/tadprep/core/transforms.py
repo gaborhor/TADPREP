@@ -141,7 +141,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     if desired by the user.
 
     Args:
-        df (pd.DataFrame): Input DataFrame to reshape
+        df (pd.DataFrame): Input DataFrame to reshape.
         verbose (bool): Whether to print detailed information about operations. Defaults to True.
         tag_features (bool): Whether to activate the feature-tagging process. Defaults to False.
 
@@ -640,55 +640,230 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     return df  # Return dataframe with imputed values
 
 
-# TODO: This helper function should get folded into both the impute and encode functions
-def handle_numeric_cats(df: pd.DataFrame, init_num_cols: list[str]) -> tuple[list[str], list[str]]:
+def _encode_core(
+        df: pd.DataFrame,
+        features_to_encode: list[str] | None = None,
+        verbose: bool = True,
+        skip_warnings: bool = False
+) -> pd.DataFrame:
     """
-    This internal helper function identifies numerical features that might actually be categorical in function.
-    If such a feature is identified as categorical, the function converts its values to strings in-place.
-    It returns two lists: one of confirmed numerical columns and another for newly-identified categorical columns.
+    Core function to encode categorical features using one-hot or dummy encoding, as specified by user.
+    The function also looks for false-numeric features (e.g. 1/0 representations of 'Yes'/'No') and asks if they
+    should be treated as categorical and therefore be candidates for encoding.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing features to encode.
+    features_to_encode : list[str] | None, default=None
+        Optional list of features to encode. If None, function will help the user identify categorical features.
+    verbose : bool, default=True
+        Whether to display detailed guidance and explanations.
+    skip_warnings : bool, default=False
+        Whether to skip all best-practice-related warnings about null values and cardinality issues.
+
+    Returns
+    -------
+    pd.DataFrame: DataFrame with encoded values as specified by user. Original features are dropped after encoding.
     """
-    # Instantiate empty lists to hold the features after parsing
-    true_num_cols = []
-    true_cat_cols = []
+    # If no features are specified in the to_encode list, identify potential categorical features
+    if features_to_encode is None:
+        # Identify obvious categorical features (i.e. those which are object or categorical in data-type)
+        cat_cols = [column for column in df.columns if
+                    pd.api.types.is_object_dtype(df[column]) or
+                    isinstance(df[column].dtype, pd.CategoricalDtype)]
 
-    for column in init_num_cols:  # For each feature that was initially identified as numeric
-        unique_vals = sorted(df[column].unique())  # Calculate number of unique values
-        if (len(unique_vals) <= 5 and  # If that value is small
-                all(float(x).is_integer() for x in unique_vals if pd.notna(x))):  # And all values are integers
+        # Check for numeric features which might actually be categorical in function/role
+        numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
 
-            print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
-            print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
-                  'Yes/No values.')
+        for column in numeric_cols:
+            unique_vals = sorted(df[column].dropna().unique())  # Get sorted unique values excluding nulls
 
-            user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')  # Ask user to choose
-            if user_cat.lower() == 'y':
-                df[column] = df[column].astype(str)  # Cast the values to strings in-place
-                true_cat_cols.append(column)  # Add the identified feature to the true_cat_cols list
-                print(f'Converted numerical feature "{column}" to categorical type.')  # Log the choice
-                print('-' * 50)  # Visual separator
+            # We suspect that any all-integer column with five or fewer unique values is actually categorical
+            if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
 
-            # Otherwise, if user says no, treat the feature as truly numeric
+                # Ask user to assess and reply
+                if verbose:
+                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                    print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                          'Yes/No values.')
+
+                user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')
+
+                if user_cat.lower() == 'y':  # If the user says yes
+                    df[column] = df[column].astype(str)  # Convert to string type for encoding
+                    cat_cols.append(column)  # Add that feature to list of categorical features
+                    if verbose:
+                        print(f'Converted numerical feature "{column}" to categorical type.')
+                        print(f'"{column}" is now a candidate for encoding.')
+                        print('-' * 50)
+
+        final_cat_cols = cat_cols
+
+    else:
+        final_cat_cols = features_to_encode
+
+    # Validate that all specified features exist in the dataframe
+    missing_cols = [column for column in final_cat_cols if column not in df.columns]
+    if missing_cols:
+        raise ValueError(f'Features not found in dataframe: {missing_cols}')
+
+    if not final_cat_cols:
+        if verbose:
+            print('No features were identified as candidates for potential encoding.')
+        print('Skipping encoding. Dataset was not modified.')
+        return df
+
+    # Print verbose reminder about not encoding target features
+    if features_to_encode is None and verbose:
+        print('\nREMINDER: Target features (prediction targets) should not be encoded.')
+        print('If any of the identified features are targets, do not encode them.')
+        print('-' * 50)
+
+    # Instantiate empty lists for encoded data and tracking
+    encoded_dfs = []  # Will hold encoded DataFrames for each feature
+    columns_to_drop = []  # Will track original features to be dropped after encoding
+    encoded_features = []  # Will track features and their encoding methods for reporting
+
+    # Offer explanation of encoding methods if in verbose mode
+    if verbose:
+        user_encode_refresh = input('Would you like to see an explanation of encoding methods? (Y/N): ')
+        if user_encode_refresh.lower() == 'y':
+            print('\nOverview of One-Hot vs. Dummy Encoding:'
+                  '\nOne-Hot Encoding: '
+                  '\n- Creates a new binary column for every unique category.'
+                  '\n- No information is lost, which preserves interpretability, but more features are created.'
+                  '\n- This method is preferred for non-linear models like decision trees.'
+                  '\n'
+                  '\nDummy Encoding:'
+                  '\n- Creates n-1 binary columns given n categories in the feature.'
+                  '\n- One category becomes the reference class, and is represented by all zeros.'
+                  '\n- Dummy encoding is preferred for linear models, as it avoids perfect multi-collinearity.'
+                  '\n- This method is more computationally- and space-efficient, but is less interpretable.')
+
+    # Process each feature in our list
+    for column in final_cat_cols:
+        if verbose:
+            print(f'\nProcessing feature: "{column}"')
+
+        # Check for nulls if warnings aren't suppressed
+        null_count = df[column].isnull().sum()
+        if null_count > 0 and not skip_warnings:
+            # Check to see if user wants to proceed
+            print(f'Warning: "{column}" contains {null_count} null values.')
+            if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
+                continue
+
+        # Perform cardinality checks if warnings aren't suppressed
+        unique_count = df[column].nunique()
+        if not skip_warnings:
+            # Check for high cardinality
+            if unique_count > 20:
+                print(f'Warning: "{column}" has high cardinality ({unique_count} unique values)')
+                if verbose:
+                    print('Consider using dimensionality reduction techniques instead of encoding this feature.')
+                    print('Encoding high-cardinality features can lead to issues with the curse of dimensionality.')
+                # Check to see if user wants to proceed
+                if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
+                    continue
+
+            # Skip constant features (those with only one unique value)
+            elif unique_count <= 1:
+                print(f'Skipping encoding for "{column}".')
+                if verbose:
+                    print(f'"{column}" has only one unique value and thus provides no meaningful information.')
+                continue
+
+            # Check for low-frequency categories
+            value_counts = df[column].value_counts()
+            low_freq_cats = value_counts[value_counts < 10]  # Categories with fewer than 10 instances
+            if not low_freq_cats.empty:
+                if verbose:
+                    print(f'\nWarning: Found {len(low_freq_cats)} categories with fewer than 10 instances:')
+                    print(low_freq_cats)
+                print('Consider grouping rare categories before encoding.')
+                if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
+                    continue
+
+        if verbose:
+            # Show current value distribution
+            print(f'\nCurrent values in "{column}":')
+            print(df[column].value_counts())
+
+            # Offer distribution plot
+            if input('\nWould you like to see a plot of the value distribution? (Y/N): ').lower() == 'y':
+                try:
+                    plt.figure(figsize=(12, 8))
+                    value_counts = df[column].value_counts()
+                    plt.bar(range(len(value_counts)), value_counts.values)
+                    plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
+                    plt.title(f'Distribution of {column}')
+                    plt.xlabel(column)
+                    plt.ylabel('Count')
+                    plt.tight_layout()
+                    plt.show()
+                    plt.close()  # Explicitly close the figure
+
+                # Catch plotting errors
+                except Exception as exc:
+                    print(f'Error creating plot: {str(exc)}')
+                    if plt.get_fignums():  # If any figures are open
+                        plt.close('all')  # Close all figures
+
+        if verbose:
+            # Fetch encoding method preference from user
+            print('\nEncoding methods:')
+
+        # Show encoding options (needed regardless of verbosity)
+        print('1. One-Hot Encoding (new column for each category)')
+        print('2. Dummy Encoding (n-1 columns, drops first category)')
+
+        while True:
+            method = input('Select encoding method (1 or 2): ')
+            if method in ['1', '2']:
+                break
+            print('Invalid choice. Please enter 1 or 2.')
+
+        try:
+            # Apply selected encoding method
+            if method == '1':
+                # One-hot encoding creates a column for every category
+                encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_')
+                encoded_features.append(f'{column} (One-Hot)')
+
             else:
-                true_num_cols.append(column)
+                # Dummy encoding creates n-1 columns
+                encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_', drop_first=True)
+                encoded_features.append(f'{column} (Dummy)')
 
-        # If the feature fails the checks, treat the feature as truly numeric
-        else:
-            true_num_cols.append(column)
+            # Append encoded df and add feature to list of features to drop from the df
+            encoded_dfs.append(encoded)
+            columns_to_drop.append(column)
 
-    return true_num_cols, true_cat_cols  # Return the lists of true numerical and identified categorical features
+            # Note successful encoding action
+            if verbose:
+                print(f'Successfully encoded "{column}".')
+
+        # Catch all other errors
+        except Exception as exc:
+            print(f'Error encoding feature "{column}": {str(exc)}')
+            continue
+
+    # Apply all encodings at once if any were successful
+    if encoded_dfs:
+        df = df.drop(columns=columns_to_drop)  # Remove original columns
+        df = pd.concat([df] + encoded_dfs, axis=1)  # Add encoded columns
+
+        # Print summary of encoding if in verbose mode
+        if verbose:
+            print('\nEncoding summary:')
+            for feature in encoded_features:
+                print(f'- {feature}')
+
+    # Return dataframe with encoded values
+    return df
 
 
-# TODO: Major refactor is needed
-# TODO: This needs to be broken out into separate encode and scale functions, which will drive two separate methods
-# TODO: We should probably not ask the user for lists-by-type but rather a list of the features they want to encode
-# TODO: The encoding function needs to also use handle_numeric_cats to make sure "actually categorical numeric features" are presented as encoding candidates
-# TODO: Rather than make the user categorize every feature (if they don't pass a list of features to encode), we should use datatypes to pre-fill the lists, ask user if the lists of feature-by-type are correct, and if not, ask which features need to have their datatypes changed
-# TODO: We also need a line in the docstring and a 'verbose' print statement which reminds the user that target features should not be encoded
-# TODO: There are a lot of explanatory print statements and offers of explanation which need to get housed inside verbose conditionals
-# TODO: We need a skip_warnings boolean parameter which doesn't show the print statements about null values, low frequency categories, high cardinality, etc.
-# TODO: We actually can't have unclassified features, so the 'skip this feature' option in the categorization process needs to go
-# TODO: Additionally, we need the ability to get some simple descriptives printed for each feature during categorization in case the user doesn't know anything about the feature
-# TODO: We also need a line in the docstring and a 'verbose' print statement which reminds the user that the original features are dropped once they've been encoded
 def _encode_and_scale_core(
         df: pd.DataFrame,
         cat_features: list[str] | None = None,
