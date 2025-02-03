@@ -793,7 +793,7 @@ def _encode_core(
             # Offer distribution plot
             if input('\nWould you like to see a plot of the value distribution? (Y/N): ').lower() == 'y':
                 try:
-                    plt.figure(figsize=(12, 8))
+                    plt.figure(figsize=(12, 10))
                     value_counts = df[column].value_counts()
                     plt.bar(range(len(value_counts)), value_counts.values)
                     plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
@@ -860,629 +860,222 @@ def _encode_core(
             for feature in encoded_features:
                 print(f'- {feature}')
 
-    # Return dataframe with encoded values
+    # Return the modified dataframe with encoded values
     return df
 
 
-def _encode_and_scale_core(
+def _scale_core(
         df: pd.DataFrame,
-        cat_features: list[str] | None = None,
-        ord_features: list[str] | None = None,
-        num_features: list[str] | None = None
+        features_to_scale: list[str] | None = None,
+        verbose: bool = True,
+        skip_warnings: bool = False
 ) -> pd.DataFrame:
     """
-    This method allows the user to use appropriate encoding methods on the categorical and ordinal features in
-    the dataset. It also allows the user to apply scaling methods to the numerical features.
-    Lists of features by datatype may be directly passed to the method by the user. If no lists of features by type
-    are passed to the method, the method will work interactively with the user to define these lists.
-    Note that the actual 'engine' of this method is the set of three helper functions
-    defined within its scope.
-    Args:
-        df (pd.Dataframe): Input dataframe.
-        cat_features (list[str], optional): List of categorical column names for encoding
-        ord_features (list[str], optional): List of ordinal column names
-        num_features (list[str], optional): List of numerical column names for scaling
-    Returns:
-        df (pd.DataFrame): A dataframe with encoded and scaled features.
+    Core function to scale numerical features using standard, robust, or minmax scaling methods.
+    The function also identifies false-numeric features (e.g. categorical data stored as numbers) and asks if they
+    should be removed from scaling consideration.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing features to scale.
+    features_to_scale : list[str] | None, default=None
+        Optional list of features to scale. If None, function will identify numerical features.
+    verbose : bool, default=True
+        Whether to display detailed guidance and explanations.
+    skip_warnings : bool, default=False
+        Whether to skip all best-practice-related warnings about nulls, outliers, etc.
+
+    Returns
+    -------
+    pd.DataFrame: DataFrame with scaled values as specified by user.
     """
-    # Fetch all features which have been type-specified
-    specified_features = set()
-    if cat_features:
-        specified_features.update(cat_features)
-    if ord_features:
-        specified_features.update(ord_features)
-    if num_features:
-        specified_features.update(num_features)
+    # If no features are specified in the to_scale list, identify potential numerical features
+    if features_to_scale is None:
+        # Identify all numeric features
+        numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
 
-    # Validate specified features exist in dataframe
-    if not all(col in df.columns for col in specified_features):
-        missing = [col for col in specified_features if col not in df.columns]
-        raise ValueError(f'Features not found in dataframe: {missing}')
+        # Check for numeric features which might actually be categorical in function/role
+        true_numeric = []
+        for column in numeric_cols:
+            unique_vals = sorted(df[column].dropna().unique())  # Get sorted unique values excluding nulls
 
-    # Initialize empty lists if None was provided
-    cat_features = cat_features or []
-    ord_features = ord_features or []
-    num_features = num_features or []
+            # We suspect that any all-integer column with five or fewer unique values is actually categorical
+            if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
+                if verbose:
+                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                    print('ALERT: This could be a categorical feature stored as numbers, e.g. a 1/0 representation of '
+                          'Yes/No values.')
 
-    # Find features that haven't been categorized
-    uncat_features = [col for col in df.columns if col not in specified_features]
+                # Ask user to assess and reply
+                user_cat = input(f'Should "{column}" be excluded from scaling? (Y/N): ')
+                if user_cat.lower() != 'y':  # If user says no
+                    true_numeric.append(column)  # Treat the feature as truly numeric
 
-    # If any features remain uncategorized, ask user about those specific features
-    if uncat_features:
-        print('Some features have not been categorized. Please identify their types:')
+                elif verbose:
+                    print(f'Excluding feature "{column}" from scaling consideration.')
+                    print('-' * 50)
+            else:
+                true_numeric.append(column)
 
-        for col in uncat_features:
-            while True:
-                print(f'\nFeature: {col}')
-                print(f'Current dtype: {df[col].dtype}')
-                print('1. Categorical (Unordered categories)')
-                print('2. Ordinal (Ordered categories, e.g. a Likert scale)')
-                print('3. Numerical')
-                print('4. Skip this feature')
+        final_numeric_cols = true_numeric
 
-                user_choice = input('Enter choice (1-4): ').strip()
+    # If the user passes a list of features to be scaled, just use the list
+    else:
+        final_numeric_cols = features_to_scale
 
-                if user_choice == '1':
-                    cat_features.append(col)
-                    break
-                elif user_choice == '2':
-                    ord_features.append(col)
-                    break
-                elif user_choice == '3':
-                    num_features.append(col)
-                    break
-                elif user_choice == '4':
-                    break
-                else:
-                    print('Invalid choice. Please enter 1, 2, 3, or 4.')
+    # Validate that all specified features exist in the dataframe
+    missing_cols = [column for column in final_numeric_cols if column not in df.columns]
+    if missing_cols:
+        raise ValueError(f'Features not found in dataframe: {missing_cols}')
 
-    def handle_cats():
-        """This internal helper function facilitates the encoding of categorical features, if desired by the user."""
-        nonlocal df  # Specify that this object comes from the outer scope
+    if not final_numeric_cols:
+        if verbose:
+            print('No features were identified as candidates for scaling.')
+        print('Skipping scaling. Dataset was not modified.')
+        return df
 
-        if not cat_features:  # If the list of categorical columns is empty
-            print('No categorical features to process. Skipping encoding.')  # Note this
-            return  # And exit the process
+    # Print verbose reminder about not scaling target features
+    if features_to_scale is None and verbose:
+        print('\nREMINDER: Target features (prediction targets) should not be scaled.')
+        print('If any of the identified features are targets, do not scale them.')
+        print('-' * 50)
 
-        print(f'The dataset contains {len(cat_features)} categorical feature(s).')  # Print # of categorical features
+    # Track which features get scaled for reporting
+    scaled_features = []
 
-        # Notify user that TADPREP only supports common encoding methods
-        print('\nNOTE: TADPREP only supports One-Hot and Dummy encoding.')
-        print('If you wish to use other, more complex encoding methods, skip this step and write your own code.')
-
-        # Ask if user wants to proceed
-        user_encode = input('\nDo you want to Dummy or One-Hot encode any of the categorical features? (Y/N): ')
-        if user_encode.lower() != 'y':  # If not
-            print('Skipping encoding of categorical features.')  # Log that fact
-            return  # And exit the process
-
-        # Ask if user wants a refresher on One-Hot vs. Dummy encoding
-        user_encode_refresh = input('Do you want to see a brief refresher on One-Hot vs. Dummy encoding? (Y/N): ')
-        if user_encode_refresh.lower() == 'y':  # If so, display refresher
-            print('\nOverview of One-Hot vs. Dummy Encoding:'
-                  '\nOne-Hot Encoding: '
-                  '\n- Creates a new binary column for every unique category.'
-                  '\n- No information is lost, which preserves interpretability, but more features are created.'
-                  '\n- This method is preferred for non-linear models like decision trees.'
+    # Offer explanation of scaling methods if in verbose mode
+    if verbose:
+        user_scale_refresh = input('Would you like to see an explanation of scaling methods? (Y/N): ')
+        if user_scale_refresh.lower() == 'y':
+            print('\nOverview of the Standard, Robust, and MinMax Scalers:'
+                  '\nStandard Scaler (Z-score normalization):'
+                  '\n- Transforms features to have zero mean and unit variance.'
+                  '\n- Best choice for comparing measurements in different units.'
+                  '\n- Good for methods that assume normally distributed data.'
+                  '\n- Not ideal when data has many outliers.'
                   '\n'
-                  '\nDummy Encoding:'
-                  '\n- Creates n-1 binary columns given n categories in the feature.'
-                  '\n- One category becomes the reference class, and is represented by all zeros.'
-                  '\n- Dummy encoding is preferred for linear models, as it avoids perfect multi-collinearity.'
-                  '\n- This method is more computationally- and space-efficient, but is less interpretable.')
+                  '\nRobust Scaler (Uses median and IQR):'
+                  '\n- Scales using statistics that are resistant to outliers.'
+                  '\n- Great for data where outliers are meaningful.'
+                  '\n- Useful for survey data with extreme ratings.'
+                  '\n- Good when outliers contain important information.'
+                  '\n'
+                  '\nMinMax Scaler (scales to 0-1 range):'
+                  '\n- Scales all values to a fixed range between 0 and 1.'
+                  '\n- Good for neural networks that expect bounded inputs.'
+                  '\n- Works well with sparse data.'
+                  '\n- Preserves zero values in sparse data.')
 
-        encoded_cols = []  # Instantiate an empty list to hold the encoded columns for final reporting
-        encoded_dfs = []  # Instantiate an empty list to collect encoded DataFrames
-        columns_to_drop = []  # Instantiate an empty list to collect the original columns to drop
-
-        # Begin encoding process at the feature level
-        for column in cat_features:
+    # Process each feature in the list
+    for column in final_numeric_cols:
+        if verbose:
             print(f'\nProcessing feature: "{column}"')
 
-            # Check if user wants to encode this feature
-            user_encode_feature = input(f'Do you want to encode "{column}"? (Y/N): ')
-            if user_encode_feature.lower() != 'y':  # If not
-                print(f'Skipping encoding for feature: "{column}"')  # Log that choice
-                continue  # And move to the next feature
+        # Check for nulls if warnings aren't suppressed
+        null_count = df[column].isnull().sum()
+        if null_count > 0 and not skip_warnings:
+            print(f'Warning: "{column}" contains {null_count} null values.')
+            print('Scaling with null values present may produce unexpected results.')
+            if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
+                continue
 
-            # Show unique value count
-            unique_cnt = df[column].nunique()
-            print(f'Feature "{column}" has {unique_cnt} unique values.')
+        # Check for infinite values if warnings aren't suppressed
+        inf_count = np.isinf(df[column]).sum()
+        if inf_count > 0 and not skip_warnings:
+            print(f'Warning: "{column}" contains {inf_count} infinite values.')
+            print('Scaling with infinite values present may produce unexpected results.')
+            if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
+                continue
 
-            # Check for nulls before proceeding
-            null_cnt = df[column].isnull().sum()
-            if null_cnt > 0:  # If nulls are present
-                # Print a warning
-                print(f'Feature "{column}" contains {null_cnt} null values. Encoding may produce unexpected results.')
-                # Ask if the user wants to proceed anyway
-                user_proceed = input('Do you want to proceed with encoding this feature? (Y/N): ')
-                if user_proceed.lower() != 'y':  # If not
-                    print(f'Skipping encoding for feature: "{column}"')  # Log the choice
-                    continue  # Move on to the next feature
+        # Check for constant features
+        if df[column].nunique() <= 1:
+            print(f'Skipping "{column}" - feature has no variance.')
+            continue
 
-            # Check for single-value features and log a warning if this feature is single-value
-            if unique_cnt == 1:
-                print(f'Feature "{column}" has only one unique value. Consider dropping this feature.')
-                continue  # Move on to the next feature
+        if not skip_warnings:
+            # Check for extreme skewness
+            skewness = df[column].skew()
+            if abs(skewness) > 2:  # Common threshold for "extreme" skewness
+                print(f'Warning: "{column}" is highly skewed (skewness={skewness:.2f}).')
+                print('Consider applying a transformation before scaling.')
+                if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
+                    continue
 
-            # Check for low-frequency categories
-            value_counts = df[column].value_counts()
-            low_freq_cats = value_counts[value_counts < 10]  # Using 10 as minimum category size
-            if not low_freq_cats.empty:
-                print(f'\nWARNING: Found {len(low_freq_cats)} categories with fewer than 10 instances:')
-                print(low_freq_cats)
-                print('Consider grouping rare categories before encoding.')
+        if verbose:
+            # Show current distribution information
+            print(f'\nCurrent statistics for "{column}":')
+            print(df[column].describe())
 
-                user_proceed = input('Do you want to proceed with encoding despite the presence of '
-                                     'low-frequency categories? (Y/N): ')
-                if user_proceed.lower() != 'y':
-                    print(f'Skipping encoding for feature "{column}" due to presence of low-frequency categories.')
-                    continue  # Move to next feature
-
-            # Display warning if the unique value count is too high
-            if unique_cnt > 20:
-                print(f'\nWARNING: Feature "{column}" contains more than 20 unique values.')
-                print('Consider using remapping or other dimensionality reduction techniques instead of encoding.')
-                print('Encoding high-cardinality features can create the curse of dimensionality.')
-                print('It can also result in having overly-sparse data in your feature set.')
-
-                # Ask if user wants to proceed despite this warning
-                user_proceed = input(f'\nDo you still want to encode "{column}" despite this warning? (Y/N): ')
-                if user_proceed.lower() != 'y':  # If not
-                    print(f'Skipping encoding for high-cardinality feature "{column}".')  # Note the choice
-                    continue  # And move to the next feature
-
-            # Display (do not log) unique values
-            print(f'\nUnique values (alphabetized) for {column}:')
-            unique_vals = df[column].unique()
-
-            # Filter out None and NaN values for sorting
-            non_null_vals = [value for value in unique_vals if pd.notna(value)]
-            sorted_vals = sorted(non_null_vals)
-
-            # Add None/NaN values back if they existed in the original data
-            if df[column].isnull().any():
-                sorted_vals.append(None)
-
-            for value in sorted_vals:
-                if pd.isna(value):
-                    print(f'- Missing/NaN')
-                else:
-                    print(f'- {value}')
-
-            # Display (do not log) value counts
-            print(f'\nValue counts for {column}:')
-            print(df[column].value_counts())
-
-            # Ask if user wants to see a distribution plot
-            user_show_plot = input('\nWould you like to see a plot of the feature distribution? (Y/N): ')
-            if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
-                # Attempt plot creation
+            # Offer distribution plot
+            if input('\nWould you like to see a distribution plot? (Y/N): ').lower() == 'y':
                 try:
-                    plt.figure(figsize=(12, 8))
-                    value_counts = df[column].value_counts()
-                    plt.bar(range(len(value_counts)), value_counts.values)
-                    plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
+                    plt.figure(figsize=(12, 10))
+                    sns.histplot(data=df, x=column)
                     plt.title(f'Distribution of {column}')
                     plt.xlabel(column)
                     plt.ylabel('Count')
                     plt.tight_layout()
                     plt.show()
-                    plt.close()  # Explicitly close the figure
+                    plt.close()
 
                 # Catch plotting errors
-                except Exception as plot_exc:
-                    print(f'Error creating plot: {plot_exc}')
-                    print('Unable to display plot. Continuing with analysis.')
-                    if plt.get_fignums():  # If any figures are open
-                        plt.close('all')  # Close all figures
-
-            # Ask user to select encoding method
-            while True:  # We can justify 'while True' because we have a cancel-out input option
-                try:
-                    print(f'\nSelect encoding method for feature {column}:')
-                    print('1. One-Hot Encoding')
-                    print('2. Dummy Encoding')
-                    print('3. Skip encoding for this feature')
-                    enc_method = input('Enter your choice (1, 2, or 3): ')
-
-                    if enc_method == '3':  # If user wants to skip
-                        print(f'Skipping encoding for feature {column}.')  # Note that choice
-                        break  # Exit the while loop
-
-                    elif enc_method in ['1', '2']:  # If a valid encoding choice is made
-
-                        if enc_method == '1':  # Perform one-hot encoding
-                            # Create binary columns for each unique value in the feature
-                            encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_')
-
-                            # Store encoded DataFrame for later use
-                            encoded_dfs.append(encoded)
-
-                            # Store original column name to allow dropping of all original columns at once
-                            columns_to_drop.append(column)
-
-                            # Track this column for reporting purposes
-                            encoded_cols.append(f'{column} (One-Hot)')
-
-                            # Note the action
-                            print(f'Applied one-hot encoding to feature {column}.')
-
-                        else:  # If enc_method is '2', perform dummy encoding
-                            # Create n-1 binary columns, dropping first category as reference
-                            encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_', drop_first=True)
-
-                            # Store encoded DataFrame for later use
-                            encoded_dfs.append(encoded)
-
-                            # Store original column name to drop all original columns at once later
-                            columns_to_drop.append(column)
-
-                            # Track this column for reporting purposes
-                            encoded_cols.append(f'{column} (Dummy)')
-
-                            # Note the action
-                            print(f'Applied dummy encoding to feature {column}.')
-
-                        break  # Exit the while loop
-
-                    else:  # Catch invalid input
-                        print('Invalid input. Please enter 1, 2, or 3.')
-                        continue  # Restart the while loop
-
-                # Catch other errors
                 except Exception as exc:
-                    print(f'Error during encoding of feature {column}: {exc}')
-                    print('An error occurred. Skipping encoding for this feature.')
-                    break  # Exit the while loop
+                    print(f'Error creating plot: {str(exc)}')
+                    if plt.get_fignums():
+                        plt.close('all')
 
-        # Perform single concatenation if any encodings were done
-        if encoded_dfs:
-            df = df.drop(columns=columns_to_drop)
-            df = pd.concat([df] + encoded_dfs, axis=1)
+        if verbose:
+            print('\nScaling methods:')
 
-        # After all features are processed, log a summary of encoding results
-        # If any features were encoded, log the encoded features
-        if encoded_cols:
-            print('-' * 50)  # Visual separator
-            print('The following features were encoded:')
-            for column in encoded_cols:
-                print(f'- {column}')
+        # Show scaling options (needed regardless of verbosity)
+        print('1. Standard Scaler (Z-score normalization)')
+        print('2. Robust Scaler (median and IQR based)')
+        print('3. MinMax Scaler (0-1 range)')
 
-        # If no features were encoded, log that fact
-        else:
-            print('No features were encoded.')
+        while True:
+            method = input('Select scaling method (1, 2, or 3): ')
+            if method in ['1', '2', '3']:
+                break
 
-    def handle_ords():
-        """This internal helper function facilitates the remapping of ordinal features, if desired by the user."""
-        nonlocal df  # Specify that this object comes from the outer scope
+            # Catch input errors
+            print('Invalid choice. Please enter 1, 2, or 3.')
 
-        if not ord_features:  # If no columns are tagged as ordinal
-            print('No ordinal features to process. Skipping remapping.')  # Note this
-            return  # And exit the process
+        try:
+            # Reshape data for scikit-learn
+            reshaped_data = df[column].values.reshape(-1, 1)
 
-        print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(ord_features)} ordinal feature(s).')
+            # Apply selected scaling method
+            if method == '1':
+                scaler = StandardScaler()
+                method_name = 'Standard'
 
-        # Create list to track which features get remapped for final reporting
-        remapped_cols = []
+            elif method == '2':
+                scaler = RobustScaler()
+                method_name = 'Robust'
 
-        # Create list of string-type ordinal features using Pandas' data-type methods
-        str_ords = [column for column in ord_features if not pd.api.types.is_numeric_dtype(df[column])]
+            else:
+                scaler = MinMaxScaler()
+                method_name = 'MinMax'
 
-        # If all ordinal features are already numerical, they don't need remapping
-        if not str_ords:  # If there are no string-type ordinal features
-            print('All ordinal features are already in a numerical format.')  # Note that fact
+            # Perform scaling
+            df[column] = scaler.fit_transform(reshaped_data)
+            scaled_features.append(f'{column} ({method_name})')
 
-            # Print (do not log) a notification/explanation for the user
-            print('\nNOTE: Ordinal features in numerical form do not need to be scaled.')
-            print('Scaling ordinal features distorts the meaningful distances between values.')
-            print('Skipping remapping of ordinal features.')  # Log the auto-skip for the entire process
-            return  # Return the unmodified data
+            # Notify user of successful scaling action
+            if verbose:
+                print(f'Successfully scaled "{column}" using {method_name} scaler.')
 
-        # If there are string-type ordinal features, ask if user wants to remap them with numerical values
-        print(f'{len(str_ords)} ordinal feature(s) contain non-numeric values.')
-        print('NOTE: Ordinal features should be expressed numerically to allow for proper analysis.')
-        user_remap = input('\nDo you want to consider remapping any string-type ordinal features with '
-                           'appropriate numerical values? (Y/N): ')
-        if user_remap.lower() != 'y':  # If not
-            print('Skipping numerical remapping of ordinal features.')  # Log the choice
-            return  # Return the unmodified data
+        # Catch all other scaling errors
+        except Exception as exc:
+            print(f'Error scaling feature "{column}": {str(exc)}')
+            continue
 
-        # Process each string-type ordinal feature
-        for column in str_ords:
-            print(f'\nProcessing string-type ordinal feature: "{column}"')
+    # Print summary of scaling if in verbose mode
+    if verbose and scaled_features:
+        print('\nScaling summary:')
+        for feature in scaled_features:
+            print(f'- {feature}')
 
-            # Ask if user wants to remap this specific feature
-            user_remap_feature = input(f'Do you want to remap "{column}" with numerical values? (Y/N): ')
-            if user_remap_feature.lower() != 'y':  # If not
-                print(f'Skipping remapping for feature: "{column}"')  # Note the choice
-                continue  # Move to next feature
-
-            # Check for nulls before proceeding
-            null_cnt = df[column].isnull().sum()
-            # If nulls are present, ask if user wants to proceed
-            if null_cnt > 0:
-                print(f'Feature "{column}" contains {null_cnt} null values.')
-                user_proceed = input('Do you still want to proceed with remapping this feature? (Y/N): ')
-                if user_proceed.lower() != 'y':  # If not
-                    print(f'Skipping remapping for feature: "{column}"')
-                    continue  # Move on to the next feature
-
-            # Validate unique values
-            unique_vals = sorted(df[column].unique())
-            if len(unique_vals) < 2:
-                print(f'Feature "{column}" has only 1 unique value. Skipping remapping.')
-                continue
-
-            # Display the feature's current unique values
-            print(f'\nCurrent unique values in "{column}" (alphabetized):')
-            for value in unique_vals:
-                print(f'- {value}')
-
-            while True:  # We can justify 'while True' because we have a cancel-out input option
-                try:
-                    print('\nProvide comma-separated numbers to represent the ordinal order of these values.')
-                    print('Example: For [High, Low, Medium], you might enter: 2,0,1')
-                    print('Or, for a Likert-type agreement scale [Agree, Disagree, Neither agree nor disagree], '
-                          'you might enter: 3,1,2')
-                    print('You may also enter "C" to cancel the remapping process for this feature.')
-
-                    user_remap_input = input('\nEnter your mapping values: ')
-
-                    # Check for user cancellation
-                    if user_remap_input.lower() == 'c':
-                        print(f'Cancelled remapping for feature: "{column}"')
-                        break
-
-                    # Convert user remapping input to a list of integers
-                    new_vals = [int(x.strip()) for x in user_remap_input.split(',')]
-
-                    # Validate that the user input length matches the number of categories
-                    if len(new_vals) != len(unique_vals):
-                        raise ValueError('Number of mapping values must match number of categories.')
-
-                    mapping = dict(zip(unique_vals, new_vals))  # Build a mapping dictionary
-
-                    # Display the proposed remapping
-                    print('\nProposed mapping:')
-                    for old_val, new_val in mapping.items():
-                        print(f'- {old_val} → {new_val}')
-
-                    # Ask for user confirmation
-                    user_confirm = input('\nDo you want to apply this mapping? (Y/N): ')
-                    if user_confirm.lower() == 'y':
-                        df[column] = df[column].map(mapping)  # Apply the mapping
-
-                        # Add the feature to the list of remapped features
-                        remapped_cols.append(column)
-
-                        # Note the remapping
-                        print(f'Successfully remapped ordinal feature: {column}')
-
-                        break  # Exit the while loop
-
-                    # Otherwise, restart the remapping attempt
-                    else:
-                        print('Remapping cancelled. Please try again.')
-                        continue
-
-                # Catch input errors
-                except ValueError as exc:
-                    print(f'Invalid input: {exc}')
-                    print('Please try again or enter "C" to cancel.')
-                    continue  # Restart the loop
-
-                # Catch all other errors
-                except Exception as exc:
-                    print(f'Error during remapping of feature {column}: {exc}')  # Log the error
-                    print('An error occurred. Skipping remapping for this feature.')
-                    break  # Exit the loop
-
-        # After all features are processed, log a summary of remapping results
-        # If any features were remapped, log the encoded features
-        if remapped_cols:
-            print('The following ordinal feature(s) were remapped to numerical values:')
-            for column in remapped_cols:
-                print(f'- {column}')
-
-        # If no features were remapped, log that fact
-        else:
-            print('No ordinal features were remapped.')
-
-    def handle_nums():
-        """This internal helper function facilitates the scaling of numerical features, if desired by the user."""
-        nonlocal df  # Specify that this object comes from the outer scope
-
-        if not num_features:  # If no columns are tagged as numerical
-            print('No numerical features to process. Skipping scaling.')  # Note this
-            return  # Exit the process
-
-        print('-' * 50)  # Visual separator
-        print(f'The dataset contains {len(num_features)} non-target numerical feature(s).')
-
-        # Create list to track which features get scaled for final reporting
-        scaled_cols = []
-
-        # Print warning that TADPREP only supports common scaling methods
-        print('\nWARNING: TADPREP supports only the Standard, Robust, and MinMax scalers.')
-        print('For more sophisticated methods (e.g. Quantile or PowerTrans methods), skip this step and write '
-              'your own scaler code.')
-        # Ask if the user wants to scale any numerical features
-        user_scale = input('Do you want to scale any numerical features? (Y/N): ')
-        if user_scale.lower() != 'y':
-            print('Skipping scaling of numerical features.')
-            return  # Exit the process
-
-        # Ask if user wants a refresher on the three scaling methods
-        user_scale_refresh = input('Do you want to see a brief refresher on TADPREP-supported scalers? (Y/N): ')
-        if user_scale_refresh.lower() == 'y':  # If so, display refresher
-            print('\nOverview of the Standard, Robust, and MinMax Scalers:'
-                  '\nStandard Scaler (Z-score normalization):'
-                  '\n- Transforms features to have zero mean and unit variance.'
-                  '\n- Best choice for comparing measurements in different units (e.g., combining age, income, '
-                  'and test scores).'
-                  '\n- Good for methods that assume normally distributed data like linear regression.'
-                  '\n- Not ideal when data has many extreme values or outliers.'
-                  '\n'
-                  '\nRobust Scaler (Uses median and IQR):'
-                  '\n- Scales using statistics that are resistant to extreme values.'
-                  '\n- Great for data where outliers are meaningful (e.g., rare but important market events).'
-                  '\n- Useful for survey data where some respondents give extreme ratings.'
-                  '\n- A good choice when you can\'t simply remove outliers because they contain important information.'
-                  '\n'
-                  '\nMinMax Scaler (scales to 0-1 range):'
-                  '\n- Scales all values to a fixed range between 0 and 1.'
-                  '\n- Good for image pixel data or whenever features must be strictly positive.'
-                  '\n- Good for visualization and neural networks that expect bounded inputs.'
-                  '\n- Works well with sparse data (data with many zeros or nulls).')
-
-        # For each numerical feature
-        for column in num_features:
-            print(f'\nProcessing numerical feature: "{column}"')
-
-            # Ask if user wants to scale this feature
-            user_scale_feature = input(f'Do you want to scale "{column}"? (Y/N): ')
-            if user_scale_feature.lower() != 'y':
-                print(f'Skipping scaling for feature: "{column}"')
-                continue  # Move to the next feature
-
-            # Validate feature before scaling
-            try:
-                # Check for nulls
-                null_cnt = df[column].isnull().sum()
-                # If nulls are present, ask if user wants to proceed
-                if null_cnt > 0:
-                    print(f'Feature "{column}" contains {null_cnt} null value(s).')
-                    user_proceed = input('Do you still want to proceed with scaling this feature? (Y/N): ')
-                    if user_proceed.lower() != 'y':
-                        print(f'Skipping scaling for feature: "{column}"')
-                        continue  # Move on to the next feature
-
-                # Check for infinite values
-                inf_cnt = np.isinf(df[column]).sum()
-                # If infinite values are present, ask if user wants to proceed
-                if inf_cnt > 0:
-                    print(f'Feature "{column}" contains {inf_cnt} infinite values.')
-                    user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
-                    if user_proceed.lower() != 'y':
-                        print(f'Skipping scaling for feature: "{column}"')
-                        continue  # Move on to the next feature
-
-                # Check for constant/near-constant features, e.g. with only 1 unique value or minimal variance
-                if df[column].nunique() <= 1:
-                    # Log a warning
-                    print(f'Feature "{column}" has no meaningful variance. Consider dropping this feature.')
-                    continue  # Move on to the next feature
-
-                # Check for extreme skewness in the feature
-                skewness = df[column].skew()  # Calculate skew
-                if abs(skewness) > 2:  # Using 2 as threshold for extreme skewness
-                    # If skewness is extreme, log a warning and ask if user wants to proceed
-                    print(f'Feature "{column}" is highly skewed (skewness={skewness:.2f}). '
-                          'Consider transforming this feature before scaling.')
-
-                    user_proceed = input('Do you want still to proceed with scaling this feature? (Y/N): ')
-                    if user_proceed.lower() != 'y':
-                        print(f'Skipping scaling for feature: "{column}"')
-                        continue  # Move on to the next feature
-
-            # Catch validation errors
-            except Exception as exc:
-                print(f'Error validating feature "{column}": {exc}')
-                print('Skipping scaling for this feature.')
-                continue  # Move to next feature
-
-            # Print descriptive statistics for the feature
-            print(f'\nDescriptive statistics for {column}:')
-            print(df[column].describe())
-
-            # Ask if user wants to see a distribution plot for the feature
-            user_show_plot = input('\nWould you like to see a histogram of the feature distribution? (Y/N): ')
-            if user_show_plot.lower() == 'y':  # If so, send call to Seaborn
-                # Attempt plot creation
-                try:
-                    plt.figure(figsize=(12, 8))
-                    sns.histplot(data=df, x=column)
-                    plt.title(f'Distribution of {column}')
-                    plt.tight_layout()
-                    plt.show()
-                    plt.close()  # Explicitly close the figure
-
-                # Catch plotting errors
-                except Exception as plot_exc:
-                    print(f'Error creating plot: {plot_exc}')
-                    print('Unable to display plot. Continuing with analysis.')
-                    if plt.get_fignums():  # If any figures are open
-                        plt.close('all')  # Close all figures
-
-            # Ask user to select a scaling method
-            while True:  # We can justify 'while True' because we have a cancel-out input option
-                try:
-                    print(f'\nSelect scaling method for feature {column}:')
-                    print('1. Standard Scaler (Z-score normalization)')
-                    print('2. Robust Scaler (uses median and IQR)')
-                    print('3. MinMax Scaler (scales to 0-1 range)')
-                    print('4. Skip scaling for this feature')
-                    scale_method = input('Enter your choice: ')
-
-                    if scale_method == '4':  # If user wants to skip
-                        print(f'Skipping scaling for feature: {column}')
-                        break  # Exit the while loop
-
-                    elif scale_method in ['1', '2', '3']:  # If a valid scaling choice is made
-                        # Reshape the data for use by scikit-learn
-                        reshaped_data = df[column].values.reshape(-1, 1)
-
-                        # Instantiate selected scaler and set scaler name
-                        if scale_method == '1':
-                            scaler = StandardScaler()
-                            method_name = 'Standard'
-                        elif scale_method == '2':
-                            scaler = RobustScaler()
-                            method_name = 'Robust'
-                        else:  # At this point, scale_method selection must be '3'
-                            scaler = MinMaxScaler()
-                            method_name = 'MinMax'
-
-                        # Perform scaling and replace original values
-                        df[column] = scaler.fit_transform(reshaped_data)
-
-                        # Add the feature to the list of scaled features
-                        scaled_cols.append(f'{column} ({method_name})')
-
-                        print(f'Applied {method_name} scaling to feature {column}.')  # Note the scaling action
-                        print('-' * 50)  # Visual separator
-                        break  # Exit the while loop
-
-                    else:  # If an invalid choice was entered
-                        print('Invalid input. Please enter 1, 2, 3, or 4.')
-                        continue  # Restart the while loop
-
-                # Catch all other errors
-                except Exception as exc:
-                    print(f'Error during scaling of feature "{column}": {exc}')  # Log the error
-                    print('An error occurred. Skipping scaling for this feature.')
-                    break  # Exit the while loop
-
-        # After all features are processed, log a summary of scaling results
-        if scaled_cols:
-            print('-' * 50)  # Visual separator
-            print('The following feature(s) were scaled:')
-            for col in scaled_cols:
-                print(f'- {col}')
-            print('-' * 50)  # Visual separator
-
-        # If no features were scaled, log that fact
-        else:
-            print('-' * 50)  # Visual separator
-            print('No features were scaled.')
-            print('-' * 50)  # Visual separator
-
-    # Call the three helper functions in sequence
-    handle_cats()  # Encode categorical features
-    handle_ords()  # Transform and remap ordinal features
-    handle_nums()  # Scale numerical features
-
-    # Return the final dataset with encoded and scaled features
+    # Return the modified dataframe with scaled values
     return df
