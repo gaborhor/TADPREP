@@ -8,7 +8,8 @@ from .package import (
     rename_and_tag,
     feature_stats,
     impute,
-    encode_and_scale
+    encode,
+    scale
 )
 
 # Define exposure if "from tadprep import *" is called
@@ -19,7 +20,8 @@ __all__ = [
     'rename_and_tag',
     'feature_stats',
     'impute',
-    'encode_and_scale',
+    'encode',
+    'scale'
 ]
 
 # Package metadata
