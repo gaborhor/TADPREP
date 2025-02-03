@@ -6,7 +6,8 @@ from .transforms import (
     _rename_and_tag_core,
     _feature_stats_core,
     _impute_core,
-    _encode_and_scale_core
+    _encode_core,
+    _scale_core
 )
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     '_rename_and_tag_core',
     '_feature_stats_core',
     '_impute_core',
-    '_encode_and_scale_core'
+    '_encode__core',
+    '_scale_core'
 ]
