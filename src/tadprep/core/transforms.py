@@ -432,6 +432,9 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     Returns:
         pd.DataFrame: DataFrame with imputed values where specified by user.
+
+    Raises:
+        ValueError: If an invalid imputation method is selected
     """
     # Check if there are no missing values - if no missing values exist, skip imputation
     if not df.isnull().any().any():
@@ -651,20 +654,22 @@ def _encode_core(
     The function also looks for false-numeric features (e.g. 1/0 representations of 'Yes'/'No') and asks if they
     should be treated as categorical and therefore be candidates for encoding.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame containing features to encode.
-    features_to_encode : list[str] | None, default=None
-        Optional list of features to encode. If None, function will help the user identify categorical features.
-    verbose : bool, default=True
-        Whether to display detailed guidance and explanations.
-    skip_warnings : bool, default=False
-        Whether to skip all best-practice-related warnings about null values and cardinality issues.
+    Args:
+        df : pd.DataFrame
+            Input DataFrame containing features to encode.
+        features_to_encode : list[str] | None, default=None
+            Optional list of features to encode. If None, function will help the user identify categorical features.
+        verbose : bool, default=True
+            Whether to display detailed guidance and explanations.
+        skip_warnings : bool, default=False
+            Whether to skip all best-practice-related warnings about null values and cardinality issues.
 
-    Returns
-    -------
-    pd.DataFrame: DataFrame with encoded values as specified by user. Original features are dropped after encoding.
+    Returns:
+        pd.DataFrame: DataFrame with encoded values as specified by user. Original features are dropped after encoding.
+
+    Raises:
+        ValueError: If all selected features have already been encoded
+        ValueError: If encoding fails due to data structure issues
     """
     # If no features are specified in the to_encode list, identify potential categorical features
     if features_to_encode is None:
@@ -875,20 +880,21 @@ def _scale_core(
     The function also identifies false-numeric features (e.g. categorical data stored as numbers) and asks if they
     should be removed from scaling consideration.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame containing features to scale.
-    features_to_scale : list[str] | None, default=None
-        Optional list of features to scale. If None, function will identify numerical features.
-    verbose : bool, default=True
-        Whether to display detailed guidance and explanations.
-    skip_warnings : bool, default=False
-        Whether to skip all best-practice-related warnings about nulls, outliers, etc.
+    Args:
+        df : pd.DataFrame
+            Input DataFrame containing features to scale.
+        features_to_scale : list[str] | None, default=None
+            Optional list of features to scale. If None, function will identify numerical features.
+        verbose : bool, default=True
+            Whether to display detailed guidance and explanations.
+        skip_warnings : bool, default=False
+            Whether to skip all best-practice-related warnings about nulls, outliers, etc.
 
-    Returns
-    -------
-    pd.DataFrame: DataFrame with scaled values as specified by user.
+    Returns:
+        pd.DataFrame: DataFrame with scaled values as specified by user.
+
+    Raises:
+        ValueError: If scaling fails due to data structure issues
     """
     # If no features are specified in the to_scale list, identify potential numerical features
     if features_to_scale is None:
