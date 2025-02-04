@@ -52,7 +52,9 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         ValueError: If an invalid subsetting proportion is provided
     """
     if verbose:
-        print('Beginning data reshape procedure.')
+        print('-' * 50)  # Visual separator
+        print('Beginning data reshape process.')
+        print('-' * 50)  # Visual separator
 
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
     # Ask if the user wants to delete *all* instances with any missing values, if any exist
@@ -137,6 +139,10 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
             except ValueError:
                 print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
                 continue  # Restart the loop
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Data reshape complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
     return df  # Return the trimmed dataframe
 
@@ -159,7 +165,9 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         ValueError: If any other invalid input is provided
     """
     if verbose:
+        print('-' * 50)  # Visual separator
         print('Beginning feature renaming process.')
+        print('-' * 50)  # Visual separator
         print('The list of features currently present in the dataset is:')
 
     else:
@@ -170,14 +178,20 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
     while True:  # We can justify 'while True' because we have a cancel-out input option
         try:
-            rename_cols_input = input('\nEnter the index integer of the feature you wish to rename '
-                                      'or enter "C" to cancel: ')
+            rename_cols_input = input('\nEnter the index integer of the feature you want to rename, enter "S" to skip '
+                                      'this step, or enter "E" to exit the renaming process: ')
 
-            # Check for user cancellation
-            if rename_cols_input.lower() == 'c':
+            # Check for user skip
+            if rename_cols_input.lower() == 's':
                 if verbose:
-                    print('Feature renaming cancelled.')
+                    print('Feature renaming skipped.')
                 break
+
+            # Check for user process exit
+            elif rename_cols_input.lower() == 'e':
+                if verbose:
+                    print('Exiting process. Dataframe was not modified.')
+                return
 
             col_idx = int(rename_cols_input)  # Convert input to integer
             if not 1 <= col_idx <= len(df.columns):  # Validate entry
@@ -195,7 +209,9 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             # Rename column in-place
             df = df.rename(columns={col_name_old: col_name_new})
             if verbose:
+                print('-' * 50)  # Visual separator
                 print(f'Renamed feature "{col_name_old}" to "{col_name_new}".')
+                print('-' * 50)  # Visual separator
 
             # Ask if user wants to rename another column
             if input('Do you want to rename another feature? (Y/N): ').lower() != 'y':
@@ -207,10 +223,12 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
     if tag_features:
         if verbose:
-            print('\nBeginning ordinal feature tagging process.')
+            print('-' * 50)  # Visual separator
+            print('Beginning ordinal feature tagging process.')
+            print('-' * 50)  # Visual separator
             print('You may now select any ordinal features which you know to be present in the dataset and append the '
                   '"_ord" suffix to their feature names.')
-            print('If no ordinal features are present in the dataset, simply enter "C" to bypass this process.')
+            print('If no ordinal features are present in the dataset, enter "S" to skip this step.')
         else:
             print('\nOrdinal feature tagging:')
 
@@ -220,13 +238,20 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                ord_input = input('\nEnter the index integers of ordinal features (comma-separated) '
-                                  'or enter "C" to cancel: ')
+                ord_input = input('\nEnter the index integers of ordinal features (comma-separated), enter "S" to skip '
+                                  'this step, or enter "E" to exit the renaming process: ')
 
-                if ord_input.lower() == 'c':  # If user cancels
+                # Check for user skip
+                if ord_input.lower() == 's':
                     if verbose:
-                        print('Ordinal feature tagging cancelled.')  # Note the cancellation
+                        print('Ordinal feature tagging skipped.')  # Note the cancellation
                     break  # Exit the loop
+
+                # Check for user process exit
+                elif ord_input.lower() == 'e':
+                    if verbose:
+                        print('Exiting process. Dataframe was not modified.')
+                    return
 
                 ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
 
@@ -246,7 +271,9 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
                 df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
                 if verbose:
+                    print('-' * 50)  # Visual separator
                     print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
+                    print('-' * 50)  # Visual separator
                 break
 
             # Catch invalid input
@@ -255,10 +282,12 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 continue
 
         if verbose:
-            print('\nBeginning target feature tagging process.')
+            print('-' * 50)  # Visual separator
+            print('Beginning target feature tagging process.')
+            print('-' * 50)  # Visual separator
             print('You may now select any target features which you know to be present in the dataset and append the '
                   '"_target" suffix to their feature names.')
-            print(' If no target features are present in the dataset, simply enter "C" to bypass this process.')
+            print('If no target features are present in the dataset, enter "S" to skip this step.')
         else:
             print('\nTarget feature tagging:')
 
@@ -268,14 +297,20 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
         while True:  # We can justify 'while True' because we have a cancel-out input option
             try:
-                target_input = input('\nEnter the index integers of target features (comma-separated) '
-                                     'or enter "C" to cancel: ')
+                target_input = input('\nEnter the index integers of target features (comma-separated), enter "S" to '
+                                     'skip this step, or enter "E" to exit the renaming process: ')
 
                 # Check for user cancellation
-                if target_input.lower() == 'c':
+                if target_input.lower() == 's':
                     if verbose:
-                        print('Target feature tagging cancelled.')
+                        print('Target feature tagging skipped.')
                     break
+
+                # Check for user process exit
+                elif target_input.lower() == 'e':
+                    if verbose:
+                        print('Exiting process. Dataframe was not modified.')
+                    return
 
                 target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
 
@@ -296,13 +331,19 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
                 df = df.rename(columns=target_rename_map)  # Perform tagging
                 if verbose:
+                    print('-' * 50)  # Visual separator
                     print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
+                    print('-' * 50)  # Visual separator
                 break
 
             # Catch invalid input
             except ValueError as exc:
                 print(f'Invalid input: {exc}')
                 continue  # Restart the loop
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Feature renaming/tagging complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
     return df  # Return dataframe with renamed and tagged columns
 
