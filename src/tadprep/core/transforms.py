@@ -51,6 +51,9 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         ValueError: If invalid indices are provided for column dropping
         ValueError: If an invalid subsetting proportion is provided
     """
+    if verbose:
+        print('Beginning data reshape procedure.')
+
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
     # Ask if the user wants to delete *all* instances with any missing values, if any exist
     if row_missing_cnt > 0:
@@ -58,10 +61,10 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         if user_drop_na.lower() == 'y':
             df = df.dropna()
             if verbose:
-                print(f'After deletion of instances with missing values, {len(df)} instances remain.')
+                print(f'After deletion of {row_missing_cnt} instances with missing values, {len(df)} instances remain.')
 
     # Ask if the user wants to drop any of the columns/features in the dataset
-    user_drop_cols = input('Do you want to drop any of the features in the dataset? (Y/N): ')
+    user_drop_cols = input('\nDo you want to drop any of the features in the dataset? (Y/N): ')
     if user_drop_cols.lower() == 'y':
         print('The full set of features in the dataset is:')
         for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
@@ -91,7 +94,9 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
                 # Drop the columns
                 df = df.drop(columns=drop_cols_names)
                 if verbose:
+                    print('-' * 50)  # Visual separator
                     print(f'Dropped features: {",".join(drop_cols_names)}')  # Note dropped columns
+                    print('-' * 50)  # Visual separator
                 break
 
             # Catch invalid user input
