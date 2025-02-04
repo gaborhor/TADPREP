@@ -19,3 +19,12 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # print(df_reshape)
 
 # After debugging, I am satisfied with the operation of the reshape method
+
+# Testing rename_and_tag method
+# df_renamed = tp.rename_and_tag(df_raw, verbose=False, tag_features=False)
+# df_renamed = tp.rename_and_tag(df_raw, verbose=True, tag_features=False)
+# df_renamed = tp.rename_and_tag(df_raw, verbose=False, tag_features=True)
+# df_renamed = tp.rename_and_tag(df_raw, verbose=True, tag_features=True)
+# print(df_renamed)
+
+# After debugging, I am satisfied with the operation of the rename_and_tag method
