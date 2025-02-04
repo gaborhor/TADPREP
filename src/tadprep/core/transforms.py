@@ -20,18 +20,19 @@ def _file_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     print(f'The unaltered file has {df.shape[0]} instances.')  # [0] is rows
 
     # Print number of features in file
-    print(f'\nThe unaltered file has {df.shape[1]} features.')  # [1] is columns
+    print(f'The unaltered file has {df.shape[1]} features.')  # [1] is columns
 
     # Instances with missing values
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
     row_missing_rate = (row_missing_cnt / len(df) * 100).round(2)  # Compute rate
-    print(f'\n{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
+    print(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
 
     if verbose:
         print('-' * 50)  # Visual separator
         # Print names and datatypes of features in file
-        print('Names and datatypes of features:')
-        print(df.info(memory_usage=False, show_counts=True))
+        print('NAMES AND DATATYPES OF FEATURES:')
+        print('-' * 50)  # Visual separator
+        print(df.info(verbose=True, memory_usage=True, show_counts=True))
         print('-' * 50)  # Visual separator
 
 
