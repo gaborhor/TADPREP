@@ -59,12 +59,71 @@ using a file browser window.
 supplied methods to augment their own task-specific data-processing code.
 
 ### Using the Library Methods
-Explain how the methods operate on dataframes as separate entities. Explain the prep_df method which chains all the 
-core TADPREP methods together and basically functions like the CLI script without the I/O process.
+The TADPREP library contains a series of callable methods, each of which represent specific subsets/segments of the full
+data preparation process as conducted in the interactive CLI pipeline script. 
 
-### Method List
+These methods are intended for in-IDE use such that a user may import a dataset into a Pandas dataframe by whatever 
+means they deem appropriate, and then apply the data mutation methods as desired to that dataframe.
 
-TADPREP provides a suite of interactive methods for data preparation, each focused on a specific aspect of the preparation process:
+These methods are broadly parallel in form and function to various Pandas methods. Therefore, the process of using them
+ought to be relatively comprehensible to anyone used to working with the Pandas library.
+
+**EXAMPLE USAGE:**
+```python
+import pandas as pd
+import tadprep as tp
+from sqlalchemy import create_engine
+from sklearn.linear_model import LinearRegression
+
+# Create database connection
+engine = create_engine('postgresql://username:password@localhost:5432/mydatabase')
+
+# Run query and store results in Pandas dataframe
+df_raw = pd.read_sql_table(
+    table_name='sales_data',
+    con=engine,
+    schema='public',
+    columns=['sale_id', 
+             'rep_id', 
+             'product_name', 
+             'quantity', 
+             'sale_date', 
+             'customer_satisfaction'],
+    index_col='sale_id'
+)
+
+# Display general dataframe information using TADPREP
+tp.file_info(df_raw, verbose=True)
+
+# Reshape data using TADPREP
+df_reshape = tp.reshape(df_raw, verbose=False)
+
+# Perform imputation using TADPREP
+df_imputed = tp.impute(df_reshape, verbose=False, skip_warnings=True)
+
+# Run basic regression on reshaped data using 'customer_satisfaction' as the target feature
+X = df_imputed.drop(['customer_satisfaction'], axis=1)
+y = df_imputed['customer_satisfaction']
+
+model = LinearRegression()
+model.fit(X, y)
+```
+
+**A Note on the `prep_df` Method:**
+
+The `prep_df` method essentially runs the same interactive data mutation pipeline as the CLI script, but it does not
+include the steps pertaining to the file I/O process. If the user wants to perform all of the data mutation steps
+present in the full CLI script, but wants to stay within their IDE and use data objects they have already loaded, this
+method will allow them to do so. 
+
+This method *does* offer users the option to select which of the core 
+data-processing steps will be performed, but it offers the methods to the user in strict sequential order. This method
+is therefore lower-effort, but less flexible.
+
+### Full Library Method List
+
+TADPREP provides a suite of interactive methods for data preparation, each focused on a specific aspect of the 
+data preparation process:
 
 #### Core Pipeline Method
 
@@ -96,7 +155,7 @@ TADPREP provides a suite of interactive methods for data preparation, each focus
 - Set `verbose=False` for streamlined interaction
 
 `feature_stats(df, verbose=True, summary_stats=False)`
-- Analyzes features by type (categorical, ordinal, numerical)
+- Analyzes features by type (categorical, numerical)
 - Displays missingness information and appropriate descriptive statistics
 - Set `summary_stats=True` to include aggregate statistics by feature type
 - Set `verbose=False` for key statistics only
@@ -105,20 +164,36 @@ TADPREP provides a suite of interactive methods for data preparation, each focus
 - Handles missing value imputation using mean, median, or mode
 - Provides guidance on appropriate imputation methods
 - Returns DataFrame with imputed values
-- Set `skip_warnings=False` to bypass missingness threshold warnings
+- Set `skip_warnings=True` to bypass missingness threshold warnings
 
-`encode_and_scale(df, cat_cols, ord_cols, num_cols)`
+`encode(df, features_to_encode=None, verbose=True, skip_warnings=False)`
 - Encodes categorical features using One-Hot or Dummy encoding
+- Can be passed a list of specific features to encode via the `features_to_encode` parameter
+- Auto-detects categorical features if `features_to_encode` is None
+- Returns DataFrame with encoded features
+- Set `skip_warnings=True` to bypass cardinality and null value warnings
+
+`scale(df, features_to_scale=None, verbose=True, skip_warnings=False)`
 - Scales numerical features using Standard, Robust, or MinMax scaling
-- Returns DataFrame with transformed features
-- Requires lists of categorical, ordinal, and numerical column names
+- Can be passed a list of specific features to scale via the `features_to_scale` parameter
+- Auto-detects numerical features if `features_to_scale` is None
+- Returns DataFrame with scaled features
+- Set `skip_warnings=True` to bypass distribution and outlier warnings
 
 #### Notes on Method Usage
 
 - All methods include interactive prompts to guide users through the preparation process
 - Methods with `verbose` parameters allow control over output detail level
 - Each method can be used independently or as part of the full pipeline via `prep_df()`
-- Methods preserve the original DataFrame and return a new copy with applied transformations
+- When used without re-assignment, the methods preserve the original DataFrame and return a new dataframe with 
+the applied transformations. However, the user must take care that potential overwrites are handled correctly:
+```python
+# Prevents overwrite of original dataframe by returning new dataframe object
+df_reshaped = tp.reshape(df, verbose=False)
+
+# Overwrites original dataframe via re-assignment
+df = tp.reshape(df, verbose=False)
+```
 
 ### Provisos and Limitations
 TADPREP is designed to be a practical, educational tool for basic data preparation tasks. 
@@ -169,6 +244,7 @@ tasks while maintaining the flexibility to implement more sophisticated methods 
 For example, if you need to use advanced imputation techniques:
 ```python
 # 1. Use TADPREP for initial preparation
+import pandas as pd
 import tadprep as tp
 df_initial = tp.prep_df(df)  # Handle basic cleaning and preparation
 
