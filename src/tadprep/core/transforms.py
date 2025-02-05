@@ -487,14 +487,14 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     """
     # Check if there are no missing values - if no missing values exist, skip imputation
     if not df.isnull().any().any():
-        print('WARNING: No missing values present in dataset. Skipping imputation. Dataframe was not modified.')
+        print('WARNING: No missing values are present in dataset. Skipping imputation. Dataframe was not modified.')
         return df
 
     # Identify initial feature types using list comprehensions
-    categorical_cols = [col for col in df.columns if pd.api.types.is_object_dtype(df[col])
-                        or isinstance(df[col].dtype, pd.CategoricalDtype)]
+    categorical_cols = [column for column in df.columns if pd.api.types.is_object_dtype(df[column])
+                        or isinstance(df[column].dtype, type(pd.Categorical.dtype))]
 
-    numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
 
     # Top-level feature classification information if Verbose is True
     if verbose:
