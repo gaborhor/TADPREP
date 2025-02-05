@@ -363,15 +363,17 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
         None. This is a void function.
     """
     if verbose:
-        print('Displaying top-level information for features in dataset...')
+        print('Displaying general information and summary statistics for all features in dataset...')
         print('-' * 50)  # Visual separator
 
-    # Create a list of columns which are categorical (object or categorical dtype)
-    cat_cols = [column for column in df.columns if isinstance(df[column].dtype, pd.CategoricalDtype)]
+    # Create list of categorical features
+    cat_cols = [column for column in df.columns
+                if pd.api.types.is_object_dtype(df[column]) or
+                isinstance(df[column].dtype, type(pd.Categorical.dtype))]
 
-    # Create a list of columns which are numerical
+    # Create list of numerical features
     num_cols = [column for column in df.columns
-                if isinstance(df[column].dtype, (np.number, pd.Float64Dtype, pd.Int64Dtype))]
+                if pd.api.types.is_numeric_dtype(df[column])]
 
     if verbose:
         if cat_cols:
@@ -454,7 +456,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                 'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
                                  for column in cat_cols]
             }, index=cat_cols)
-            print('\nCategorical Features Summary Table:')
+            print('Categorical Features Summary Table:')
             print(str(cat_summary))
 
         if num_cols:
@@ -463,7 +465,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                 print('-' * 50)
 
             num_summary = df[num_cols].describe()
-            print('\nNumerical Features Summary Table:')
+            print('Numerical Features Summary Table:')
             print(str(num_summary))
 
 
