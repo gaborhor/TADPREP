@@ -28,3 +28,12 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # print(df_renamed)
 
 # After debugging, I am satisfied with the operation of the rename_and_tag method
+
+
+# Testing feature_stats method
+# tp.feature_stats(df_raw, verbose=False, summary_stats=False)
+# tp.feature_stats(df_raw, verbose=True, summary_stats=False)
+# tp.feature_stats(df_raw, verbose=False, summary_stats=True)
+# tp.feature_stats(df_raw, verbose=True, summary_stats=True)
+
+# After debugging, I am satisfied with the operation of the feature_stats method
