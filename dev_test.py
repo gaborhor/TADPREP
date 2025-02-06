@@ -37,3 +37,15 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # tp.feature_stats(df_raw, verbose=True, summary_stats=True)
 
 # After debugging, I am satisfied with the operation of the feature_stats method
+
+# Testing impute method
+# df_impute = tp.impute(df_raw, verbose=False, skip_warnings=False)
+# df_impute = tp.impute(df_raw, verbose=True, skip_warnings=False)
+# df_impute = tp.impute(df_raw, verbose=False, skip_warnings=True)
+# df_impute = tp.impute(df_raw, verbose=True, skip_warnings=True)
+# print(df_impute)
+
+# After debugging, I am satisfied with the operation of the impute method
+
+# Testing encode method
+
