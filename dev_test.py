@@ -48,4 +48,5 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # After debugging, I am satisfied with the operation of the impute method
 
 # Testing encode method
+# Note that this method must be tested with and without a passed list of features to encode
 
