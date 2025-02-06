@@ -485,6 +485,11 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
     Raises:
         ValueError: If an invalid imputation method is selected
     """
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Beginning imputation process.')
+        print('-' * 50)  # Visual separator
+
     # Check if there are no missing values - if no missing values exist, skip imputation
     if not df.isnull().any().any():
         print('WARNING: No missing values are present in dataset. Skipping imputation. Dataframe was not modified.')
@@ -498,7 +503,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     # Top-level feature classification information if Verbose is True
     if verbose:
-        print('\nInitial feature type identification:')
+        print('Initial feature type identification:')
         print(f'Categorical features: {", ".join(categorical_cols) if categorical_cols else "None"}')
         print(f'Numerical features: {", ".join(numeric_cols) if numeric_cols else "None"}')
         print('-' * 50)
@@ -511,7 +516,8 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         # We suspect that any all-integer column with five or fewer unique values is actually categorical
         if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
             if verbose:
-                print(f'\nFeature "{col}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                print(f'Feature "{col}" has only {len(unique_vals)} unique integer values: '
+                      f'{[int(val) for val in unique_vals]}')
                 print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                       'Yes/No values.')
                 print('-' * 50)
@@ -521,7 +527,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
             # If user agrees, recast the feature to string-type and append to list of categorical features
             if user_cat.lower() == 'y':
-                df[col] = df[col].astype(str)
+                df[col] = df[col].apply(lambda value: str(value) if pd.notna(value) else value)
                 categorical_cols.append(col)
                 true_numeric.remove(col)  # Remove from numeric if identified as categorical
                 if verbose:
@@ -530,7 +536,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     # Final feature classification info if Verbose is True
     if verbose:
-        print('\nFinal feature type classification:')
+        print('Final feature type classification:')
         print(f'Categorical features: {", ".join(categorical_cols) if categorical_cols else "None"}')
         print(f'Numerical features: {", ".join(true_numeric) if true_numeric else "None"}')
         print('-' * 50)
@@ -616,8 +622,8 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     # Begin imputation at feature level
     for feature in imp_features:
+        print(f'\nProcessing feature {feature}...')
         if verbose:
-            print(f'\nProcessing feature {feature}...')
             print(f'- Datatype: {df[feature].dtype}')
             print(f'- Missing rate: {missingness_vals[feature]["rate"]}%')
 
@@ -630,7 +636,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         # Prompt user to select an imputation method
         while True:
             method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
-            method_prompt = f'Choose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
+            method_prompt = f'\nChoose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
             user_imp_choice = input(method_prompt)
 
             # Reset method index
@@ -688,6 +694,11 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             if verbose:
                 print('Skipping imputation for this feature.')
             continue  # Restart loop
+
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Imputation complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
     return df  # Return dataframe with imputed values
 
