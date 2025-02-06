@@ -510,28 +510,28 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     # Check for numeric features that might actually be categorical in function/intent
     true_numeric = numeric_cols.copy()  # Start with all numeric columns
-    for col in numeric_cols:
-        unique_vals = sorted(df[col].dropna().unique())
+    for column in numeric_cols:
+        unique_vals = sorted(df[column].dropna().unique())
 
         # We suspect that any all-integer column with five or fewer unique values is actually categorical
         if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
             if verbose:
-                print(f'Feature "{col}" has only {len(unique_vals)} unique integer values: '
+                print(f'Feature "{column}" has only {len(unique_vals)} unique integer values: '
                       f'{[int(val) for val in unique_vals]}')
                 print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                       'Yes/No values.')
                 print('-' * 50)
 
             # Ask the user to assess and reply
-            user_cat = input(f'Should "{col}" actually be treated as categorical? (Y/N): ')
+            user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')
 
             # If user agrees, recast the feature to string-type and append to list of categorical features
             if user_cat.lower() == 'y':
-                df[col] = df[col].apply(lambda value: str(value) if pd.notna(value) else value)
-                categorical_cols.append(col)
-                true_numeric.remove(col)  # Remove from numeric if identified as categorical
+                df[column] = df[column].apply(lambda value: str(value) if pd.notna(value) else value)
+                categorical_cols.append(column)
+                true_numeric.remove(column)  # Remove from numeric if identified as categorical
                 if verbose:
-                    print(f'Converted numerical feature "{col}" to categorical type.')
+                    print(f'Converted numerical feature "{column}" to categorical type.')
                     print('-' * 50)
 
     # Final feature classification info if Verbose is True
@@ -731,12 +731,17 @@ def _encode_core(
         ValueError: If all selected features have already been encoded
         ValueError: If encoding fails due to data structure issues
     """
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Beginning encoding process.')
+        print('-' * 50)  # Visual separator
+
     # If no features are specified in the to_encode list, identify potential categorical features
     if features_to_encode is None:
         # Identify obvious categorical features (i.e. those which are object or categorical in data-type)
-        cat_cols = [column for column in df.columns if
-                    pd.api.types.is_object_dtype(df[column]) or
-                    isinstance(df[column].dtype, pd.CategoricalDtype)]
+        cat_cols = [column for column in df.columns
+                    if pd.api.types.is_object_dtype(df[column]) or
+                    isinstance(df[column].dtype, type(pd.Categorical.dtype))]
 
         # Check for numeric features which might actually be categorical in function/role
         numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
@@ -749,7 +754,8 @@ def _encode_core(
 
                 # Ask user to assess and reply
                 if verbose:
-                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
+                    print(f'Feature "{column}" has only {len(unique_vals)} unique integer values: '
+                          f'{[int(val) for val in unique_vals]}')
                     print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                           'Yes/No values.')
 
@@ -775,13 +781,15 @@ def _encode_core(
 
     if not final_cat_cols:
         if verbose:
-            print('No features were identified as candidates for potential encoding.')
+            print('No features were identified as candidates for encoding.')
+            print('-' * 50)  # Visual separator
         print('Skipping encoding. Dataset was not modified.')
         return df
 
     # Print verbose reminder about not encoding target features
     if features_to_encode is None and verbose:
-        print('\nREMINDER: Target features (prediction targets) should not be encoded.')
+        print('-' * 50)  # Visual separator
+        print('REMINDER: Target features (prediction targets) should not be encoded.')
         print('If any of the identified features are targets, do not encode them.')
         print('-' * 50)
 
@@ -808,8 +816,7 @@ def _encode_core(
 
     # Process each feature in our list
     for column in final_cat_cols:
-        if verbose:
-            print(f'\nProcessing feature: "{column}"')
+        print(f'\nProcessing feature: "{column}"')
 
         # Check for nulls if warnings aren't suppressed
         null_count = df[column].isnull().sum()
@@ -924,6 +931,11 @@ def _encode_core(
             print('\nEncoding summary:')
             for feature in encoded_features:
                 print(f'- {feature}')
+
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Encoding complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
     # Return the modified dataframe with encoded values
     return df
