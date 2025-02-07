@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
@@ -736,6 +738,11 @@ def _encode_core(
         print('Beginning encoding process.')
         print('-' * 50)  # Visual separator
 
+    if verbose and features_to_encode:
+        print('Encoding only features in user-provided list:')
+        print(features_to_encode)
+        print('-' * 50)  # Visual separator
+
     # If no features are specified in the to_encode list, identify potential categorical features
     if features_to_encode is None:
         # Identify obvious categorical features (i.e. those which are object or categorical in data-type)
@@ -765,6 +772,7 @@ def _encode_core(
                     df[column] = df[column].astype(str)  # Convert to string type for encoding
                     cat_cols.append(column)  # Add that feature to list of categorical features
                     if verbose:
+                        print('-' * 50)
                         print(f'Converted numerical feature "{column}" to categorical type.')
                         print(f'"{column}" is now a candidate for encoding.')
                         print('-' * 50)
@@ -785,13 +793,6 @@ def _encode_core(
             print('-' * 50)  # Visual separator
         print('Skipping encoding. Dataset was not modified.')
         return df
-
-    # Print verbose reminder about not encoding target features
-    if features_to_encode is None and verbose:
-        print('-' * 50)  # Visual separator
-        print('REMINDER: Target features (prediction targets) should not be encoded.')
-        print('If any of the identified features are targets, do not encode them.')
-        print('-' * 50)
 
     # Instantiate empty lists for encoded data and tracking
     encoded_dfs = []  # Will hold encoded DataFrames for each feature
@@ -814,9 +815,24 @@ def _encode_core(
                   '\n- Dummy encoding is preferred for linear models, as it avoids perfect multi-collinearity.'
                   '\n- This method is more computationally- and space-efficient, but is less interpretable.')
 
+    if verbose:
+        print('\nFinal candidate features for encoding are:')
+        print(final_cat_cols)
+        print()
+
+    # Print verbose reminder about not encoding target features
+    if features_to_encode is None and verbose:
+        print('REMINDER: Target features (prediction targets) should not be encoded.')
+        print('If any of the identified encodable features are targets, do not encode them.')
+
     # Process each feature in our list
     for column in final_cat_cols:
-        print(f'\nProcessing feature: "{column}"')
+        print()
+        if verbose:
+            print('-' * 50)  # Visual separator
+        print(f'Processing feature: "{column}"')
+        if verbose:
+            print('-' * 50)  # Visual separator
 
         # Check for nulls if warnings aren't suppressed
         null_count = df[column].isnull().sum()
@@ -889,14 +905,22 @@ def _encode_core(
         # Show encoding options (needed regardless of verbosity)
         print('1. One-Hot Encoding (new column for each category)')
         print('2. Dummy Encoding (n-1 columns, drops first category)')
+        print('3. Skip encoding for this feature')
 
         while True:
-            method = input('Select encoding method (1 or 2): ')
-            if method in ['1', '2']:
+            method = input('Select encoding method or skip encoding (Enter 1, 2 or 3): ')
+            if method in ['1', '2', '3']:
                 break
-            print('Invalid choice. Please enter 1 or 2.')
+            print('Invalid choice. Please enter 1, 2, or 3.')
 
         try:
+
+            # Skip encoding if user enters the skip option
+            if method == '3':
+                if verbose:
+                    print(f'\nSkipping encoding for feature "{column}".')
+                continue
+
             # Apply selected encoding method
             if method == '1':
                 # One-hot encoding creates a column for every category
@@ -914,7 +938,7 @@ def _encode_core(
 
             # Note successful encoding action
             if verbose:
-                print(f'Successfully encoded "{column}".')
+                print(f'\nSuccessfully encoded "{column}".')
 
         # Catch all other errors
         except Exception as exc:
@@ -928,7 +952,7 @@ def _encode_core(
 
         # Print summary of encoding if in verbose mode
         if verbose:
-            print('\nEncoding summary:')
+            print('\nENCODING SUMMARY:')
             for feature in encoded_features:
                 print(f'- {feature}')
 
