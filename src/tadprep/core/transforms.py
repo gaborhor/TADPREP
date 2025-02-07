@@ -7,7 +7,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 
 
-def _file_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
+def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Core function to print general top-level information about the full, unaltered datafile for the user.
 
