@@ -2,7 +2,7 @@
 
 # Import public-facing methods that users will access
 from .package import (
-    file_info,
+    df_info,
     reshape,
     rename_and_tag,
     feature_stats,
@@ -14,7 +14,7 @@ from .package import (
 
 # Define exposure if "from tadprep import *" is called
 __all__ = [
-    'file_info',
+    'df_info',
     'reshape',
     'rename_and_tag',
     'feature_stats',
