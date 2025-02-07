@@ -1,6 +1,6 @@
 import pandas as pd
 from .core.transforms import (
-    _file_info_core,
+    _df_info_core,
     _reshape_core,
     _rename_and_tag_core,
     _feature_stats_core,
@@ -11,7 +11,7 @@ from .core.transforms import (
 )
 
 
-def file_info(df: pd.DataFrame, verbose: bool = True) -> None:
+def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Prints top-level information about a DataFrame's structure and contents.
 
