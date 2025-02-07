@@ -68,6 +68,19 @@ means they deem appropriate, and then apply the data mutation methods as desired
 These methods are broadly parallel in form and function to various Pandas methods. Therefore, the process of using them
 ought to be relatively comprehensible to anyone used to working with the Pandas library.
 
+The methods provide a great deal of visual parsing of console output and offer explanations/warnings which are relevant 
+to each step. Each method has a boolean `verbose` parameter (which is `True` by default), but can be set to `False` when 
+the method is called to simplify printed output and suppress explanations.
+
+Additionally, some methods have a further boolean `skip_warnings` parameter (which is `True` by default), but can be 
+set to `False` to allow the user to skip past any mathematics- or best-practice related warnings relevant to a given 
+data preprocessing step, e.g. warnings about summoning the curse of dimensionality when encoding high-cardinality 
+features.
+
+Therefore, experienced data scientists who have an excellent sense of their dataset and their intentions may prefer to
+call the methods with `verbose=False` and `skip_warnings=True` to have an efficient, "quiet" user experience and to
+move the data preparation process along as quickly as possible.
+
 **EXAMPLE USAGE:**
 ```python
 import pandas as pd
@@ -136,7 +149,7 @@ data preparation process:
 
 #### Individual Data Preparation Methods
 
-`file_info(df, verbose=True)`
+`df_info(df, verbose=True)`
 - Displays comprehensive information about DataFrame structure and contents
 - Shows feature counts, data types, and missingness statistics
 - Helps users understand their data before making preparation decisions
@@ -196,7 +209,7 @@ df = tp.reshape(df, verbose=False)
 ```
 
 ### Provisos and Limitations
-TADPREP is designed to be a practical, educational tool for basic data preparation tasks. 
+TADPREP is designed to be a practical, first-principle tool for data preprocessing tasks. 
 While it provides interactive guidance throughout the data preparation process, it intentionally implements only 
 fundamental techniques for certain operations:
 
