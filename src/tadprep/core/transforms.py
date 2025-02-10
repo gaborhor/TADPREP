@@ -973,14 +973,12 @@ def _scale_core(
 ) -> pd.DataFrame:
     """
     Core function to scale numerical features using standard, robust, or minmax scaling methods.
-    The function also identifies false-numeric features (e.g. categorical data stored as numbers) and asks if they
-    should be removed from scaling consideration.
 
     Args:
         df : pd.DataFrame
             Input DataFrame containing features to scale.
         features_to_scale : list[str] | None, default=None
-            Optional list of features to scale. If None, function will identify numerical features.
+            Optional list of features to scale. If None, function will help identify numerical features.
         verbose : bool, default=True
             Whether to display detailed guidance and explanations.
         skip_warnings : bool, default=False
@@ -992,61 +990,67 @@ def _scale_core(
     Raises:
         ValueError: If scaling fails due to data structure issues
     """
-    # If no features are specified in the to_scale list, identify potential numerical features
+    if verbose:
+        print('-' * 50)
+        print('Beginning scaling process.')
+        print('-' * 50)
+
+    if verbose and features_to_scale:
+        print('Scaling only features in user-provided list:')
+        print(features_to_scale)
+        print('-' * 50)
+
+    # If no features specified, identify potential numerical features
     if features_to_scale is None:
         # Identify all numeric features
         numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
 
-        # Check for numeric features which might actually be categorical in function/role
-        true_numeric = []
+        # Check for numeric features which might actually be categorical
         for column in numeric_cols:
-            unique_vals = sorted(df[column].dropna().unique())  # Get sorted unique values excluding nulls
+            unique_vals = sorted(df[column].dropna().unique())
 
-            # We suspect that any all-integer column with five or fewer unique values is actually categorical
+            # We suspect any all-integer column with five or fewer unique values is categorical
             if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
                 if verbose:
-                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: {unique_vals}')
-                    print('ALERT: This could be a categorical feature stored as numbers, e.g. a 1/0 representation of '
-                          'Yes/No values.')
+                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: '
+                          f'{[int(val) for val in unique_vals]}')
+                    print('ALERT: This could be a categorical feature encoded as numbers, '
+                          'e.g. a 1/0 representation of Yes/No values.')
 
-                # Ask user to assess and reply
-                user_cat = input(f'Should "{column}" be excluded from scaling? (Y/N): ')
-                if user_cat.lower() != 'y':  # If user says no
-                    true_numeric.append(column)  # Treat the feature as truly numeric
+                user_cat = input(f'Should "{column}" be treated as categorical and excluded from scaling? (Y/N): ')
+                if user_cat.lower() == 'y':
+                    numeric_cols.remove(column)
+                    if verbose:
+                        print(f'Excluding "{column}" from scaling consideration.')
+                        print('-' * 50)
 
-                elif verbose:
-                    print(f'Excluding feature "{column}" from scaling consideration.')
-                    print('-' * 50)
-            else:
-                true_numeric.append(column)
+        final_numeric_cols = numeric_cols
 
-        final_numeric_cols = true_numeric
-
-    # If the user passes a list of features to be scaled, just use the list
     else:
         final_numeric_cols = features_to_scale
 
     # Validate that all specified features exist in the dataframe
     missing_cols = [column for column in final_numeric_cols if column not in df.columns]
     if missing_cols:
-        raise ValueError(f'Features not found in dataframe: {missing_cols}')
+        raise ValueError(f'Features not found in DataFrame: {missing_cols}')
 
     if not final_numeric_cols:
         if verbose:
             print('No features were identified as candidates for scaling.')
+            print('-' * 50)
         print('Skipping scaling. Dataset was not modified.')
         return df
 
-    # Print verbose reminder about not scaling target features
+    # Print reminder about not scaling target features
     if features_to_scale is None and verbose:
-        print('\nREMINDER: Target features (prediction targets) should not be scaled.')
+        print('REMINDER: Target features (prediction targets) should not be scaled.')
         print('If any of the identified features are targets, do not scale them.')
-        print('-' * 50)
+        print()
 
-    # Track which features get scaled for reporting
+    # Track scaled features for reporting
     scaled_features = []
 
-    # Offer explanation of scaling methods if in verbose mode
+    # Offer explanation of scaling methods if verbose
     if verbose:
         user_scale_refresh = input('Would you like to see an explanation of scaling methods? (Y/N): ')
         if user_scale_refresh.lower() == 'y':
@@ -1069,10 +1073,18 @@ def _scale_core(
                   '\n- Works well with sparse data.'
                   '\n- Preserves zero values in sparse data.')
 
-    # Process each feature in the list
+    if verbose:
+        print('\nFinal candidate features for scaling are:')
+        print(final_numeric_cols)
+
+    # Process each feature
     for column in final_numeric_cols:
+        print()
         if verbose:
-            print(f'\nProcessing feature: "{column}"')
+            print('-' * 50)
+        print(f'Processing feature: "{column}"')
+        if verbose:
+            print('-' * 50)
 
         # Check for nulls if warnings aren't suppressed
         null_count = df[column].isnull().sum()
@@ -1090,13 +1102,13 @@ def _scale_core(
             if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
                 continue
 
-        # Check for constant features
+        # Skip constant features
         if df[column].nunique() <= 1:
-            print(f'Skipping "{column}" - feature has no variance.')
+            print(f'Skipping "{column}" - this feature has no variance.')
             continue
 
+        # Check for extreme skewness if warnings aren't suppressed
         if not skip_warnings:
-            # Check for extreme skewness
             skewness = df[column].skew()
             if abs(skewness) > 2:  # Common threshold for "extreme" skewness
                 print(f'Warning: "{column}" is highly skewed (skewness={skewness:.2f}).')
@@ -1105,14 +1117,14 @@ def _scale_core(
                     continue
 
         if verbose:
-            # Show current distribution information
+            # Show current distribution statistics
             print(f'\nCurrent statistics for "{column}":')
             print(df[column].describe())
 
             # Offer distribution plot
-            if input('\nWould you like to see a distribution plot? (Y/N): ').lower() == 'y':
+            if input('\nWould you like to see a distribution plot of the feature? (Y/N): ').lower() == 'y':
                 try:
-                    plt.figure(figsize=(12, 10))
+                    plt.figure(figsize=(12, 8))
                     sns.histplot(data=df, x=column)
                     plt.title(f'Distribution of {column}')
                     plt.xlabel(column)
@@ -1121,27 +1133,32 @@ def _scale_core(
                     plt.show()
                     plt.close()
 
-                # Catch plotting errors
                 except Exception as exc:
-                    print(f'Error creating plot: {str(exc)}')
+                    print(f'Error creating plot: {exc}')
                     if plt.get_fignums():
                         plt.close('all')
 
-        if verbose:
-            print('\nScaling methods:')
-
-        # Show scaling options (needed regardless of verbosity)
+        # Show scaling options
+        print('\nSelect scaling method:')
         print('1. Standard Scaler (Z-score normalization)')
         print('2. Robust Scaler (median and IQR based)')
         print('3. MinMax Scaler (0-1 range)')
+        print('4. Skip scaling for this feature')
 
         while True:
-            method = input('Select scaling method (1, 2, or 3): ')
-            if method in ['1', '2', '3']:
+            method = input('Enter choice (1, 2, 3, or 4): ')
+            # Exit loop if valid input provided
+            if method in ['1', '2', '3', '4']:
                 break
 
-            # Catch input errors
-            print('Invalid choice. Please enter 1, 2, or 3.')
+            # Catch invalid input
+            print('Invalid choice. Please enter 1, 2, 3, or 4.')
+
+        # Skip scaling for a given feature if user decides to do so
+        if method == '4':
+            if verbose:
+                print(f'\nSkipping scaling for feature "{column}".')
+            continue
 
         try:
             # Reshape data for scikit-learn
@@ -1164,20 +1181,25 @@ def _scale_core(
             df[column] = scaler.fit_transform(reshaped_data)
             scaled_features.append(f'{column} ({method_name})')
 
-            # Notify user of successful scaling action
             if verbose:
-                print(f'Successfully scaled "{column}" using {method_name} scaler.')
+                print(f'\nSuccessfully scaled "{column}" using {method_name} scaler.')
 
-        # Catch all other scaling errors
         except Exception as exc:
-            print(f'Error scaling feature "{column}": {str(exc)}')
+            print(f'Error scaling feature "{column}": {exc}')
             continue
 
-    # Print summary of scaling if in verbose mode
-    if verbose and scaled_features:
-        print('\nScaling summary:')
-        for feature in scaled_features:
-            print(f'- {feature}')
+    # Print summary if features were scaled
+    if scaled_features:
+        if verbose:
+            print('-' * 50)
+            print('SCALING SUMMARY:')
+            for feature in scaled_features:
+                print(f'- {feature}')
+            print('-' * 50)
+
+    if verbose:
+        print('Scaling complete. Returning modified dataframe.')
+        print('-' * 50)
 
     # Return the modified dataframe with scaled values
     return df
