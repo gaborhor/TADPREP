@@ -61,7 +61,7 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    _file_info_core(df, verbose)
+    _df_info_core(df, verbose)
 
 
 def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
