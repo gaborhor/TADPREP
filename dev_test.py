@@ -59,3 +59,18 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # print(df_encode)
 
 # Testing scale method
+# Note that this method must be tested with and without a passed list of features to scale
+# scale_feats = ['age']
+
+# df_scaled = tp.scale(df_raw, scale_feats, verbose=True, skip_warnings=True)
+# df_scaled = tp.scale(df_raw, scale_feats, verbose=True, skip_warnings=False)
+# df_scaled = tp.scale(df_raw, scale_feats, verbose=False, skip_warnings=True)
+# df_scaled = tp.scale(df_raw, scale_feats, verbose=False, skip_warnings=False)
+
+# df_scaled = tp.scale(df_raw, verbose=True, skip_warnings=True)
+# df_scaled = tp.scale(df_raw, verbose=True, skip_warnings=False)
+# df_scaled = tp.scale(df_raw, verbose=False, skip_warnings=True)
+# df_scaled = tp.scale(df_raw, verbose=False, skip_warnings=False)
+# print(df_scaled)
+
+# Final test step is checking the full prep_df method
