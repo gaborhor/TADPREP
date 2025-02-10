@@ -230,18 +230,18 @@ def encode(
     skip_warnings: bool = False
 ) -> pd.DataFrame:
     """
-    Interactively encode categorical features in the DataFrame using simple encoding methods.
+    Interactively encodes categorical features in the DataFrame using standard encoding methods.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame containing features to encode
+        The DataFrame containing features to encode.
     features_to_encode : list[str] | None, default=None
-        Optional list of features to encode - if None, function will help identify categorical features
+        Optional list of features to encode - if None, method will help identify categorical features.
     verbose : bool, default=True
-        Controls whether detailed guidance and explanations are displayed
+        Controls whether detailed guidance and explanations are displayed.
     skip_warnings : bool, default=False
-        Controls whether all best-practice-related warnings about encoding are skipped
+        Controls whether all best-practice-related warnings about encoding are skipped.
 
     Returns
     -------
@@ -293,18 +293,18 @@ def scale(
     skip_warnings: bool = False
 ) -> pd.DataFrame:
     """
-    Interactively scale numerical features in the DataFrame using standard scaling methods.
+    Interactively scales numerical features in the DataFrame using standard scaling methods.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame containing features to scale
+        The DataFrame containing features to scale.
     features_to_scale : list[str] | None, default=None
-        Optional list of features to scale - if None, function will help identify numerical features.
+        Optional list of features to scale - if None, method will help identify numerical features.
     verbose : bool, default=True
-        Controls whether detailed guidance and explanations are displayed
+        Controls whether detailed guidance and explanations are displayed.
     skip_warnings : bool, default=False
-        Controls whether all best-practice-related warnings about scaling are skipped
+        Controls whether all best-practice-related warnings about scaling are skipped.
 
     Returns
     -------
@@ -377,6 +377,7 @@ def prep_df(
       - Enter 'Y' to run a given step
       - Enter 'N' to skip a given step
       - Enter 'Q' to quit the pipeline altogether
+
     - For boolean parameters:
       - Press Enter to accept the default value
       - Enter '1' to set the parameter to True
