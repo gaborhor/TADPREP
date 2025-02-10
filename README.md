@@ -214,7 +214,7 @@ While it provides interactive guidance throughout the data preparation process, 
 fundamental techniques for certain operations:
 
 #### Imputation
-- Supports only simple imputation methods: mean, median, and mode
+- Supports only common imputation methods: mean, median, and mode
 - Does not implement more sophisticated approaches like:
   - Multiple imputation
   - K-Nearest Neighbors imputation
@@ -254,7 +254,7 @@ TADPREP is most effectively used as part of a larger data preparation workflow.
 Using the library in a deliberate, as-needed manner allows you to leverage TADPREP's interactive guidance for basic 
 tasks while maintaining the flexibility to implement more sophisticated methods as required for your specific use case.
 
-For example, if you need to use advanced imputation techniques:
+For example, if you want to use advanced imputation techniques:
 ```python
 # 1. Use TADPREP for initial preparation
 import pandas as pd
@@ -279,3 +279,7 @@ df_imputed = pd.DataFrame(
 
 ### Future Development
 Any thoughts about future development
+
+### Acknowledgments
+- Dr. Sean Connin at the Ritchie School of Engineering for general encouragement and package design advice
+- Thomas Mooney at the McDonnell Genome Institute for UX testing and code review
