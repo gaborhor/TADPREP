@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
 
@@ -74,3 +75,31 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # print(df_scaled)
 
 # Final test step is checking the full prep_df method
+# Start with creating a sample dataframe of smaller scale
+# df_test = pd.DataFrame({
+#     'name': ['Jack', 'Joe', 'Jill', 'Jane', 'John'],
+#     'age': [29, 31, 37, 34, 41],
+#     'sex': ['M', 'M', 'F', 'F', np.nan],
+#     'married': [0, 0, 1, 1, 1],
+#     'happy': [3, 4, 5, 2, 2],
+#     'region': ['Northeast', 'Central', 'Central', np.nan, np.nan]
+# })
+
+# Check dataframe content
+# print(df_test)
+
+# Define feature lists to pass at method call
+# prep_encode = ['sex', 'married']
+# prep_scale = ['age']
+
+# Test without any passed feature lists
+# processed_df = tp.prep_df(df_test)
+
+# Test with one passed feature list
+# processed_df = tp.prep_df(df_test, prep_encode)
+
+# Test with two passed feature lists
+# processed_df = tp.prep_df(df_test, prep_encode, prep_scale)
+
+# Check prepared dataframe
+# print(processed_df)
