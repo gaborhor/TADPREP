@@ -50,8 +50,8 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     ...     'A': [1, 2, None, 4],
     ...     'B': ['x', 'y', 'z', 'w']
     ... })
-    >>> tadprep.file_info(df, verbose=True)  # Shows full file information
-    >>> tadprep.file_info(df, verbose=False)  # Shows reduced file information
+    >>> tadprep.df_info(df, verbose=True)  # Shows full file information
+    >>> tadprep.df_info(df, verbose=False)  # Shows reduced file information
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -369,7 +369,7 @@ def prep_df(
     Returns
     -------
     pandas.DataFrame
-        The processed DataFrame after running the specified pipeline steps
+        The processed DataFrame after running the specified pipeline steps.
 
     Notes
     -----
@@ -426,7 +426,7 @@ def prep_df(
             missing = [col for col in features_to_scale if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
-    print('Welcome to the TADPREP pipeline!')
+    print('Welcome to the TADPREP pipeline.')
     print('At each step you can:')
     print("- Enter 'Y' to execute the step")
     print("- Enter 'N' to skip the step")
