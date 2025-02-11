@@ -343,7 +343,6 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 print(f'Invalid input: {exc}')
                 continue  # Restart the loop
     if verbose:
-        print('-' * 50)  # Visual separator
         print('Feature renaming/tagging complete. Returning modified dataframe.')
         print('-' * 50)  # Visual separator
 
@@ -827,7 +826,6 @@ def _encode_core(
 
     # Process each feature in our list
     for column in final_cat_cols:
-        print()
         if verbose:
             print('-' * 50)  # Visual separator
         print(f'Processing feature: "{column}"')
@@ -1274,16 +1272,16 @@ def _prep_df_core(
                 print('Invalid choice. Please enter 1 or 2.')
 
     # Step 1: File Info
-    user_choice = input('\nDisplay file info? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 1: Display file info? (Y/N/Q): ').lower()
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
-        _file_info_core(df, verbose=verbose)
+        _df_info_core(df, verbose=verbose)
 
     elif user_choice == 'q':
         return df
 
     # Step 2: Reshape - handles missing values and feature dropping
-    user_choice = input('\nRun file reshape process? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 2: Run file reshape process? (Y/N/Q): ').lower()
 
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
@@ -1293,7 +1291,7 @@ def _prep_df_core(
         return df
 
     # Step 3: Rename and Tag - handles feature renaming and classification
-    user_choice = input('\nRun feature renaming and tagging process? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 3: Run feature renaming and tagging process? (Y/N/Q): ').lower()
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
         tag_features = get_bool_param('tag_features', default=False)
@@ -1303,7 +1301,7 @@ def _prep_df_core(
         return df
 
     # Step 4: Feature Stats - calculates and displays feature statistics
-    user_choice = input('\nShow feature-level information? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 4: Show feature-level information? (Y/N/Q): ').lower()
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
         summary_stats = get_bool_param('summary_stats', default=False)
@@ -1313,7 +1311,7 @@ def _prep_df_core(
         return df
 
     # Step 5: Impute - handles missing value imputation
-    user_choice = input('\nPerform imputation? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 5: Perform imputation? (Y/N/Q): ').lower()
     if user_choice == 'y':
         verbose = get_bool_param('verbose')
         skip_warnings = get_bool_param('skip_warnings', default=False)
@@ -1323,7 +1321,7 @@ def _prep_df_core(
         return df
 
     # Step 6: Encode - handles categorical feature encoding
-    user_choice = input('\nEncode categorical features? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 6: Encode categorical features? (Y/N/Q): ').lower()
     if user_choice == 'y':
         # Use provided features or get interactive selection
         features_to_encode_final = features_to_encode
@@ -1342,7 +1340,7 @@ def _prep_df_core(
         return df
 
     # Step 7: Scale - handles numerical feature scaling
-    user_choice = input('\nScale numerical features? (Y/N/Q): ').lower()
+    user_choice = input('\nSTAGE 7: Scale numerical features? (Y/N/Q): ').lower()
     if user_choice == 'y':
         # Use provided features or get interactive selection
         features_to_scale_final = features_to_scale
