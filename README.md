@@ -259,15 +259,13 @@ For example, if you want to use advanced imputation techniques:
 # 1. Use TADPREP for initial preparation
 import pandas as pd
 import tadprep as tp
-df_initial = tp.prep_df(df)  # Handle basic cleaning and preparation
+df_initial = tp.prep_df(df)  # Handle basic data cleaning and preparation
 
 # 2. Import and apply custom imputation
 from sklearn.impute import KNNImputer
 imputer = KNNImputer(n_neighbors=5)
-df_imputed = pd.DataFrame(
-    imputer.fit_transform(df_initial),
-    columns=df_initial.columns
-)
+df_imputed = pd.DataFrame(imputer.fit_transform(df_initial), 
+                          columns=df_initial.columns)
 ```
 
 ### Non-Native Dependencies
