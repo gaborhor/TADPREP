@@ -259,7 +259,7 @@ For example, if you want to use advanced imputation techniques:
 # 1. Use TADPREP for initial preparation
 import pandas as pd
 import tadprep as tp
-df_initial = tp.prep_df(df)  # Handle basic data cleaning and preparation
+df_initial = tp.prep_df(df)  # Run data-cleaning pipeline, skipping imputation
 
 # 2. Import and apply custom imputation
 from sklearn.impute import KNNImputer
