@@ -40,7 +40,7 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     Notes
     -----
     Use verbose=True (default) when you need to understand the structure and data types of your features.
-    Use verbose=False when you just need quick size and missingness statistics.
+    Use verbose=False when you only need top-level size and missingness statistics.
 
     Examples
     --------
@@ -187,7 +187,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
 
 def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
     """
-    Interactively impute missing values in the DataFrame using simple imputation methods.
+    Interactively imputes missing values in the DataFrame using simple imputation methods.
 
     Parameters
     ----------
