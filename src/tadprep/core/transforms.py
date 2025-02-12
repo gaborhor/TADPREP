@@ -19,10 +19,10 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         None. This is a void function.
     """
     # Print number of instances in file
-    print(f'The unaltered file has {df.shape[0]} instances.')  # [0] is rows
+    print(f'The dataset has {df.shape[0]} instances.')  # [0] is rows
 
     # Print number of features in file
-    print(f'The unaltered file has {df.shape[1]} features.')  # [1] is columns
+    print(f'The dataset has {df.shape[1]} features.')  # [1] is columns
 
     # Instances with missing values
     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
@@ -30,9 +30,8 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     print(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
 
     if verbose:
-        print('-' * 50)  # Visual separator
         # Print names and datatypes of features in file
-        print('NAMES AND DATATYPES OF FEATURES:')
+        print('\nNAMES AND DATATYPES OF FEATURES:')
         print('-' * 50)  # Visual separator
         print(df.info(verbose=True, memory_usage=True, show_counts=True))
         print('-' * 50)  # Visual separator
