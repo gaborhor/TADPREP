@@ -72,8 +72,8 @@ The methods provide a great deal of visual parsing of console output and offer e
 to each step. Each method has a boolean `verbose` parameter (which is `True` by default), but can be set to `False` when 
 the method is called to simplify printed output and suppress explanations.
 
-Additionally, some methods have a further boolean `skip_warnings` parameter (which is `True` by default), but can be 
-set to `False` to allow the user to skip past any mathematics- or best-practice related warnings relevant to a given 
+Additionally, some methods have a further boolean `skip_warnings` parameter (which is `False` by default), but can be 
+set to `True` to allow the user to skip past any mathematics- or best-practice related warnings relevant to a given 
 data preprocessing step, e.g. warnings about summoning the curse of dimensionality when encoding high-cardinality 
 features.
 
