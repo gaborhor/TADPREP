@@ -269,15 +269,15 @@ df_imputed = pd.DataFrame(imputer.fit_transform(df_initial),
 ```
 
 ### Non-Native Dependencies
-- numpy
-- pandas
-- scikit-learn
-- matplotlib
-- seaborn
+- numpy *(For array operations and infinity checks)*
+- pandas *(Used extensively for dataframe manipulations)*
+- scikit-learn *(Supplies scalers for numerical features)*
+- matplotlib *(For basic plotting)*
+- seaborn *(For generating feature distribution plots)*
 
 ### Future Development
 Any thoughts about future development
 
 ### Acknowledgments
-- Dr. Sean Connin at the Ritchie School of Engineering for general encouragement and package design advice
-- Thomas Mooney at the McDonnell Genome Institute for UX testing and code review
+- Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.
+- Thomas Mooney at the McDonnell Genome Institute for his UX testing and code review.
