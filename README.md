@@ -106,7 +106,7 @@ df_raw = pd.read_sql_table(
 )
 
 # Display general dataframe information using TADPREP
-tp.file_info(df_raw, verbose=True)
+tp.df_info(df_raw, verbose=True)
 
 # Reshape data using TADPREP
 df_reshape = tp.reshape(df_raw, verbose=False)
