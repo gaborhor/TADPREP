@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
 
+# FIRST-PASS TESTING
 # Uploading sample datafile
 df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_longlean.csv")
 
@@ -103,3 +104,27 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 
 # Check prepared dataframe
 # print(processed_df)
+
+# SECOND-PASS TESTING (checking method augmentations with specific corner cases)
+
+'''
+Testing augmented df_info method
+Need to check for detection of:
+- Duplicate instances
+- Low-variance features
+- Infinite values
+- Non-null empty strings
+'''
+info_df = pd.DataFrame({
+    'name': ['John', 'Joe', 'Jack', 'James', 'Jake', 'John'],  # Creating one duplicate row for 'John'
+    'age': [25, 57, 17, 31, np.nan, 25],  # Make sure we have a missing value
+    'weight': [155, 155, 155, 155, 155, 155],  # Should trip the low-variance check
+    'height': [67, 70, np.inf, 72, 65, 67],  # Should trip the infinite values check
+    'hair_color': ['brown', 'black', '', 'blonde', 'bald', 'brown']  # Should trip the non-null empty string check
+})
+
+# This should report on the duplicated instance, but should not display the follow-up warning
+# tp.df_info(info_df, verbose=False)
+
+# This should display all warnings
+# tp.df_info(info_df, verbose=True)
