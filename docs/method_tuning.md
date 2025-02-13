@@ -29,6 +29,6 @@ Prints summary, top-level information about a dataframe to the console.
 ### Ideas for Development:
 - Print count of duplicate instances in both `verbose` states. *(This is a potential-import-error user assist.)*
 - If `verbose=True`:
-  - Print list of near-constant features (i.e. those with >= 90% matched values)
+  - Print list of near-constant features (i.e. those with >= 95% matched values)
   - Print list of features containing any infinite values
   - Print list of object-type features containing *empty* strings (i.e. distinct from NULL/NaN values)
