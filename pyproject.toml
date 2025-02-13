@@ -8,6 +8,8 @@ version = '0.1.0b1'
 description = 'Interactive Tabular Data Preparation Library'
 readme = 'README.md'
 authors = [{ name = 'Donald Smith', email = 'don.cs.smith@gmail.com' }]
+maintainers = [{ name = 'Donald Smith', email = 'don.cs.smith@gmail.com' }]
+contributors = [{ name = 'Gabor Horvath', email = 'gabor_email@service.com' }]
 license = { file = 'LICENSE' }
 requires-python = '>=3.11'
 dependencies = [
