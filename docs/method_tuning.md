@@ -23,5 +23,8 @@ Prints summary, top-level information about a dataframe to the console.
   - Names and datatypes of all features, along with memory use, etc. *(Calls Pandas' .info() method)*
   - A line of dashes on either side of the .info() output for visual separation
 
+### Observed Bugs/Problems:
+- None
+
 ### Ideas for Development:
 - Si vir manus habet operetur
