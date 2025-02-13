@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -24,13 +25,59 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
     # Print number of features in file
     print(f'The dataset has {df.shape[1]} features.')  # [1] is columns
 
-    # Instances with missing values
-    row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
-    row_missing_rate = (row_missing_cnt / len(df) * 100).round(2)  # Compute rate
-    print(f'{row_missing_cnt} instances ({row_missing_rate}%) contain at least one missing value.')
+    # Handle instances with missing values
+    row_nan_cnt = df.isnull().any(axis=1).sum()  # Compute count of instances with any missing values
+    row_nan_rate = (row_nan_cnt / len(df) * 100).round(2)  # Compute rate
+    print(f'{row_nan_cnt} instances ({row_nan_rate}%) contain at least one missing value.')
 
+    # Handle duplicate instances
+    # NOTE: This check runs regardless of verbose status because it can help catch a data integrity error
+    row_dup_cnt = df.duplicated().sum()  # Compute count of duplicate instances
+    if row_dup_cnt > 0:  # If any such instances exist
+        row_dup_rate = ((row_dup_cnt / len(df)) * 100)  # Compute duplication rate
+        print(f'The dataset contains {row_dup_cnt} duplicate instances. ({row_dup_rate:.2f}% of all instances)')
+        if verbose:
+            print('WARNING: If these duplicate instances are not legitimate repeated measurements/events in your data, '
+                  'they may indicate an error in how your data were collected or imported.')
+
+    # Subsequent data checks only run if verbose is True
     if verbose:
-        # Print names and datatypes of features in file
+        # Create a list of near-constant features, if any exist
+        near_constant_cols = [(column,
+                               val_counts.index[0],  # Index 0 is the most frequent value in the column
+                               val_counts.iloc[0] * 100)
+                              # For each column
+                              for column in df.columns
+                              # Check if most frequent value in column exceeds 95% of data present
+                              if (val_counts := df[column].val_counts(normalize=True)).iloc[0] > 0.95]  # Walrus!
+
+        if near_constant_cols:
+            print(f'\nALERT: There are {len(near_constant_cols)} features with very low variance (>95% single value):')
+            for column, value, rate in near_constant_cols:
+                print(f'- {column} (Dominant value: {value}, Dominance rate: {rate:.2f}%)')
+
+        # Create a list of features containing infinite values, if any exist
+        inf_cols = [(column, np.isinf(df[column]).sum())  # Column name and count of inf values
+                    for column in df.select_dtypes(include=['int64', 'float64']).columns  # For each numeric column
+                    if np.isinf(df[column]).sum() > 0]  # Append if the column contains any inf values
+
+        if inf_cols:
+            print(f'\nALERT: There are {len(inf_cols)} features containing infinite values:')
+            for column, inf_count in inf_cols:
+                print(f'- {column} contains {inf_count} infinite values')
+
+        # Create a list of features containing empty strings (i.e. distinct from NULL/NaN), if any exist
+        empty_string_cols = [(column, (df[column] == '').sum())  # Column name and count of empty strings
+                             for column in df.select_dtypes(include=['object']).columns  # For each string column
+                             if (df[column] == '').sum() > 0]  # If column contains any empty strings
+
+        if empty_string_cols:
+            print(f'\nALERT: There are {len(empty_string_cols)} features containing non-NULL empty strings '
+                  f'(i.e. values of "", distinct from NULL/NaN):')
+            for column, empty_count in empty_string_cols:
+                print(f'- {column} contains {empty_count} non-NULL empty strings')
+
+        # Finally, print names and datatypes of features in file
         print('\nNAMES AND DATATYPES OF FEATURES:')
         print('-' * 50)  # Visual separator
         print(df.info(verbose=True, memory_usage=True, show_counts=True))
@@ -1208,6 +1255,7 @@ def _prep_df_core(
         features_to_scale: list[str] | None = None
 ) -> pd.DataFrame:
     """Core function implementing the TADPREP pipeline with parameter control."""
+
     def get_bool_param(param_name: str, default: bool = True) -> bool:
         """Get boolean parameter values from user input."""
         while True:
