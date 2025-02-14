@@ -58,8 +58,8 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     ...     'A': [1, 2, None, 4],
     ...     'B': ['x', 'y', 'z', 'w']
     ... })
-    >>> tadprep.df_info(df, verbose=True)  # Shows full file information
-    >>> tadprep.df_info(df, verbose=False)  # Shows reduced file information
+    >>> tadprep.df_info(df, verbose=True)  # Shows full dataframe information
+    >>> tadprep.df_info(df, verbose=False)  # Shows reduced dataframe information
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
