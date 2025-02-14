@@ -13,34 +13,42 @@ from .core.transforms import (
 
 def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    Prints top-level information about a DataFrame's structure and contents.
+    Prints comprehensive information about a DataFrame's structure, contents, and potential data quality issues.
 
     Basic information (always shown):
     - Total number of instances (rows)
     - Total number of features (columns)
     - Count and percentage of instances containing any missing values
+    - Count and percentage of duplicate instances, if any exist
 
     When verbose=True, the method also displays:
-    - Names of all features
-    - Data type of each feature
+    - Features with very low variance (>95% single value)
+    - Features containing infinite values (in numeric columns)
+    - Features containing empty strings (distinct from NULL/NaN values)
+    - Names and data types of all features
     - Non-null value count for each feature
+
+    The method also provides contextual warnings about data quality issues that may require investigation.
 
     Parameters
     ----------
     df : pandas.DataFrame
         The DataFrame to be analyzed
     verbose : bool, default=True
-        Controls whether detailed feature information is displayed
+        Controls whether detailed feature information and data quality checks are displayed
 
     Returns
     -------
     None
-        This is a void method which prints file information to the console.
+        This is a void method which prints information to the console.
 
     Notes
     -----
-    Use verbose=True (default) when you need to understand the structure and data types of your features.
-    Use verbose=False when you only need top-level size and missingness statistics.
+    Use verbose=True (default) to receive full information about data structure and potential quality issues.
+    Use verbose=False when you only need basic information about dataset size and contents.
+
+    Different from NULL/NaN values, empty strings ('') are valid string values that may indicate data quality
+    issues in text columns.
 
     Examples
     --------
