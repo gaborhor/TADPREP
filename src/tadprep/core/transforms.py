@@ -927,7 +927,9 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
                 if len(mode_vals) == 0:
                     print(f'No mode value exists for feature {feature}. Skipping imputation.')
                     continue
-                imp_val = mode_vals[0]
+
+                imp_val = mode_vals[0]  # Select first mode
+
                 df[feature] = df[feature].fillna(imp_val)
                 method_desc = f'mode value ({imp_val})'
 
@@ -953,13 +955,15 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             elif imp_method == 'Random Sample':
                 # Get non-null values to sample from
                 valid_values = df[feature].dropna()
+
                 if len(valid_values) == 0:
                     print('No valid values to sample from. Skipping imputation.')
                     continue
-                # Sample with replacement
-                imp_vals = valid_values.sample(n=feature_missing_cnt, replace=True)
-                # Fill NaN values with sampled values
-                df.loc[df[feature].isna(), feature] = imp_vals.values
+
+                imp_vals = valid_values.sample(n=feature_missing_cnt, replace=True)  # Sample with replacement
+
+                df.loc[df[feature].isna(), feature] = imp_vals.values  # Fill NaN values with sampled values
+
                 method_desc = 'random sampling from non-null values'
 
             elif imp_method == 'Forward Fill':
@@ -995,22 +999,22 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             continue
 
     # Print imputation summary if any features were imputed
-    if imp_records:
-        print('\nIMPUTATION SUMMARY:')
-        print('-' * 50)
-        for record in imp_records:
-            print(f'Feature: {record["feature"]}')
-            print(f'- {record["count"]} values imputed')
-            print(f'- Method: {record["method"]}')
-            print(f'- Description: {record["description"]}')
+    if verbose:
+        if imp_records:
+            print('\nIMPUTATION SUMMARY:')
             print('-' * 50)
 
-    if verbose:
+            for record in imp_records:
+                print(f'Feature: {record["feature"]}')
+                print(f'- {record["count"]} values imputed')
+                print(f'- Method: {record["method"]}')
+                print(f'- Description: {record["description"]}')
+                print('-' * 50)
+
         print('Imputation complete. Returning modified dataframe.')
         print('-' * 50)
 
     return df  # Return the modified dataframe with imputed values
-
 
 
 def _encode_core(
