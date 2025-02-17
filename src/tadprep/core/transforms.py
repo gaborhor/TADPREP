@@ -824,9 +824,11 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         print('\nWARNING: TADPREP supports the following imputation methods:')
         print('- Mean/Median/Mode imputation')
         print('- Constant value imputation')
-        print('- Random sampling from non-null values')
+        print('- Random sampling from non-null within-feature values')
+
         if is_timeseries:
             print('- Forward/backward fill (for time series)')
+
         print('\nFor more sophisticated methods (e.g. imputation-by-modeling), skip this step and write '
               'your own imputation code.')
 
@@ -840,8 +842,9 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             print('\nOther Methods:')
             print('- Constant: Replaces missing values with a specified value. Good when default values exist.')
             print('- Random Sampling: Maintains distribution by sampling from non-null values.')
+
             if is_timeseries:
-                print('\nTime Series Methods:')
+                print('\nTime Series Imputation Methods:')
                 print('- Forward Fill: Carries last valid value forward. Good for continuing trends.')
                 print('- Backward Fill: Carries next valid value backward. Good for establishing history.')
 
@@ -860,7 +863,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
                 # Offer visualization
                 if input('\nWould you like to see the current distribution? (Y/N): ').lower() == 'y':
                     try:
-                        plt.figure(figsize=(10, 6))
+                        plt.figure(figsize=(12, 8))
                         sns.histplot(data=df, x=feature)
                         plt.title(f'Distribution of {feature} (Pre-imputation)')
                         plt.show()
@@ -886,7 +889,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
         # Prompt user to select an imputation method
         while True:
             method_items = [f'{idx}. {method}' for idx, method in enumerate(val_methods, 1)]
-            method_prompt = f'\nChoose imputation method:\n{"\n".join(method_items)}\nEnter the number of your choice: '
+            method_prompt = f'\nChoose imputation method:\n{"\n".join(method_items)}\nEnter choice: '
             user_imp_choice = input(method_prompt)
 
             try:
