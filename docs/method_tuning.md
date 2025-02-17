@@ -127,7 +127,7 @@ ask user if the data are timeseries in form)*
 
       - When verbose=True:
         - Explain how it can preserve feature distribution
-        - Compare/contrast with other methods
+        - Compare/contrast with other imputation methods
 
 
 - MORE USER FEEDBACK:
