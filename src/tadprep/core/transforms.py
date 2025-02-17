@@ -841,7 +841,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
             print('- Mode: Useful for categorical and fully-discrete numerical data.')
             print('\nOther Methods:')
             print('- Constant: Replaces missing values with a specified value. Good when default values exist.')
-            print('- Random Sampling: Maintains distribution by sampling from non-null values.')
+            print('- Random Sampling: Maintains feature distribution by sampling from non-null values.')
 
             if is_timeseries:
                 print('\nTime Series Imputation Methods:')
