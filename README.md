@@ -152,8 +152,12 @@ data preparation process:
 `df_info(df, verbose=True)`
 - Displays comprehensive information about DataFrame structure and contents
 - Shows feature counts, data types, and missingness statistics
-- Helps users understand their data before making preparation decisions
-- Set `verbose=False` for condensed output
+- Identifies potential data quality issues such as:
+  - Near-constant features (>95% single value)
+  - Features containing infinite values
+  - Features containing empty strings (i.e. distinct from NULL/NaN values)
+- Provides memory usage information when verbose=True
+- Set `verbose=False` for condensed output focusing on basic statistics
 
 `reshape(df, verbose=True)`
 - Handles missing value deletion and feature deletion
@@ -174,10 +178,21 @@ data preparation process:
 - Set `verbose=False` for key statistics only
 
 `impute(df, verbose=True, skip_warnings=False)`
-- Handles missing value imputation using mean, median, or mode
-- Provides guidance on appropriate imputation methods
+- Handles missing value imputation using various methods:
+  - Statistical methods: mean, median, mode
+  - Constant value imputation
+  - Random sampling from non-null values
+  - Forward/backward fill for time series data
+- Automatically detects time series data and offers appropriate imputation methods
+- Performs extensive data quality checks including:
+  - Low variance detection
+  - Outlier detection
+  - Correlation analysis
+  - Skewness assessment
+- Provides visual distribution comparisons pre/post imputation
 - Returns DataFrame with imputed values
-- Set `skip_warnings=True` to bypass missingness threshold warnings
+- Set `skip_warnings=True` to bypass data quality warnings
+- Set `verbose=False` for streamlined interaction
 
 `encode(df, features_to_encode=None, verbose=True, skip_warnings=False)`
 - Encodes categorical features using One-Hot or Dummy encoding
@@ -214,8 +229,13 @@ While it provides interactive guidance throughout the data preparation process, 
 fundamental techniques for certain operations:
 
 #### Imputation
-- Supports only common imputation methods: mean, median, and mode
-- Does not implement more sophisticated approaches like:
+- Supports common imputation methods:
+  - Statistical: mean, median, mode
+  - Constant value imputation
+  - Random sampling from non-null values
+  - Forward/backward fill for time series data
+- Includes data quality checks and distribution visualization capabilities
+- Does not implement more sophisticated imputation approaches such as:
   - Multiple imputation
   - K-Nearest Neighbors imputation
   - Regression-based imputation
