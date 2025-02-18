@@ -46,106 +46,67 @@ Works interactively with user to impute missing values in features using common 
 ### Parameters:
 - `df` Input Pandas dataframe
 - `verbose` (Boolean, default = True) which controls level of detail/guidance in output
-- `skip_warnings` (Boolean, default = False) which controls whether to skip missingness threshold warnings
+- `skip_warnings` (Boolean, default = False) which controls whether to skip data quality and missingness warnings
 
 ### Returns:
 - Modified dataframe with imputed values as specified by user
 
 ### Current State:
+- Core Functionality (Always Run):
+  - Detects and validates datetime features to identify time series data
+  - Checks for "false numeric" features (e.g., 1/0 representations of Yes/No)
+  - Performs data quality checks including:
+    - Near-zero variance features
+    - Features with high outlier counts
+    - Highly correlated feature pairs
+    - Features with extreme skewness
+  - Supports multiple imputation methods:
+    - Statistical methods (mean, median, mode)
+    - Constant value imputation
+    - Random sampling from non-null values
+    - Forward/backward fill (for time series data)
+  - Tracks imputation actions for summary reporting
+
+
 - If `verbose=False`:
-  - Checks for any "false numeric" features, i.e. a categorical feature encoded as numbers, e.g. a 1/0 representation 
-of 'Yes/No' values
-  - Asks user whether such features (if any are identified) should actually be treated as categorical
-  - Asks user whether to impute only for recommended features based on missingness rate or whether to consider *all* 
-features as candidates for imputation
-  - Asks user to select an appropriate imputation method for each feature, or to skip imputation for that feature
+  - Shows minimal feature type classification
+  - Displays only essential user prompts
+  - Presents basic imputation choices
+  - Shows only critical warnings
+  - Provides basic confirmation of successful operations
 
 
-- If `verbose=True`, the method **also** prints:
-  - A notification that the imputation process has begun
-  - An initial classification of features into type-based "buckets" (i.e. a list of categorical and numerical features 
-as defined by their Pandas datatype)
-  - A final classification of features into type-based "buckets" *after* the checks for "false numeric" features have 
-been run and handled by the user
-  - A count and rate of missingness for each feature, along with warnings about bias introduction for sparse features
-  - A list of features which are good candidates for imputation based on missingness rates
-  - A warning that imputation should be abandoned if no features are assessed as good candidates for imputation
-  - An offer to display a brief explanation of supported imputation methods and best practices for the user
-  - A message for each imputed feature describing which imputation method and imputed value are being applied
-  - A notification that the imputation process is complete
+- If `verbose=True`, additionally provides:
+  - Detailed initial and final feature classifications
+  - Comprehensive missingness statistics
+  - Detailed explanations of imputation methods
+  - Pre-imputation feature distributions and statistics
+  - Visual distribution plots for numerical features
+  - Step-by-step guidance through the imputation process
+  - Post-imputation distribution comparisons
+  - Comprehensive imputation summary including:
+    - Feature names
+    - Number of values imputed
+    - Methods used
+    - Imputation values or approaches
 
 
-- If `skip_warnings=True`:
-  - The warnings about missingness rates and bias introduction are not displayed
-  - The list of features considered good imputation candidates is not displayed
-  - Any warnings that imputation is not appropriate for the given dataset are not displayed
+- If `skip_warnings=False`, additionally checks and warns about:
+  - Features with high missingness rates (>10%)
+  - Data quality issues including:
+    - Near-zero variance
+    - High outlier counts
+    - High correlations between features
+    - Extreme skewness
+  - Provides detailed guidance on handling problematic features
+  - Allows user to 'proceed with caution' after each warning
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- DATA QUALITY CHECKS:
-  - Add checks for:
-    - Zero-variance features
-    - Highly correlated features
-    - Extreme outliers
-  - These checks will run at the same time as the current missingness analysis
-  
-    - When skip_warnings=False:
-        - Modify the "good candidates" list based on these checks
-        - Warn about potentially problematic features
+- None as of current state
 
-    - When verbose=True:
-      - Provide detailed information about detected issues
-      - Explain why these characteristics matter for imputation
-      - Show specific values/thresholds that triggered warnings
-
-
-- ADDITIONAL IMPUTATION METHODS:
-  - Forward/Backward Fill *(Only offered for time series data - Need to search for datetime features to assess and 
-ask user if the data are timeseries in form)*
-
-    - When verbose=True:
-      - Explain when these methods are appropriate
-      - Explain difference between forward/backward fill
-      - Show examples of how the values would be propagated
-
-
-  - Constant Value Imputation (Available for all feature types)
-    - Examples:
-      - Using 0 for missing values in count data
-      - Using -1 for missing categorical codes
-      - Using domain-specific default values
-  
-      - When verbose=True:
-        - Explain common use cases
-        - Provide examples of appropriate constant values
-        - Warn about potential impacts on distribution
-
-
-  - Random Sampling (Available for all feature types)
-
-      - When verbose=True:
-        - Explain how it can preserve feature distribution
-        - Compare/contrast with other imputation methods
-
-
-- MORE USER FEEDBACK:
-  - When verbose=True:
-
-    - Pre/Post Imputation Comparisons:
-      - Show simple distribution statistics before and after
-      - Display basic visualization if feature is numerical
-      - Show value counts if feature is categorical
-
-    - Imputation Summary Table
-      - Show for each imputed feature:
-        - Feature name
-        - Number of values imputed
-        - Method used
-        - Value substituted (mean/median/mode/constant)
-
-  - We will present this summary table before returning the modified dataframe
-
-### Method History
- - Alpha build by Don Smith
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
