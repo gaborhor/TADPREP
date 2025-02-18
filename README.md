@@ -224,7 +224,7 @@ df = tp.reshape(df, verbose=False)
 ```
 
 ### Provisos and Limitations
-TADPREP is designed to be a practical, first-principle tool for data preprocessing tasks. 
+TADPREP is designed to be a practical, first-principles library for common tabular data preprocessing tasks. 
 While it provides interactive guidance throughout the data preparation process, it intentionally implements only 
 fundamental techniques for certain operations:
 
