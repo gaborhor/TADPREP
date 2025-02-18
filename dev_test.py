@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from datetime import datetime, timedelta
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
 
 # FIRST-PASS TESTING
@@ -128,3 +129,56 @@ info_df = pd.DataFrame({
 
 # This should display all warnings
 # tp.df_info(info_df, verbose=True)
+
+'''
+Testing augmented impute method
+Need to test for:
+- Detection of false-numerical features
+- Detection of low-variance features
+- Detection of high outlier counts
+- Detection of highly-correlated feature pairs
+- Detection of timeseries data
+- Detection of high missingness rate
+- Constant-value imputation
+- Random-sample imputation
+- Visualizations (both single-feature and before-after)
+- Final imputation summary table
+'''
+
+non_ts_data = {
+    # Numerical features with different characteristics
+    'normal': [100, 102, 98, 103, 97, 101, np.nan, 100, 102, 98, 100, np.nan, 101, 97, 103],
+    'skewed': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, np.nan, 1.0, 1.0, 2.0, 5.0, 15.0, 30.0, 50.0, 100.0],  # Extreme skew
+    'low_var': [50.01, 50.02, 50.01, 50.02, 50.02, 50.01, 50.02, 50.01, np.nan, 50.02, 50.01, 50.02, 50.01, 50.02,
+                50.01],
+    'outliers': [105, 102, 98, 350, 101, 103, 99, 345, 101, np.nan, 100, 355, 102, 98, 101],
+    'corr_1': [2, 4, 6, 8, 10, 12, 14, 16, np.nan, 20, 22, 24, 26, 28, 30],
+    'corr_2': [2.1, 4.2, 6.1, 8.1, 10.2, 12.1, 14.2, 16.1, np.nan, 20.2, 22.1, 24.2, 26.1, 28.2, 30.1],
+
+    # Categorical feature
+    'cat_normal': ['A', 'B',  np.nan, 'B', 'B', 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'B', np.nan,],
+
+    # False numerical features (actually categorical or ordinal)
+    'false_num_bin': [0, np.nan, 0, 1, 1, 0, 1, 0, 1, np.nan, 0, 1, 0, 1, 0],
+    'false_num_ord': [np.nan, 2, 3, 2, np.nan, 1, 4, 2, 3, 1, np.nan, 2, 4, 3, np.nan]
+}
+
+# Timeseries test data
+ts_data = {
+    'date': [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(15)],
+    'numeric_value': [100, np.nan, 98, 102, np.nan, 99, 101, 98, 102, np.nan, 105, 99, 101, np.nan, 103],
+    'categorical': ['A', 'B', np.nan, 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'A', 'B', 'A', 'B']
+}
+
+# Create test DataFrames
+df_normal = pd.DataFrame(non_ts_data)
+df_ts = pd.DataFrame(ts_data).sort_values('date').reset_index(drop=True)
+
+# Test impute method on non-timeseries data
+# df_normal_imputed = tp.impute(df_normal, verbose=True, skip_warnings=False)  # Full walkthrough
+# df_normal_imputed = tp.impute(df_normal, verbose=False, skip_warnings=True)  # Super-streamlined
+# print(df_normal_imputed)
+
+# df_ts_imputed = tp.impute(df_ts, verbose=True, skip_warnings=False)  # Full walkthrough
+# df_ts_imputed = tp.impute(df_ts, verbose=False, skip_warnings=True)  # Super-streamlined
+# print(df_ts_imputed)
