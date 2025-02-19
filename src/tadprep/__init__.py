@@ -4,6 +4,7 @@
 from .package import (
     df_info,
     reshape,
+    subset,
     rename_and_tag,
     feature_stats,
     impute,
@@ -16,6 +17,7 @@ from .package import (
 __all__ = [
     'df_info',
     'reshape',
+    'subset',
     'rename_and_tag',
     'feature_stats',
     'impute',
