@@ -96,8 +96,8 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         >>> import pandas as pd
         >>> import tadprep
         >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
-        >>> reshaped_df = tadprep.reshape(df)  # Shows detailed status messages
-        >>> reshaped_df_quiet = tadprep.reshape(df, verbose=False)  # Shows only necessary user prompts
+        >>> df_reshaped = tadprep.reshape(df)  # Shows detailed status messages
+        >>> df_reshaped_quiet = tadprep.reshape(df, verbose=False)  # Shows only necessary user prompts
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -132,8 +132,8 @@ def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         >>> import pandas as pd
         >>> import tadprep
         >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
-        >>> subset_df = tadprep.subset(df)  # Shows detailed status messages and guidance
-        >>> subset_df_quiet = tadprep.subset(df, verbose=False)  # Shows only necessary user prompts
+        >>> df_subset = tadprep.subset(df)  # Shows detailed status messages and guidance
+        >>> df_subset_quiet = tadprep.subset(df, verbose=False)  # Shows only necessary user prompts
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -171,7 +171,7 @@ def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = 
     >>> df = pd.DataFrame({'feature1': [1,2,3], 'feature2': ['a','b','c']})
     >>> df_renamed = tadprep.rename_and_tag(df)  # Only rename features
     >>> df_tagged = tadprep.rename_and_tag(df, tag_features=True)  # Rename and tag features
-    >>> df_quiet = rename_and_tag(df, verbose=False, tag_features=True)  # Rename and tag features with minimal output
+    >>> df_renamed_quiet = tadprep.rename_and_tag(df, verbose=False, tag_features=False)  # Show minimal output
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -254,8 +254,8 @@ def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) 
     >>> import tadprep
     >>> df = pd.DataFrame({'A': [1, None, 3], 'B': ['x', 'y', None]})
     >>> df_imputed = tadprep.impute(df)  # Full guidance and warnings
-    >>> df_quiet = tadprep.impute(df, verbose=False)  # Minimize output
-    >>> df_nowarn = tadprep.impute(df, skip_warnings=True)  # Skip missingness warnings
+    >>> df_imputed_quiet = tadprep.impute(df, verbose=False)  # Minimize output
+    >>> df_imputed_nowarn = tadprep.impute(df, skip_warnings=True)  # Skip missingness warnings
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -299,9 +299,9 @@ def encode(
     >>> import tadprep
     >>> df = pd.DataFrame({'A': ['cat', 'dog', 'horse'], 'B': [1, 2, 3]})
     >>> df_encoded = tadprep.encode(df)  # Let function identify categorical features
-    >>> df_specific = tadprep.encode(df, features_to_encode=['A'])  # Specify features to encode
-    >>> df_quiet = tadprep.encode(df, verbose=False)  # Minimize output
-    >>> df_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
+    >>> df_encoded_specified = tadprep.encode(df, features_to_encode=['A'])  # Specify features to encode
+    >>> df_encoded_quiet = tadprep.encode(df, verbose=False)  # Minimize output
+    >>> df_encoded_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -362,9 +362,9 @@ def scale(
     >>> import tadprep
     >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': ['x', 'y', 'z']})
     >>> df_scaled = tadprep.scale(df)  # Let function identify numerical features
-    >>> df_specific = tadprep.scale(df, features_to_scale=['A'])  # Specify features to scale
-    >>> df_quiet = tadprep.scale(df, verbose=False)  # Minimize output
-    >>> df_nowarn = tadprep.scale(df, skip_warnings=True)  # Skip best-practice warnings
+    >>> df_scaled_specified = tadprep.scale(df, features_to_scale=['A'])  # Specify features to scale
+    >>> df_scaled_quiet = tadprep.scale(df, verbose=False)  # Minimize output
+    >>> df_scaled_nowarn = tadprep.scale(df, skip_warnings=True)  # Skip best-practice warnings
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
