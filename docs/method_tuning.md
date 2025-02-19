@@ -58,25 +58,69 @@ Prints summary, top-level information about a dataframe to the console.
 
 ## Method: `subset`
 ### Core Purpose:
-Allows user to subset large datasets using appropriate/desired subset processes.
+Provides interactive functionality for subsetting data through random sampling (with or without seed), 
+stratified sampling, or time-based instance selection for timeseries data.
 
 ### Parameters:
-- `df` Input Pandas dataframe
-- `verbose` (Boolean, default = True) which controls level of detail/guidance in output
+- `df` Input Pandas dataframe.
+- `verbose` (Boolean, default = True) which controls level of detail/guidance in output.
 
 ### Returns:
-- Modified dataframe with subsetted instances as specified by user.
+- Modified dataframe containing only the subset of instances specified by user.
 
 ### Current State:
+- Core Functionality (Always Run):
+  - Detects categorical features for stratified sampling
+  - Identifies datetime features and indices for time-based subsetting
+  - Automatically converts string datetime columns to datetime type
+  - Supports multiple subsetting methods:
+    - True random sampling (unseeded)
+    - Reproducible random sampling (seeded)
+    - Stratified random sampling (if categorical features are present)
+    - Time-based subsetting (if datetime elements are present)
+  - Validates all user inputs and subset parameters
+  - Ensures minimum instance counts are maintained
+  - Preserves data integrity during subsetting
+
+
+- If `verbose=False`:
+  - Shows only available subsetting methods
+  - Displays minimal progress information
+  - Presents only essential user prompts
+  - Shows basic confirmation of successful operations
+  - Reports final instance count
+
+
+- If `verbose=True`, the method **also** provides:
+  - Detailed explanation of available subsetting methods
+  - Comprehensive feature type identification
+  - For time series data:
+    - Data frequency analysis
+    - Time span information
+    - Example timestamps
+    - Guidance on date format inputs
+  - For stratified sampling:
+    - Detailed explanation of the process
+    - Category distribution information
+    - Guidance on maintaining representativeness
+  - Detailed summary of subsetting results including:
+    - Original instance count
+    - Subset instance count
+    - Subsetting method used
+    - Additional method-specific details:
+      - Time boundaries (for time-based subsetting)
+      - Category proportions (for stratified sampling)
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- None as of current state
+- Possible additional subset/sampling methodologies:
+  - Option for weighted random sampling
+  - Option for bootstrap sampling
 
 ### Method History:
-- Alpha build by Don Smith
+- Alpha build by Don Smith (Current State)
 
 
 ## Method: `impute`
