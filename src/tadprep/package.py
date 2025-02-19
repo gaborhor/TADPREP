@@ -2,6 +2,7 @@ import pandas as pd
 from .core.transforms import (
     _df_info_core,
     _reshape_core,
+    _subset_core,
     _rename_and_tag_core,
     _feature_stats_core,
     _impute_core,
@@ -88,7 +89,7 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        The reshaped DataFrame as modified by user's specifications
+        The reshaped DataFrame as modified by the user's specifications
 
     Examples
     --------
@@ -96,7 +97,7 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         >>> import tadprep
         >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
         >>> reshaped_df = tadprep.reshape(df)  # Shows detailed status messages
-        >>> quiet_df = tadprep.reshape(df, verbose=False)  # Shows only necessary user prompts
+        >>> reshaped_df_quiet = tadprep.reshape(df, verbose=False)  # Shows only necessary user prompts
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -107,6 +108,42 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
         raise ValueError('Input DataFrame is empty')
 
     return _reshape_core(df, verbose)
+
+
+def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
+    """
+    Interactively subsets the input DataFrame according to user specification. Supports random sampling
+    (with or without a seed), stratified sampling, or time-based instance selection for timeseries data.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to be reshaped
+    verbose : bool, default=True
+        Controls whether detailed process information and methodological guidance is displayed
+
+    Returns
+    -------
+    pandas.DataFrame
+        The modified DataFrame as subset by the user's specifications
+
+    Examples
+    --------
+        >>> import pandas as pd
+        >>> import tadprep
+        >>> df = pd.DataFrame({'A': [1, 2, None], 'B': [4, 5, 6]})
+        >>> subset_df = tadprep.subset(df)  # Shows detailed status messages and guidance
+        >>> subset_df_quiet = tadprep.subset(df, verbose=False)  # Shows only necessary user prompts
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _subset_core(df, verbose)
 
 
 def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
