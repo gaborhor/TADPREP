@@ -1,12 +1,12 @@
 # Public-Facing Method Development Planning
 
-## Method: df_info
+## Method: `df_info`
 ### Core Purpose:
 Prints summary, top-level information about a dataframe to the console.
 
 ### Parameters:
-- `df` Input Pandas dataframe
-- `verbose` (Boolean, default = True) which controls level of detail in output
+- `df` Input Pandas dataframe.
+- `verbose` (Boolean, default = True) which controls level of detail in output.
 
 ### Returns:
 - None - void method. Prints info to console.
@@ -39,17 +39,57 @@ Prints summary, top-level information about a dataframe to the console.
  - Beta build by Don Smith (Current State)
 
 
-## Method: impute
+## Method: `reshape`
 ### Core Purpose:
-Works interactively with user to impute missing values in features using common imputation methods.
+
+### Parameters:
+
+### Returns:
+
+### Current State:
+
+### Observed Bugs/Problems:
+
+### Ideas for Development:
+
+### Method History:
+- Alpha build by Don Smith (Current State)
+
+
+## Method: `subset`
+### Core Purpose:
+Allows user to subset large datasets using appropriate/desired subset processes.
 
 ### Parameters:
 - `df` Input Pandas dataframe
 - `verbose` (Boolean, default = True) which controls level of detail/guidance in output
-- `skip_warnings` (Boolean, default = False) which controls whether to skip data quality and missingness warnings
 
 ### Returns:
-- Modified dataframe with imputed values as specified by user
+- Modified dataframe with subsetted instances as specified by user.
+
+### Current State:
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- None as of current state
+
+### Method History:
+- Alpha build by Don Smith
+
+
+## Method: `impute`
+### Core Purpose:
+Works interactively with user to impute missing values in features using common imputation methods.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `verbose` (Boolean, default = True) which controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) which controls whether to skip data quality and missingness warnings.
+
+### Returns:
+- Modified dataframe with imputed values as specified by user.
 
 ### Current State:
 - Core Functionality (Always Run):
