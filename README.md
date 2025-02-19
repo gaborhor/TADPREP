@@ -161,8 +161,16 @@ data preparation process:
 
 `reshape(df, verbose=True)`
 - Handles missing value deletion and feature deletion
-- Allows random sub-setting of data
 - Returns reshaped DataFrame
+- Set `verbose=False` for minimal process output
+
+`subset(df, verbose=True)`
+- Facilitates subsetting of instances in a dataset
+- Supported subset methods include:
+  - *Unseeded* random deletion of user-specified proportion of instances (True random subset)
+  - *Seeded* random deletion of user-specified proportion of instances (Reproducible random subset)
+  - Stratified random sampling (Representative subset)
+  - Date-based subsetting for timeseries data
 - Set `verbose=False` for minimal process output
 
 `rename_and_tag(df, verbose=True, tag_features=False)`
