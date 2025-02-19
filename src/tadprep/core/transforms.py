@@ -195,6 +195,399 @@ def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     return df  # Return the trimmed dataframe
 
 
+def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
+    """
+    Core function for subsetting a DataFrame via random sampling (with or without seed), stratified sampling,
+    or time-based instance selection for timeseries data.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to subset
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Subsetted DataFrame
+
+    Raises:
+        ValueError: If invalid subsetting proportion is provided
+        ValueError: If invalid date range is provided for timeseries subsetting
+    """
+    if verbose:
+        print('-' * 50)
+        print('Beginning data subset process.')
+        print('-' * 50)
+
+    # Build list of categorical columns, if any exist
+    cat_cols = [column for column in df.columns
+                if pd.api.types.is_object_dtype(df[column]) or
+                isinstance(df[column].dtype, type(pd.Categorical.dtype))]
+
+    # Check if data might be timeseries in form
+    datetime_cols = []
+
+    for column in df.columns:
+        # Check if column is already datetime type
+        if pd.api.types.is_datetime64_any_dtype(df[column]):
+            datetime_cols.append(column)
+        # For string columns, try to parse as datetime
+        elif pd.api.types.is_object_dtype(df[column]):
+            try:
+                # Try to parse first non-null value
+                first_valid = df[column].dropna().iloc[0]
+                pd.to_datetime(first_valid)
+                datetime_cols.append(column)
+
+            # If the process doesn't work, move to the next column
+            except (ValueError, IndexError):
+                continue
+
+    is_datetime_index = pd.api.types.is_datetime64_any_dtype(df.index)
+    has_datetime = bool(datetime_cols or is_datetime_index)
+
+    # Convert any detected datetime string columns to datetime type
+    if datetime_cols:
+        for column in datetime_cols:
+            if not pd.api.types.is_datetime64_any_dtype(df[column]):
+                try:
+                    df[column] = pd.to_datetime(df[column])
+
+                # If conversion fails, remove that feature from the list of datetime features
+                except ValueError:
+                    datetime_cols.remove(column)
+
+    if verbose:
+        print('TADPREP supports seeded and unseeded random sampling, stratified random sampling if categorical '
+              'features are present, and date-based instance deletion if the data are a timeseries.')
+
+    # Present subset options based on data characteristics
+    print('\nAvailable subsetting methods for this dataset:')
+    print('1. Random sampling (Unseeded for true randomness)')
+    print('2. Random sampling (Seeded for reproducibility)')
+
+    # Only offer stratified sampling if categorical columns are present
+    if cat_cols:
+        print('3. Stratified random sampling (Preserves ratio of categories in data)')
+
+    # Only offer time-based subsetting if datetime elements exist
+    if has_datetime:
+        print('4. Time-based subsetting (Select data within specified time range)')
+
+    while True:
+        try:
+            method = input('\nSelect subsetting method or enter "C" to cancel: ').strip()
+
+            # Handle cancellation
+            if method.lower() == 'c':
+                if verbose:
+                    print('Subsetting cancelled. Input dataframe was not modified.')
+                return df
+
+            # Validate input based on available options
+            valid_options = ['1', '2']
+
+            # Show option for stratified sampling only if categorical features exist
+            if cat_cols:
+                valid_options.append('3')
+
+            # Show option for time-based deletion only if data are a timerseries
+            if has_datetime:
+                valid_options.append('4')
+
+            # Handle invalid user input
+            if method not in valid_options:
+                raise ValueError('Invalid selection.')
+            break
+
+        # Handle non-numerical user input
+        except ValueError:
+            print('Invalid input. Please enter a valid number.')
+            continue
+
+    # Handle true random sampling (unseeded)
+    if method == '1':
+        if verbose:
+            print('-' * 50)  # Visual separator
+            print('Proceeding with true (unseeded) random sampling...')
+            print('-' * 50)  # Visual separator
+
+        while True:
+            try:
+                # Fetch subsetting proportion
+                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or enter "C" to cancel: ')
+
+                # Handle user cancellation
+                if subset_input.lower() == 'c':
+                    if verbose:
+                        print('Random subsetting cancelled. Input dataframe was not modified.')
+                    return df
+
+                subset_rate = float(subset_input)
+                if 0 < subset_rate < 1:
+                    retain_rate = 1 - subset_rate  # Calculate retention rate
+                    retain_row_cnt = int(len(df) * retain_rate)  # Construct integer count for instance deletion
+                    df = df.sample(n=retain_row_cnt)  # Perform random sampling
+
+                    if verbose:
+                        print(f'Randomly dropped {subset_rate:.1%} of instances. {retain_row_cnt} instances remain.')
+                    break
+
+                # Handle invalid user input
+                else:
+                    print('Enter a value between 0.0 and 1.0.')
+
+            # Handle non-numerical user input
+            except ValueError:
+                print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
+                continue
+
+    # Handle random sampling (seeded)
+    elif method == '2':
+        if verbose:
+            print('-' * 50)  # Visual separator
+            print('Proceeding with reproducible (seeded) random sampling...')
+            print('-' * 50)  # Visual separator
+
+        while True:
+            try:
+                # Fetch subsetting proportion
+                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or enter "C" to cancel: ')
+
+                # Handle user cancellation
+                if subset_input.lower() == 'c':
+                    if verbose:
+                        print('Random subsetting cancelled. Input dataframe was not modified.')
+                    return df
+
+                subset_rate = float(subset_input)
+                if 0 < subset_rate < 1:
+                    # Use a fixed seed for reproducibility
+                    seed = 4  # Because 4 is my lucky number and using 42 is cringe
+                    retain_rate = 1 - subset_rate  # Calculate retention rate
+                    retain_row_cnt = int(len(df) * retain_rate)  # Construct integer count for instance deletion
+                    df = df.sample(n=retain_row_cnt, random_state=seed)  # Perform seeded random sampling
+
+                    if verbose:
+                        print(f'Randomly dropped {subset_rate:.1%} of instances using reproducible sampling.')
+                        print(f'{retain_row_cnt} instances remain.')
+                    break
+
+                # Handle invalid user input
+                else:
+                    print('Enter a value between 0.0 and 1.0.')
+
+            # Handle non-numerical user input
+            except ValueError:
+                print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
+                continue
+
+    # Handle stratified sampling
+    elif method == '3':
+        if verbose:
+            print('-' * 50)  # Visual separator
+            print('Proceeding with stratified random sampling...')
+            print('-' * 50)  # Visual separator
+
+            user_explain = input('Would you like to see a brief explanation of stratified sampling? (Y/N): ')
+            if user_explain.lower() == 'y':
+                print('-' * 50)  # Visual separator
+                print('\nOverview of Stratified Random Sampling:'
+                      '\n- This method samples data while maintaining proportions in a specific feature.'
+                      '\n- You will select a single categorical feature to "stratify by."'
+                      '\n  The proportions in that feature (and *only* in that feature) will be preserved in your '
+                      'sampled data.'
+                      '\n- Example: If you stratify by gender in a customer dataset that is 80% male and 20% female,'
+                      '\n  your sample will maintain this 80/20 split, even if other proportions in the data change.'
+                      '\n- This process prevents underrepresentation of minority categories in your chosen feature.'
+                      '\n- This method is most useful when you have important categories that are imbalanced.')
+                print('-' * 50)  # Visual separator
+
+        while True:
+            try:
+                strat_input = input('\nEnter the number of the feature to stratify by: ')  # Fetch stratification column
+                strat_idx = int(strat_input) - 1  # Compute column index
+
+                # Handle bad user input
+                if not 0 <= strat_idx < len(cat_cols):
+                    raise ValueError('Invalid feature number.')
+
+                strat_col = cat_cols[strat_idx]  # Set column to stratify by
+
+                # Fetch subsetting proportion
+                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or "C" to cancel: ')
+
+                # Handle user cancellation
+                if subset_input.lower() == 'c':
+                    if verbose:
+                        print('Stratified subsetting cancelled. Input dataframe was not modified.')
+                    return df
+
+                subset_rate = float(subset_input)
+                if 0 < subset_rate < 1:
+                    retain_rate = 1 - subset_rate  # Calculate retention rate
+
+                    # Perform stratified sampling
+                    stratified_dfs = []
+                    for value in df[strat_col].unique():
+                        subset = df[df[strat_col] == value]
+                        retain_count = int(len(subset) * retain_rate)
+
+                        # Only sample if we will retain at least one row
+                        if retain_count > 0:
+                            sampled = subset.sample(n=retain_count)
+                            stratified_dfs.append(sampled)
+
+                    df = pd.concat(stratified_dfs)
+
+                    if verbose:
+                        print(
+                            f'Performed stratified sampling by "{strat_col}", dropping {subset_rate:.1%} of instances.')
+                        print(f'{len(df)} instances remain.')
+                    break
+
+                # Handle invalid user input
+                else:
+                    print('Enter a value between 0.0 and 1.0.')
+
+            # Handle all other input problems
+            except ValueError as exc:
+                print(f'Invalid input: {str(exc)}')
+                continue
+
+    # Handle time-based subsetting
+    elif method == '4':
+        if verbose:
+            print('-' * 50)  # Visual separator
+            print('Proceeding with time-based subsetting...')
+            print('-' * 50)  # Visual separator
+
+        # Identify datetime column
+        if is_datetime_index:
+            time_col = df.index
+            col_name = 'index'
+
+        # If there's more than one datetime feature, allow user to select which one to use
+        else:
+            if len(datetime_cols) > 1:
+                print('\nAvailable datetime features:')
+                for idx, col in enumerate(datetime_cols, 1):
+                    print(f'{idx}. {col}')
+
+                while True:
+                    try:
+                        col_input = input('\nSelect the feature you want to use to create your subset "boundaries": ')
+                        col_idx = int(col_input) - 1
+                        if not 0 <= col_idx < len(datetime_cols):
+                            raise ValueError('Invalid feature number.')
+                        col_name = datetime_cols[col_idx]
+                        time_col = df[col_name]
+                        break
+
+                    # Handle bad user input
+                    except ValueError:
+                        print('Invalid input. Please enter a valid number.')
+            else:
+                col_name = datetime_cols[0]
+                time_col = df[col_name]
+
+        # Determine time frequency from data
+        if isinstance(time_col, pd.Series):
+            time_diffs = time_col.sort_values().diff().dropna().unique()
+        else:
+            time_diffs = pd.Series(time_col).sort_values().diff().dropna().unique()
+
+        # Fetch most common temporal difference between instances to identify the timeseries frequency
+        if len(time_diffs) > 0:
+            most_common_diff = pd.Series(time_diffs).value_counts().index[0]
+            freq_hours = most_common_diff.total_seconds() / 3600  # Use hours as a baseline computation
+
+            # Define frequency type/level using most common datetime typologies
+            if freq_hours < 1:
+                freq_str = 'sub-hourly'
+            elif freq_hours == 1:
+                freq_str = 'hourly'
+            elif freq_hours == 24:
+                freq_str = 'daily'
+            elif 24 * 28 <= freq_hours <= 24 * 31:
+                freq_str = 'monthly'
+            elif 24 * 89 <= freq_hours <= 24 * 92:
+                freq_str = 'quarterly'
+            elif 24 * 365 <= freq_hours <= 24 * 366:
+                freq_str = 'yearly'
+
+            # In case the data are just weird
+            else:
+                freq_str = 'irregular'
+
+        # In case we literally couldn't compute the time deltas
+        else:
+            freq_str = 'undetermined'
+
+        # Fetch data range and some example timestamps
+        min_date = time_col.min()
+        max_date = time_col.max()
+        example_stamps = sorted(time_col.sample(n=min(3, len(time_col))).dt.strftime('%Y-%m-%d %H:%M:%S'))
+
+        if verbose:
+            print(f'\nData frequency/time aggregation level appears to be {freq_str}.')
+            print(f'Your timeseries spans from {min_date} to {max_date}.')
+            print('\nExample timestamps from your data:')
+            for stamp in example_stamps:
+                print(f'- {stamp}')
+            print('\nEnter dates in any standard format (YYYY-MM-DD, MM/DD/YYYY, etc.) or press Enter to use the '
+                  'earliest/latest dates')
+
+        while True:
+            try:
+                # Fetch start boundary
+                start_input = input('\nEnter the earliest/starting time boundary for the subset, or press Enter '
+                                    'to use the earliest timestamp: ').strip()
+                if start_input:
+                    start_date = pd.to_datetime(start_input)
+                else:
+                    start_date = min_date
+
+                # Fetch end boundary
+                end_input = input('\nEnter the latest/ending time boundary for the subset, or press Enter to use '
+                                  'the latest timestamp: ').strip()
+                if end_input:
+                    end_date = pd.to_datetime(end_input)
+                else:
+                    end_date = max_date
+
+                # Validate the user's date range
+                if start_date > end_date:
+                    raise ValueError('Start time must be before end time.')
+
+                # Apply the time filter
+                if is_datetime_index:
+                    df_filtered = df[start_date:end_date]
+                else:
+                    df_filtered = df[(df[col_name] >= start_date) & (df[col_name] <= end_date)]
+
+                # Check if any data remains after filtering
+                if df_filtered.empty:
+                    print(f'WARNING: No instances found between {start_date} and {end_date}.')
+                    print('Please provide a different date range.')
+                    continue  # Go back to date input
+
+                df = df_filtered  # Only update the df if we actually found data in the range defined by the user
+
+                if verbose:
+                    print(f'\nRetained instances from {start_date} to {end_date}.')
+                    print(f'{len(df)} instances remain after subsetting.')
+                break
+
+            except ValueError as exc:
+                print(f'Invalid input: {str(exc)}')
+                continue
+
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Data subsetting complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
+
+    return df  # Return modified dataframe
+
+
 def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: bool = False) -> pd.DataFrame:
     """
     Core function to rename features and to append the '_ord' and/or '_target' suffixes to ordinal or target features,
