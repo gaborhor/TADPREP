@@ -174,10 +174,15 @@ data preparation process:
 - Set `verbose=False` for minimal process output
 
 `rename_and_tag(df, verbose=True, tag_features=False)`
-- Facilitates feature renaming
+- Facilitates feature renaming with comprehensive validation:
+  - Validates Python identifier compliance
+  - Checks for problematic characters
+  - Warns about potentially-problematic naming anti-patterns
+  - Prevents Python keyword conflicts
 - Optionally tags features as ordinal or target features when `tag_features=True`
-- Returns DataFrame with updated feature names
-- Set `verbose=False` for streamlined interaction
+- Tracks and summarizes all naming operations when `verbose=True`
+- Returns DataFrame with new, validated feature names
+- Set `verbose=False` for streamlined interaction without warnings and confirmation checks
 
 `feature_stats(df, verbose=True, summary_stats=False)`
 - Analyzes features by type (categorical, numerical)
