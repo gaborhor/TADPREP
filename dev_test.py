@@ -182,3 +182,16 @@ df_ts = pd.DataFrame(ts_data).sort_values('date').reset_index(drop=True)
 # df_ts_imputed = tp.impute(df_ts, verbose=True, skip_warnings=False)  # Full walkthrough
 # df_ts_imputed = tp.impute(df_ts, verbose=False, skip_warnings=True)  # Super-streamlined
 # print(df_ts_imputed)
+
+'''
+Testing new subset method
+Need to test for:
+- True random sampling in subset
+- Seeded random sampling in subset
+- Stratified random sampling in subset
+- Time-boundary creation in subsetting timeseries data
+- Whether methodology explanations work as intended
+- Whether automatic time interval identification works properly
+- Summary of subset results
+- Differentiation of UX in verbose vs. non-verbose modes 
+'''
