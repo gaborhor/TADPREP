@@ -255,13 +255,15 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
                     datetime_cols.remove(column)
 
     if verbose:
-        print('TADPREP supports seeded and unseeded random sampling, stratified random sampling if categorical '
-              'features are present, and date-based instance deletion if the data are a timeseries.')
+        print('NOTE - TADPREP supports:'
+              '\n - Seeded and unseeded random sampling'
+              '\n - Stratified random sampling (if categorical features are present)'
+              '\n - Date-based instance deletion (if the data are a timeseries).')
 
     # Present subset options based on data characteristics
-    print('\nAvailable subsetting methods for this dataset:')
-    print('1. Random sampling (Unseeded for true randomness)')
-    print('2. Random sampling (Seeded for reproducibility)')
+    print('\nAvailable subset methods for this dataset:')
+    print('1. Unseeded Random sampling (For true randomness)')
+    print('2. Seeded Random sampling (For reproducibility)')
 
     # Only offer stratified sampling if categorical columns are present
     if cat_cols:
@@ -269,11 +271,11 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
     # Only offer time-based subsetting if datetime elements exist
     if has_datetime:
-        print('4. Time-based subsetting (Select data within specified time range)')
+        print('4. Time-based boundaries for subset (Select only data within a specified time range)')
 
     while True:
         try:
-            method = input('\nSelect subsetting method or enter "C" to cancel: ').strip()
+            method = input('\nSelect a subset method or enter "C" to cancel: ').strip()
 
             # Handle cancellation
             if method.lower() == 'c':
@@ -288,7 +290,7 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
             if cat_cols:
                 valid_options.append('3')
 
-            # Show option for time-based deletion only if data are a timerseries
+            # Show option for time-based deletion only if data are a timeseries
             if has_datetime:
                 valid_options.append('4')
 
@@ -299,7 +301,7 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
         # Handle non-numerical user input
         except ValueError:
-            print('Invalid input. Please enter a valid number.')
+            print('Invalid input. Please select from the options provided.')
             continue
 
     # Handle true random sampling (unseeded)
@@ -389,10 +391,10 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
             user_explain = input('Would you like to see a brief explanation of stratified sampling? (Y/N): ')
             if user_explain.lower() == 'y':
                 print('-' * 50)  # Visual separator
-                print('\nOverview of Stratified Random Sampling:'
+                print('Overview of Stratified Random Sampling:'
                       '\n- This method samples data while maintaining proportions in a specific feature.'
                       '\n- You will select a single categorical feature to "stratify by."'
-                      '\n  The proportions in that feature (and *only* in that feature) will be preserved in your '
+                      '\n- The proportions in that feature (and *only* in that feature) will be preserved in your '
                       'sampled data.'
                       '\n- Example: If you stratify by gender in a customer dataset that is 80% male and 20% female,'
                       '\n  your sample will maintain this 80/20 split, even if other proportions in the data change.'
@@ -400,10 +402,15 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
                       '\n- This method is most useful when you have important categories that are imbalanced.')
                 print('-' * 50)  # Visual separator
 
+        # Display available categorical features
+        print('\nAvailable categorical features:')
+        for idx, col in enumerate(cat_cols, 1):
+            print(f'{idx}. {col}')
+
         while True:
             try:
-                strat_input = input('\nEnter the number of the feature to stratify by: ')  # Fetch stratification column
-                strat_idx = int(strat_input) - 1  # Compute column index
+                strat_input = input('\nEnter the number of the feature to stratify by: ')
+                strat_idx = int(strat_input) - 1
 
                 # Handle bad user input
                 if not 0 <= strat_idx < len(cat_cols):
@@ -423,23 +430,45 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
                 subset_rate = float(subset_input)
                 if 0 < subset_rate < 1:
                     retain_rate = 1 - subset_rate  # Calculate retention rate
+                    start_size = len(df)  # Store original dataset size
 
-                    # Perform stratified sampling
+                    # Perform stratified sampling with minimum instance guarantee
                     stratified_dfs = []
-                    for value in df[strat_col].unique():
-                        subset = df[df[strat_col] == value]
-                        retain_count = int(len(subset) * retain_rate)
+                    unique_values = df[strat_col].unique()
 
-                        # Only sample if we will retain at least one row
-                        if retain_count > 0:
-                            sampled = subset.sample(n=retain_count)
-                            stratified_dfs.append(sampled)
+                    # Check if we can maintain at least one instance per category
+                    min_instances_needed = len(unique_values)
+                    total_retain = int(len(df) * retain_rate)
+
+                    if total_retain < min_instances_needed:
+                        print(f'\nWARNING: Cannot maintain stratification with {retain_rate:.1%} retention rate.')
+                        print(f'Need at least {min_instances_needed} instances to maintain one per category.')
+                        user_proceed = input('Would you like to retain one instance per category instead? (Y/N): ')
+                        if user_proceed.lower() != 'y':
+                            continue
+                        # Adjust to keep one per category
+                        retain_rate = min_instances_needed / len(df)
+                        print(f'\nAdjusted retention rate to {retain_rate:.1%} to maintain stratification.')
+
+                    for value in unique_values:
+                        subset = df[df[strat_col] == value]
+                        retain_count = max(1, int(len(subset) * retain_rate))  # Ensure at least 1 instance
+                        sampled = subset.sample(n=retain_count)
+                        stratified_dfs.append(sampled)
 
                     df = pd.concat(stratified_dfs)
 
+                    # Calculate actual retention rate achieved
+                    true_retain_rate = len(df) / start_size
+                    true_drop_rate = 1 - true_retain_rate
+
+                    if abs(subset_rate - true_drop_rate) > 0.01:  # If difference is more than 1%
+                        print(f'\nNOTE: To maintain proportional stratification, the actual drop rate was '
+                              f'adjusted to {true_drop_rate:.1%}.')
+                        print(f'(You requested: {subset_rate:.1%})')
+
                     if verbose:
-                        print(
-                            f'Performed stratified sampling by "{strat_col}", dropping {subset_rate:.1%} of instances.')
+                        print(f'\nPerformed stratified sampling by "{strat_col}".')
                         print(f'{len(df)} instances remain.')
                     break
 
@@ -528,12 +557,13 @@ def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 
         if verbose:
             print(f'\nData frequency/time aggregation level appears to be {freq_str}.')
-            print(f'Your timeseries spans from {min_date} to {max_date}.')
+        print(f'Your timeseries spans from {min_date} to {max_date}.')
+        if verbose:
             print('\nExample timestamps from your data:')
             for stamp in example_stamps:
                 print(f'- {stamp}')
-            print('\nEnter dates in any standard format (YYYY-MM-DD, MM/DD/YYYY, etc.) or press Enter to use the '
-                  'earliest/latest dates')
+            print('\nEnter time boundaries in any standard format (YYYY-MM-DD, MM/DD/YYYY, etc.) or press Enter to use '
+                  'the earliest/latest timestamp')
 
         while True:
             try:
@@ -1167,6 +1197,7 @@ def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = F
 
     # Check for presence of datetime columns and index
     datetime_cols = []
+
     for column in df.columns:
         # Check if column is already datetime type
         if pd.api.types.is_datetime64_any_dtype(df[column]):
