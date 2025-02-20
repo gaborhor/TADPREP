@@ -123,6 +123,79 @@ stratified sampling, or time-based instance selection for timeseries data.
 - Alpha build by Don Smith (Current State)
 
 
+## Method: `rename_and_tag`
+### Core Purpose:
+Provides interactive functionality for renaming features and optionally tagging them as ordinal or target features 
+by appending appropriate suffixes ('_ord' or '_target').
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `verbose` (Boolean, default = True) which controls level of detail/guidance in output.
+- `tag_features` (Boolean, default = False) which controls whether the feature-tagging process runs.
+
+### Returns:
+- Modified dataframe with renamed and/or tagged features.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Displays enumerated list of current features
+  - Validates all feature names and indices
+  - Ensures new feature names don't conflict with existing names
+  - Provides cancel-out options at each stage
+  - Maintains data integrity during renaming
+
+
+- If `tag_features=False` (Default):
+  - Only feature renaming is available
+  - Feature tagging stages are completely skipped
+  - Process completes after renaming stage
+
+
+- If `tag_features=True`:
+  - Enables complete feature tagging workflow
+  - Adds ordinal feature tagging stage ('_ord' suffix)
+  - Adds target feature tagging stage ('_target' suffix)
+  - Validates that features aren't already tagged
+  - Prevents duplicate tagging of features
+  - All stages (rename, ordinal tag, target tag) can be skipped individually
+
+
+- If `verbose=False`:
+  - Shows only basic feature list
+  - Displays minimal progress information
+  - Presents only essential user prompts
+  - Shows basic confirmation of successful operations
+
+
+- If `verbose=True` (Default), the method **also** provides:
+  - Clear stage demarcation with visual separators
+  - Process initiation notifications
+  - Detailed confirmation of each rename operation
+  - For feature tagging:
+    - Explanatory messages about tagging process
+    - Clear separation between ordinal and target tagging stages
+  - Comprehensive summary of all changes made including:
+    - List of renamed features
+    - List of tagged features
+    - Clear notation of process completion
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Possible enhancements:
+  - Validation checks:
+    - New feature name validation
+    - Problematic character warnings for new feature names
+    - Check new feature names for anti-patterns
+    - Python keyword/syntactic conflict check for new feature names
+  - Preview and confirm each feature name change (Verbose only)
+  - Display summary table of all changes/remaps made (Verbose only)
+
+### Method History:
+- Alpha build by Don Smith (Current State)
+
+
 ## Method: `impute`
 ### Core Purpose:
 Works interactively with user to impute missing values in features using common imputation methods.
