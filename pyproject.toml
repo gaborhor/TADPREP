@@ -11,7 +11,7 @@ authors = [{ name = 'Donald Smith', email = 'don.cs.smith@gmail.com' }]
 maintainers = [{ name = 'Donald Smith', email = 'don.cs.smith@gmail.com' }]
 contributors = [{ name = 'Gabor Horvath', email = 'gabor_email@service.com' }]
 license = { file = 'LICENSE' }
-requires-python = '>=3.11'
+requires-python = '>=3.12'
 dependencies = [
     'numpy>=1.24.0',  # For array operations and 'inf' checks
     'pandas>=2.0.0',  # Used extensively for dataframe manipulations
