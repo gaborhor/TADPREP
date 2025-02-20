@@ -605,6 +605,60 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         ValueError: If invalid indices are provided for column renaming
         ValueError: If any other invalid input is provided
     """
+    def valid_identifier_check(name: str) -> tuple[bool, str]:
+        """Helper function to validate whether a proposed feature name follows Python naming conventions."""
+        # Check using valid identifier method
+        if not name.isidentifier():
+            return False, ('New feature name must be a valid Python identifier (i.e. must contain only letters, '
+                           'numbers, and underscores, and cannot start with a number)')
+        else:
+            return True, ''
+
+    def problem_chars_check(name: str) -> list[str]:
+        """Helper function to identify potentially problematic characters in a proposed feature name."""
+        # Instantiate empty list to hold warnings
+        char_warnings = []
+        # Space check
+        if ' ' in name:
+            char_warnings.append('Contains spaces')
+
+        # Special character check
+        if any(char in name for char in '!@#$%^&*()+=[]{}|\\;:"\',.<>?/'):
+            char_warnings.append('Contains special characters')
+
+        # Double underscore check
+        if '__' in name:
+            char_warnings.append('Contains double underscores')
+
+        # Return warning list
+        return char_warnings
+
+    def antipattern_check(name: str) -> list[str]:
+        """Helper function to check for common naming anti-patterns in a proposed feature name."""
+        # Instantiate empty list to hold warnings
+        pattern_warnings = []
+
+        # Check for common problematic anti-patterns
+        if name[0].isdigit():
+            pattern_warnings.append('Name starts with a number')
+        if name.isupper():
+            pattern_warnings.append('Name is all uppercase')
+        if len(name) < 2:
+            pattern_warnings.append('Name is very short')
+        if len(name) > 30:
+            pattern_warnings.append('Name is very long')
+
+        # Return warning list
+        return pattern_warnings
+
+    def python_keyword_check(name: str) -> bool:
+        """Helper function to check if a proposed feature name conflicts with Python keywords."""
+        import keyword  # We can do this in one step with the keyword library
+        return keyword.iskeyword(name)
+
+    # Track all rename operations for end-of-process summary
+    rename_tracker = []
+
     if verbose:
         print('-' * 50)  # Visual separator
         print('Beginning feature renaming process.')
@@ -620,7 +674,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     while True:  # We can justify 'while True' because we have a cancel-out input option
         try:
             rename_cols_input = input('\nEnter the index integer of the feature you want to rename, enter "S" to skip '
-                                      'this step, or enter "E" to exit the renaming process: ')
+                                      'this step, or enter "E" to exit the renaming/tagging process: ')
 
             # Check for user skip
             if rename_cols_input.lower() == 's':
@@ -632,7 +686,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             elif rename_cols_input.lower() == 'e':
                 if verbose:
                     print('Exiting process. Dataframe was not modified.')
-                return
+                return df
 
             col_idx = int(rename_cols_input)  # Convert input to integer
             if not 1 <= col_idx <= len(df.columns):  # Validate entry
@@ -642,16 +696,56 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             col_name_old = df.columns[col_idx - 1]
             col_name_new = input(f'Enter new name for feature "{col_name_old}": ').strip()
 
+            # Run Python identifier validation
+            valid_status, valid_msg = valid_identifier_check(col_name_new)
+            if not valid_status:
+                print(f'ERROR: Invalid feature name: {valid_msg}')
+                continue
+
+            # Check if proposed name is a Python keyword
+            if python_keyword_check(col_name_new):
+                print(f'"{col_name_new}" is a Python keyword and cannot be used as a feature name.')
+                continue
+
+            # Check for problematic characters
+            char_warnings = problem_chars_check(col_name_new)
+            if char_warnings and verbose:
+                print('\nWARNING: Potential character-choice issues with proposed feature name:')
+                for warning in char_warnings:
+                    print(f'- {warning}')
+                if input('Do you want to use your proposed feature name anyway? (Y/N): ').lower() != 'y':
+                    continue
+
+            # Check for naming anti-patterns
+            pattern_warnings = antipattern_check(col_name_new)
+            if pattern_warnings and verbose:
+                print('\nWARNING: Proposed feature name does not follow best practices for anti-pattern avoidance:')
+                for warning in pattern_warnings:
+                    print(f'- {warning}')
+                if input('Do you want to use your proposed feature name anyway? (Y/N): ').lower() != 'y':
+                    continue
+
             # Validate name to make sure it doesn't already exist
             if col_name_new in df.columns:
                 print(f'Feature name "{col_name_new}" already exists. Choose a different name.')
-                continue  # Restart the loop
+                continue
+
+            # Preview and approve each change in verbose mode only
+            if verbose:
+                print(f'\nProposed feature name change: "{col_name_old}" -> "{col_name_new}"')
+                if input('Apply this change? (Y/N): ').lower() != 'y':
+                    continue
 
             # Rename column in-place
             df = df.rename(columns={col_name_old: col_name_new})
+
+            # Track the rename operation
+            rename_tracker.append({'old_name': col_name_old, 'new_name': col_name_new, 'type': 'rename'})
+
+            # Print renaming summary message in verbose mode only
             if verbose:
                 print('-' * 50)  # Visual separator
-                print(f'Renamed feature "{col_name_old}" to "{col_name_new}".')
+                print(f'Successfully renamed feature "{col_name_old}" to "{col_name_new}".')
                 print('-' * 50)  # Visual separator
 
             # Ask if user wants to rename another column
@@ -670,6 +764,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             print('You may now select any ordinal features which you know to be present in the dataset and append the '
                   '"_ord" suffix to their feature names.')
             print('If no ordinal features are present in the dataset, enter "S" to skip this step.')
+
         else:
             print('\nOrdinal feature tagging:')
 
@@ -692,7 +787,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 elif ord_input.lower() == 'e':
                     if verbose:
                         print('Exiting process. Dataframe was not modified.')
-                    return
+                    return df
 
                 ord_idx_list = [int(idx.strip()) for idx in ord_input.split(',')]  # Create list of index integers
 
@@ -711,6 +806,11 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                     break
 
                 df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
+                # Track ordinal tagging operations
+                for old_name, new_name in ord_rename_map.items():
+                    rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'ordinal_tag'})
+
+                # Print ordinal tagging summary message in verbose mode only
                 if verbose:
                     print('-' * 50)  # Visual separator
                     print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
@@ -729,6 +829,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             print('You may now select any target features which you know to be present in the dataset and append the '
                   '"_target" suffix to their feature names.')
             print('If no target features are present in the dataset, enter "S" to skip this step.')
+
         else:
             print('\nTarget feature tagging:')
 
@@ -751,7 +852,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 elif target_input.lower() == 'e':
                     if verbose:
                         print('Exiting process. Dataframe was not modified.')
-                    return
+                    return df
 
                 target_idx_list = [int(idx.strip()) for idx in target_input.split(',')]  # Create list of index integers
 
@@ -771,6 +872,11 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                     break
 
                 df = df.rename(columns=target_rename_map)  # Perform tagging
+                # Track target tagging operations
+                for old_name, new_name in target_rename_map.items():
+                    rename_tracker.append({'old_name': old_name, 'new_name': new_name, 'type': 'target_tag'})
+
+                # Print ordinal tagging summary message in verbose mode only
                 if verbose:
                     print('-' * 50)  # Visual separator
                     print(f'Tagged the following features as targets: {", ".join(target_rename_map.keys())}')
@@ -781,9 +887,35 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             except ValueError as exc:
                 print(f'Invalid input: {exc}')
                 continue  # Restart the loop
-    if verbose:
+
+    if verbose and rename_tracker:  # Only show summary if verbose mode is active and changes were made
+        print('\nSUMMARY OF CHANGES:')
+        print('-' * 50)
+
+        # Create summary DataFrame
+        summary_df = pd.DataFrame(rename_tracker)
+
+        # Group by operation type and display changes
+        for op_type in summary_df['type'].unique():
+            op_changes = summary_df[summary_df['type'] == op_type]
+            if op_type == 'rename':
+                print('\nFeature Renames:')
+            elif op_type == 'ordinal_tag':
+                print('\nOrdinal Tags Added:')
+            else:  # target_tag
+                print('\nTarget Tags Added:')
+
+            # The .iterrows() method makes the summary printing easy
+            for _, row in op_changes.iterrows():
+                print(f'  {row["old_name"]} -> {row["new_name"]}')
+
+        print('-' * 50)
         print('Feature renaming/tagging complete. Returning modified dataframe.')
-        print('-' * 50)  # Visual separator
+        print('-' * 50)
+
+    elif verbose:
+        print('No changes were made to the dataframe.')
+        print('-' * 50)
 
     return df  # Return dataframe with renamed and tagged columns
 
