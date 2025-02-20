@@ -7,7 +7,6 @@ import tadprep as tp  # Testing package-level import - I want TADPREP to mirror 
 # Uploading sample datafile
 df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_longlean.csv")
 
-
 # Checking import
 # print(df_raw)
 
@@ -61,6 +60,7 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # df_encode = tp.encode(df_raw, verbose=False, skip_warnings=False)
 # print(df_encode)
 
+
 # Testing scale method
 # Note that this method must be tested with and without a passed list of features to scale
 # scale_feats = ['age']
@@ -75,6 +75,7 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 # df_scaled = tp.scale(df_raw, verbose=False, skip_warnings=True)
 # df_scaled = tp.scale(df_raw, verbose=False, skip_warnings=False)
 # print(df_scaled)
+
 
 # Final test step is checking the full prep_df method
 # Start with creating a sample dataframe of smaller scale
@@ -105,6 +106,7 @@ df_raw = pd.read_csv(r"C:\Users\doncs\Documents\GitHub\TADPREP\data\sample_data_
 
 # Check prepared dataframe
 # print(processed_df)
+
 
 # SECOND-PASS TESTING (checking method augmentations with specific corner cases)
 
@@ -145,34 +147,34 @@ Need to test for:
 - Final imputation summary table
 '''
 
-non_ts_data = {
-    # Numerical features with different characteristics
-    'normal': [100, 102, 98, 103, 97, 101, np.nan, 100, 102, 98, 100, np.nan, 101, 97, 103],
-    'skewed': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, np.nan, 1.0, 1.0, 2.0, 5.0, 15.0, 30.0, 50.0, 100.0],  # Extreme skew
-    'low_var': [50.01, 50.02, 50.01, 50.02, 50.02, 50.01, 50.02, 50.01, np.nan, 50.02, 50.01, 50.02, 50.01, 50.02,
-                50.01],
-    'outliers': [105, 102, 98, 350, 101, 103, 99, 345, 101, np.nan, 100, 355, 102, 98, 101],
-    'corr_1': [2, 4, 6, 8, 10, 12, 14, 16, np.nan, 20, 22, 24, 26, 28, 30],
-    'corr_2': [2.1, 4.2, 6.1, 8.1, 10.2, 12.1, 14.2, 16.1, np.nan, 20.2, 22.1, 24.2, 26.1, 28.2, 30.1],
-
-    # Categorical feature
-    'cat_normal': ['A', 'B',  np.nan, 'B', 'B', 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'B', np.nan,],
-
-    # False numerical features (actually categorical or ordinal)
-    'false_num_bin': [0, np.nan, 0, 1, 1, 0, 1, 0, 1, np.nan, 0, 1, 0, 1, 0],
-    'false_num_ord': [np.nan, 2, 3, 2, np.nan, 1, 4, 2, 3, 1, np.nan, 2, 4, 3, np.nan]
-}
-
-# Timeseries test data
-ts_data = {
-    'date': [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(15)],
-    'numeric_value': [100, np.nan, 98, 102, np.nan, 99, 101, 98, 102, np.nan, 105, 99, 101, np.nan, 103],
-    'categorical': ['A', 'B', np.nan, 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'A', 'B', 'A', 'B']
-}
+# non_ts_data = {
+#     # Numerical features with different characteristics
+#     'normal': [100, 102, 98, 103, 97, 101, np.nan, 100, 102, 98, 100, np.nan, 101, 97, 103],
+#     'skewed': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, np.nan, 1.0, 1.0, 2.0, 5.0, 15.0, 30.0, 50.0, 100.0],  # Extreme skew
+#     'low_var': [50.01, 50.02, 50.01, 50.02, 50.02, 50.01, 50.02, 50.01, np.nan, 50.02, 50.01, 50.02, 50.01, 50.02,
+#                 50.01],
+#     'outliers': [105, 102, 98, 350, 101, 103, 99, 345, 101, np.nan, 100, 355, 102, 98, 101],
+#     'corr_1': [2, 4, 6, 8, 10, 12, 14, 16, np.nan, 20, 22, 24, 26, 28, 30],
+#     'corr_2': [2.1, 4.2, 6.1, 8.1, 10.2, 12.1, 14.2, 16.1, np.nan, 20.2, 22.1, 24.2, 26.1, 28.2, 30.1],
+#
+#     # Categorical feature
+#     'cat_normal': ['A', 'B', np.nan, 'B', 'B', 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'B', np.nan, ],
+#
+#     # False numerical features (actually categorical or ordinal)
+#     'false_num_bin': [0, np.nan, 0, 1, 1, 0, 1, 0, 1, np.nan, 0, 1, 0, 1, 0],
+#     'false_num_ord': [np.nan, 2, 3, 2, np.nan, 1, 4, 2, 3, 1, np.nan, 2, 4, 3, np.nan]
+# }
+#
+# # Timeseries test data
+# ts_data = {
+#     'date': [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(15)],
+#     'numeric_value': [100, np.nan, 98, 102, np.nan, 99, 101, 98, 102, np.nan, 105, 99, 101, np.nan, 103],
+#     'categorical': ['A', 'B', np.nan, 'A', 'B', 'A', np.nan, 'B', 'A', 'B', np.nan, 'A', 'B', 'A', 'B']
+# }
 
 # Create test DataFrames
-df_normal = pd.DataFrame(non_ts_data)
-df_ts = pd.DataFrame(ts_data).sort_values('date').reset_index(drop=True)
+# df_normal = pd.DataFrame(non_ts_data)
+# df_ts = pd.DataFrame(ts_data).sort_values('date').reset_index(drop=True)
 
 # Test impute method on non-timeseries data
 # df_normal_imputed = tp.impute(df_normal, verbose=True, skip_warnings=False)  # Full walkthrough
@@ -195,3 +197,42 @@ Need to test for:
 - Summary of subset results
 - Differentiation of UX in verbose vs. non-verbose modes 
 '''
+# Build non-timeseries dataset with values which should make subsetting validation easy
+# subset_normal = pd.DataFrame(
+#     {'id': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+#      'name': ['Adam', 'Alice', 'Alex', 'Adrian', 'Ashton', 'Amanda', 'Alice', 'Ashley', 'Aaron', 'Austin'],
+#      'sex': ['M', 'F', 'F', 'M', 'M', 'F', 'F', 'F', 'M', 'M'],
+#      'age': [30, 31, 32, 33, 34, 35, 36, 37, 38, 39]}
+# )
+
+# df_subset_random = tp.subset(subset_normal, verbose=True)  # Verbose true random subset
+# df_subset_random = tp.subset(subset_normal, verbose=False)  # Minimal-output true random subset
+# print(df_subset_random)  # Print check
+
+# df_subset_seeded = tp.subset(subset_normal, verbose=True)  # Verbose seeded random subset
+# print(df_subset_seeded)
+
+# df_subset_strat = tp.subset(subset_normal, verbose=True)  # Verbose stratified subset
+# df_subset_strat = tp.subset(subset_normal, verbose=False)  # Minimal-output stratified subset
+# print(df_subset_strat)
+
+# Testing at day level
+# subset_ts = pd.DataFrame(
+#     {'date': [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d %H:%M') for x in range(10)],
+#      'river_volume': [101513, 175474, 167819, 130656, 110106, 113368, 109843, 119749, 110872, 196164]}
+# )
+# # df_subset_ts = tp.subset(subset_ts, verbose=True)  # Verbose time-bound subset
+# df_subset_ts = tp.subset(subset_ts, verbose=False)  # Minimal-output time-bound subset
+# print(subset_ts)
+# print()
+# print(df_subset_ts)
+
+# Testing at hour level
+# subset_ts = pd.DataFrame(
+#     {'date': [(datetime.now() - timedelta(hours=x)).strftime('%Y-%m-%d %H:%M') for x in range(10)],
+#      'river_volume': [101513, 175474, 167819, 130656, 110106, 113368, 109843, 119749, 110872, 196164]}
+# )
+# df_subset_ts = tp.subset(subset_ts, verbose=True)  # Verbose time-bound subset
+# print(subset_ts)
+# print()
+# print(df_subset_ts)
