@@ -143,21 +143,30 @@ by appending appropriate suffixes ('_ord' or '_target').
   - Ensures new feature names don't conflict with existing names
   - Provides cancel-out options at each stage
   - Maintains data integrity during renaming
+  - Performs extensive feature name validation:
+    - Checks for valid Python identifiers
+    - Identifies problematic characters
+    - Warns about naming anti-patterns
+    - Validates against Python keywords
+    - Prevents duplicate feature names
+  - Tracks all renaming operations for reporting
+  - Provides operation cancellation options at each stage
 
 
-- If `tag_features=False` (Default):
-  - Only feature renaming is available
-  - Feature tagging stages are completely skipped
-  - Process completes after renaming stage
+- Parameter `tag_features` Controls Tagging Process Activation:
+  - When `tag_features=False` (Default):
+    - Only feature renaming functionality is available
+    - Feature tagging stages are completely skipped
+    - Process completes after renaming stage
 
 
-- If `tag_features=True`:
-  - Enables complete feature tagging workflow
-  - Adds ordinal feature tagging stage ('_ord' suffix)
-  - Adds target feature tagging stage ('_target' suffix)
-  - Validates that features aren't already tagged
-  - Prevents duplicate tagging of features
-  - All stages (rename, ordinal tag, target tag) can be skipped individually
+  - When `tag_features=True`:
+    - Enables complete feature tagging workflow
+    - Adds ordinal feature tagging stage ('_ord' suffix)
+    - Adds target feature tagging stage ('_target' suffix)
+    - Validates that features aren't already tagged
+    - Prevents duplicate tagging of features
+    - All stages (rename, ordinal tag, target tag) can be skipped individually
 
 
 - If `verbose=False`:
@@ -171,29 +180,27 @@ by appending appropriate suffixes ('_ord' or '_target').
   - Clear stage demarcation with visual separators
   - Process initiation notifications
   - Detailed confirmation of each rename operation
+  - Warning messages for problematic feature names
+  - Preview and confirmation of each name change
   - For feature tagging:
     - Explanatory messages about tagging process
     - Clear separation between ordinal and target tagging stages
   - Comprehensive summary of all changes made including:
-    - List of renamed features
-    - List of tagged features
+    - Detailed summary table of all operations
+    - Changes grouped by operation type
+    - Feature renames with before/after values
+    - List of tagged features by tag type
     - Clear notation of process completion
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- Possible enhancements:
-  - Validation checks:
-    - New feature name validation
-    - Problematic character warnings for new feature names
-    - Check new feature names for anti-patterns
-    - Python keyword/syntactic conflict check for new feature names
-  - Preview and confirm each feature name change (Verbose only)
-  - Display summary table of all changes/remaps made (Verbose only)
+- None as of current state
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
 
 
 ## Method: `impute`
