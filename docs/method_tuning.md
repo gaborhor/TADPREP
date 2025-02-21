@@ -41,6 +41,52 @@ Prints summary, top-level information about a dataframe to the console.
 
 ## Method: `reshape`
 ### Core Purpose:
+Perform row- or column-dependent instance (row) removals, as well as feature (column) removals.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_reshape` (list[str]) 
+- `verbose` (Boolean, default = True) Controls level of detail in output.
+
+### Returns:
+- Modified dataframe containing only the subset of instances not removed by user.
+
+### Current State:
+- Core Functionality (Always run):
+  - Provides user 3 options for reshaping by removal:
+    - 1. Row-dependent row removal
+      - Provides user with a default missingness threshold
+      - Sums, by row, total missing features
+      - Encodes, by row, whether those rows' missingness is at/above threshold
+      - Provides user 3 options to proceed:
+        - Remove all such rows above missingness threshold
+        - Change missingness threshold and check again
+        - Return to other reshaping method options
+    - 2. Column-dependent row removal
+      - tbd
+    - 3. Column removal
+      - tbd
+
+- "Verbosity" differentiation not fully implemented
+
+### Observed Bugs/Problems:
+- None observed in current state, possibly due to inappropriate testing data.
+- Likely no null values in test data, only "empty". Probably need new test set.
+
+### Ideas for Development:
+- Data types considered "missing" could be subject to user interpretation
+  - Consider implementing options for these
+- "Architecture" of package as related to this method needs clarifying w/ Don
+  - What functionality should go in `transforms.py` vs `tadprep_interactive.py`
+
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Gabor Horvath (Current State)
+
+
+## Method: `plot_features`
+### Core Purpose:
+Produce relevant, straightforward visualizations on a per-feature basis as guided by user.
 
 ### Parameters:
 
@@ -51,9 +97,14 @@ Prints summary, top-level information about a dataframe to the console.
 ### Observed Bugs/Problems:
 
 ### Ideas for Development:
+- As color-blind friendly as we are capable of!
+- Static viz only, based in mpl
+- Should this have ability for comparative viz? (i.e. Before & After transforms, stacked bars, etc.)
+- Should this be for in-package viz only or produce files for export?
+  - File specifications could get tricky
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- 
 
 
 ## Method: `subset`
