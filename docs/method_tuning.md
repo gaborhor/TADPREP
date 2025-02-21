@@ -146,7 +146,7 @@ by appending appropriate suffixes ('_ord' or '_target').
   - Performs extensive feature name validation:
     - Checks for valid Python identifiers
     - Identifies problematic characters
-    - Warns about naming anti-patterns
+    - Helps avoid undesired anti-patterns
     - Validates against Python keywords
     - Prevents duplicate feature names
   - Tracks all renaming operations for reporting
