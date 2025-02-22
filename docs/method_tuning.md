@@ -197,7 +197,7 @@ by appending appropriate suffixes ('_ord' or '_target').
   - Performs extensive feature name validation:
     - Checks for valid Python identifiers
     - Identifies problematic characters
-    - Warns about naming anti-patterns
+    - Helps avoid undesired anti-patterns
     - Validates against Python keywords
     - Prevents duplicate feature names
   - Tracks all renaming operations for reporting
@@ -247,11 +247,105 @@ by appending appropriate suffixes ('_ord' or '_target').
 - None as of current state
 
 ### Ideas for Development:
-- None as of current state
+- **Foundational Question:** Is the tagging functionality useful? Is it out of scope for a method that's mostly about 
+feature renaming? What useful data science purpose does it serve?
 
 ### Method History:
 - Alpha build by Don Smith
 - Beta build by Don Smith (Current State)
+
+
+## Method: `feature_stats`
+
+### Core Purpose:
+Displays feature-level statistics and information for each feature in a dataframe, categorizing features by type 
+and providing appropriate descriptive statistics based on feature type.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `verbose` (Boolean, default = True) which controls level of detail in output.
+- `summary_stats` (Boolean, default = False) which controls whether summary statistics tables grouped by feature type are displayed.
+
+### Returns:
+- None. This is a void method that prints information to the console.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Separates features into categories by type:
+    - Categorical features
+    - Numerical features
+  - For all features:
+    - Shows missingness information (count and percentage)
+  - For categorical features:
+    - Shows unique value counts
+    - Shows mode values
+    - Shows category distributions
+  - For numerical features:
+    - Shows mean
+    - Shows range (min/max)
+    - Shows basic descriptive statistics
+  - Validates all features before processing
+  - Ensures data type appropriate statistics
+
+
+- If `verbose=False`:
+  - Shows only feature names and types
+  - Shows basic statistics without formatting
+  - Shows minimal explanatory text
+  - Presents condensed output
+
+
+- If `verbose=True`, the method **also** provides:
+  - Detailed feature type categorization
+  - Full descriptive statistics
+  - Formatted output with visual separators
+  - For categorical features:
+    - Complete value distribution information
+  - For numerical features:
+    - Extended descriptive statistics including median and standard deviation
+    
+
+- If `summary_stats=True`, the method **also** provides:
+  - Summary tables grouped by feature type
+  - Aggregate statistics for each feature class
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Enhanced Feature Detection:
+  - Add identification of boolean features
+  - Add identification of datetime features
+  - Separate display of statistics by four types (boolean, datetime, categorical, numerical)
+
+- Enhanced Statistical Information:
+  - For Numerical Features:
+    - Add skewness measurement
+    - Add kurtosis measurement
+    - Add quartile information
+    - Add coefficient of variation
+    - Add explanations of these statistics in verbose mode only
+  - For Categorical Features:
+    - Add entropy/information content
+    - Add frequency ratios
+    - Add explanations of these metrics in verbose mode only
+  - For Datetime Features:
+    - Add temporal range statistics
+    
+- Data Quality Indicators:
+  - Add detection of zero-variance features
+  - Add detection of near-constant features (>95% single value)
+  - Add detection of suspicious patterns
+  - Add detection of duplicate features
+
+- Format Improvements:
+  - Improve formatting of large numbers
+  - Add percentage calculations where relevant
+  - Improve floating point number rounding
+  - Add clearer section separators
+
+### Method History:
+- Alpha build by Don Smith (Current State)
 
 
 ## Method: `impute`

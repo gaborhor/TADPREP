@@ -753,7 +753,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
             pattern_warnings.append('Name starts with a number')
         if name.isupper():
             pattern_warnings.append('Name is all uppercase')
-        if len(name) < 2:
+        if len(name) <= 2:
             pattern_warnings.append('Name is very short')
         if len(name) > 30:
             pattern_warnings.append('Name is very long')
@@ -773,16 +773,17 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         print('-' * 50)  # Visual separator
         print('Beginning feature renaming process.')
         print('-' * 50)  # Visual separator
-        print('The list of features currently present in the dataset is:')
-
-    else:
-        print('Features:')
-
-    for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
-        print(f'{col_idx}. {column}')
 
     while True:  # We can justify 'while True' because we have a cancel-out input option
         try:
+            if verbose:
+                print('The list of features currently present in the dataset is:')
+            else:
+                print('Features:')
+
+            for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
+                print(f'{col_idx}. {column}')
+
             rename_cols_input = input('\nEnter the index integer of the feature you want to rename, enter "S" to skip '
                                       'this step, or enter "E" to exit the renaming/tagging process: ')
 
@@ -814,7 +815,8 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
 
             # Check if proposed name is a Python keyword
             if python_keyword_check(col_name_new):
-                print(f'"{col_name_new}" is a Python keyword and cannot be used as a feature name.')
+                print(f'"{col_name_new}" is a Python keyword and cannot be used as a feature name. '
+                      f'Please choose a different name.')
                 continue
 
             # Check for problematic characters
@@ -913,6 +915,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 # Validate that tags for the selected columns are not already present (i.e. done pre-import)
                 if not ord_rename_map:  # If the mapper is empty
                     print('WARNING: All selected features are already tagged as ordinal.')  # Warn the user
+                    print('Skipping ordinal tagging.')
                     break
 
                 df.rename(columns=ord_rename_map, inplace=True)  # Perform tagging
@@ -924,7 +927,6 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 if verbose:
                     print('-' * 50)  # Visual separator
                     print(f'Tagged the following features as ordinal: {", ".join(ord_rename_map.keys())}')
-                    print('-' * 50)  # Visual separator
                 break
 
             # Catch invalid input
@@ -979,6 +981,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
                 # Validate that tags for the selected columns are not already present (i.e. done pre-import)
                 if not target_rename_map:  # If the mapper is empty
                     print('WARNING: All selected features are already tagged as targets.')  # Warn the user
+                    print('Skipping target tagging.')
                     break
 
                 df = df.rename(columns=target_rename_map)  # Perform tagging
@@ -1009,7 +1012,7 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
         for op_type in summary_df['type'].unique():
             op_changes = summary_df[summary_df['type'] == op_type]
             if op_type == 'rename':
-                print('\nFeature Renames:')
+                print('Features Renamed:')
             elif op_type == 'ordinal_tag':
                 print('\nOrdinal Tags Added:')
             else:  # target_tag
