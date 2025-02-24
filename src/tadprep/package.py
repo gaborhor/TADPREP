@@ -184,14 +184,13 @@ def rename_and_tag(df: pd.DataFrame, verbose: bool = True, tag_features: bool = 
     return _rename_and_tag_core(df, verbose=verbose, tag_features=tag_features)
 
 
-def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = False) -> None:
+def feature_stats(df: pd.DataFrame, verbose: bool = True) -> None:
     """
     Displays feature-level statistics for each feature in the DataFrame.
 
     For each feature, displays missingness information and appropriate descriptive statistics
-    based on the feature's datatype (categorical or numerical).
-
-    Can optionally display summary statistics tables grouped by feature type.
+    based on the feature's datatype (boolean, datetime, categorical, or numerical).
+    Features are automatically classified by type for appropriate statistical analysis.
 
     Parameters
     ----------
@@ -199,13 +198,11 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
         The DataFrame to analyze
     verbose : bool, default=True
         Whether to print detailed information and visual formatting
-    summary_stats : bool, default=False
-        Whether to print summary statistics tables grouped by feature type
 
     Returns
     -------
     None
-        This is a void method that prints information to the console
+        This is a void method that prints information to the console.
 
     Examples
     --------
@@ -217,7 +214,6 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
     ... })
     >>> tadprep.feature_stats(df)  # Show detailed statistics with formatting
     >>> tadprep.feature_stats(df, verbose=False)  # Show only key feature-level statistics
-    >>> tadprep.feature_stats(df, summary_stats=True)  # Include feature type summaries
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -227,7 +223,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = 
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    _feature_stats_core(df, verbose=verbose, summary_stats=summary_stats)
+    _feature_stats_core(df, verbose=verbose)
 
 
 def impute(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
