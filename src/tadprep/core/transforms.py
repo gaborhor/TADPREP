@@ -1135,10 +1135,17 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
         """Format any large numbers with comma separators"""
         return f'{num:,}'
 
+    def format_numerics(num):
+        """Format numerical values appropriately based on their type and magnitude"""
+        if isinstance(num, (int, np.integer)) or (isinstance(num, float) and num.is_integer()):
+            return format_large_nums(int(num))
+        else:
+            return f'{num:.4f}'
+
     def format_percents(part, whole):
         """Calculate and format percentage values"""
         if whole == 0:
-            return "0.00%"
+            return '0.00%'
         return f'{(part / whole * 100):.2f}%'
 
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
@@ -1178,12 +1185,16 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                 else:
                     series = df[column]
 
-                # Get minimum and maximum dates
-                min_date = series.min()
-                max_date = series.max()
+                # Check if we have any valid dates after conversion
+                if series.notna().any():
+                    # Get minimum and maximum dates
+                    min_date = series.min()
+                    max_date = series.max()
 
-                # Print basic range information
-                print(f'Date range: {min_date} to {max_date}')
+                    # Print basic range information
+                    print(f'Date range: {min_date} to {max_date}')
+                else:
+                    print('No valid datetime values found in this feature.')
 
                 # Identify time granularity if possible (verbose mode only)
                 if verbose and not series.dropna().empty:
@@ -1276,32 +1287,32 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                             val_freq = value_counts.iloc[i]
                             percent = val_freq / total_cnt * 100
                             coverage += percent  # Addition assignment
-                            print(f'- Top {i + 1} values cover: {coverage:.1f}% of data')
+                            print(f'- Top {idx + 1} values cover: {coverage:.1f}% of data')
 
             # Numerical features statistics
             elif feature_type == 'Numerical':
                 stats = df[column].describe()
 
                 # Basic statistics
-                print(f'Mean: {stats["mean"]:.4f}')
-                print(f'Min: {stats["min"]:.4f}')
-                print(f'Max: {stats["max"]:.4f}')
+                print(f'Mean: {format_numerics(stats["mean"])}')
+                print(f'Min: {format_numerics(stats["min"])}')
+                print(f'Max: {format_numerics(stats["max"])}')
 
                 # Enhanced statistics when verbose is True
                 if verbose:
-                    print(f'Median: {stats["50%"]:.4f}')
-                    print(f'Std Dev: {stats["std"]:.4f}')
+                    print(f'Median: {format_numerics(stats["50%"])}')
+                    print(f'Std Dev: {format_numerics(stats["std"])}')
 
                     # Provide quartile information
-                    print(f'25th percentile: {stats["25%"]:.4f}')
-                    print(f'75th percentile: {stats["75%"]:.4f}')
+                    print(f'25th percentile: {format_numerics(stats["25%"])}')
+                    print(f'75th percentile: {format_numerics(stats["75%"])}')
                     print('NOTE: The Interquartile range (IQR) represents the middle 50% of the data.')
-                    print(f'IQR: {(stats["75%"] - stats["25%"]):.4f}')
+                    print(f'IQR: {format_numerics(stats["75%"] - stats["25%"])}')
 
                     # Provide skewness
                     print('NOTE: Skewness measures the asymmetry of a numerical distribution.')
                     skew = df[column].skew()
-                    print(f'Skewness: {skew:.4f}')
+                    print(f'Skewness: {format_numerics(skew)}')
                     if abs(skew) < 0.5:
                         print('  (approximately symmetric distribution)')
                     elif abs(skew) < 1:
@@ -1312,7 +1323,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                     # Provide kurtosis
                     print('NOTE: Kurtosis measures the "tailedness" of a numerical distribution.')
                     kurt = df[column].kurtosis()
-                    print(f'Kurtosis: {kurt:.4f}')
+                    print(f'Kurtosis: {format_numerics(kurt)}')
                     if kurt < -0.5:
                         print('  (The feature is platykurtic - flatter than a normal distribution)')
                     elif kurt > 0.5:
@@ -1323,7 +1334,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                     # Coefficient of variation
                     if stats["mean"] != 0:
                         cv = stats["std"] / stats["mean"]
-                        print(f'Coefficient of Variation (CV): {cv:.4f}')
+                        print(f'Coefficient of Variation (CV): {format_numerics(cv)}')
                         print(f'NOTE: The CV of a feature indicates its relative variability across the dataset.')
 
                         # Contextual interpretation for feature-level variability
