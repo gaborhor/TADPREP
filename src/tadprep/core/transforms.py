@@ -965,22 +965,142 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
         summary_stats (bool): Whether to print summary statistics at the feature-class level. Defaults to False.
 
     Returns:
-        None. This is a void function.
+        None. This is a void function which prints information to the console.
     """
     if verbose:
-        print('Displaying general information and summary statistics for all features in dataset...')
+        print('Displaying general information for all features in dataset...')
         print('-' * 50)  # Visual separator
 
-    # Create list of categorical features
+    # Begin with four-category feature detection process
+    # Boolean features (either logical values or 0/1 integers with exactly two unique values)
+    bool_cols = []
+    for column in df.columns:
+        # Check for explicit boolean datatypes
+        if pd.api.types.is_bool_dtype(df[column]):
+            bool_cols.append(column)
+        # Check for 0/1 integers which function as boolean
+        elif (pd.api.types.is_numeric_dtype(df[column])  # Numeric check
+              and df[column].dropna().nunique() == 2  # Unique value count check
+              and set(df[column].dropna().unique()).issubset({0, 1})):  # Check if unique values are a subset of {0, 1}
+            bool_cols.append(column)  # If all checks are passed, this is a boolean feature
+
+    # Datetime features
+    datetime_cols = []
+    for column in df.columns:
+        # Check for explicit datetime datatypes
+        if pd.api.types.is_datetime64_any_dtype(df[column]):
+            datetime_cols.append(column)
+        # For string columns, try to parse them as datetime and assess results
+        elif pd.api.types.is_object_dtype(df[column]):
+            try:
+                # Fetch the first non-null value to check if the parsing is possible
+                first_valid = df[column].dropna().iloc[0]
+
+                # Attempt to parse the first value as a datetime - raise ValueError if not possible
+                pd.to_datetime(first_valid)
+
+                # If we get this far, the first value is a valid datetime
+                # Now we check a sample of values to confirm most are valid dates
+                # I'll limit the sample to 100 values which should be enough
+                sample_size = min(100, len(df[column].dropna()))
+
+                # Take a random sample if we have values, otherwise use an empty list
+                sample = df[column].dropna().sample(sample_size) if sample_size > 0 else []
+
+                # Count how many values in the sample can be parsed as dates
+                # NOTE: pd.to_datetime with errors='coerce' returns NaT for invalid dates
+                valid_dates = sum(pd.to_datetime(value, errors='coerce') is not pd.NaT for value in sample)
+
+                # Calculate the proportion of valid dates
+                # I use max(1, len) to avoid dividing by zero
+                valid_prop = valid_dates / max(1, len(sample))
+
+                # If more than 80% of sampled values are valid dates, classify the feature as datetime
+                # This threshold helps avoid misclassifying text fields that occasionally contain dates as datetime
+                if valid_prop > 0.8:
+                    datetime_cols.append(column)
+
+            # ValueError if failure to parse first value, IndexError if the feature is empty
+            except (ValueError, IndexError):
+                continue
+
+    # Categorical features (excluding those identified as datetime or boolean)
     cat_cols = [column for column in df.columns
-                if pd.api.types.is_object_dtype(df[column]) or
-                isinstance(df[column].dtype, type(pd.Categorical.dtype))]
+                if (pd.api.types.is_object_dtype(df[column]) or
+                    isinstance(df[column].dtype, type(pd.Categorical.dtype))) and
+                column not in datetime_cols and
+                column not in bool_cols]
 
-    # Create list of numerical features
+    # Numerical features (excluding those identified as boolean)
     num_cols = [column for column in df.columns
-                if pd.api.types.is_numeric_dtype(df[column])]
+                if pd.api.types.is_numeric_dtype(df[column]) and
+                column not in bool_cols]
 
+    # Data quality indicator arrays
+    zero_var_cols = []
+    near_const_cols = []
+    duplicate_cols = []
+    suspicious_cols = []
+
+    # Detect zero-variance and near-constant features
+    for column in df.columns:
+        # Skip columns with all NaN values
+        if df[column].isna().all():
+            continue
+
+        # Detect zero variance features
+        if df[column].nunique() == 1:
+            zero_var_cols.append(column)
+            continue
+
+        # Detect near-constant features (>95% single value)
+        if pd.api.types.is_numeric_dtype(df[column]) or pd.api.types.is_object_dtype(df[column]):
+            value_counts = df[column].value_counts(normalize=True)
+            if value_counts.iloc[0] > 0.95:
+                near_const_cols.append((column, value_counts.index[0], value_counts.iloc[0] * 100))
+
+    # Detect potentially duplicate features (using sampling for efficiency)
+    # This compares the first 1000 rows of each feature for exact matches
+    sample_df = df.head(1000)
+    cols_to_check = df.columns
+
+    for i, col1 in enumerate(cols_to_check):
+        for col2 in cols_to_check[i + 1:]:
+            # Only compare features of the same type
+            if df[col1].dtype != df[col2].dtype:
+                continue
+
+            # Check if the columns are identical in the sample
+            if sample_df[col1].equals(sample_df[col2]):
+                duplicate_cols.append((col1, col2))
+
+    # Display detection results if verbose mode is on
     if verbose:
+        # Display feature type counts
+        print(f'Feature type distribution in dataset:')
+        print(f'- Boolean features: {len(bool_cols)}')
+        print(f'- Datetime features: {len(datetime_cols)}')
+        print(f'- Categorical features: {len(cat_cols)}')
+        print(f'- Numerical features: {len(num_cols)}')
+        print('-' * 50)
+
+        # Display the names of each feature type if any exist
+        if bool_cols:
+            print('The boolean features are:')
+            print(', '.join(bool_cols))
+            print('-' * 50)
+        else:
+            print('No boolean features were found in the dataset.')
+            print('-' * 50)
+
+        if datetime_cols:
+            print('The datetime features are:')
+            print(', '.join(datetime_cols))
+            print('-' * 50)
+        else:
+            print('No datetime features were found in the dataset.')
+            print('-' * 50)
+
         if cat_cols:
             print('The categorical features are:')
             print(', '.join(cat_cols))
@@ -997,7 +1117,42 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             print('No numerical features were found in the dataset.')
             print('-' * 50)
 
+        # Display data quality indicators if they exist
+        if zero_var_cols:
+            print('ALERT: The following features have zero variance (single unique value):')
+            for column in zero_var_cols:
+                print(f'- {column}: {df[column].iloc[0]}')
+            print('-' * 50)
+
+        if near_const_cols:
+            print('ALERT: The following features have near-constant values (>95% single value):')
+            for column, value, percentage in near_const_cols:
+                print(f'- {column}: value "{value}" appears in {percentage:.2f}% of non-null instances')
+            print('-' * 50)
+
+        if duplicate_cols:
+            print('ALERT: The following features may be duplicates:')
+            for col1, col2 in duplicate_cols:
+                print(f'- {col1} and {col2}')
+            print('-' * 50)
+
         print('Producing key values at the feature level...')
+
+    # Enhanced helper functions for statistics
+    def calculate_entropy(series):
+        """Calculate Shannon entropy/information content of a series"""
+        value_counts = series.value_counts(normalize=True)
+        return -sum(p * np.log2(p) for p in value_counts if p > 0)
+
+    def format_large_number(num):
+        """Format large numbers with comma separators"""
+        return f'{num:,}'
+
+    def format_percentage(part, whole):
+        """Calculate and format percentage"""
+        if whole == 0:
+            return "0.00%"
+        return f'{(part / whole * 100):.2f}%'
 
     def show_key_vals(column: str, df: pd.DataFrame, feature_type: str):
         """This helper function calculates and prints key values and missingness info at the feature level."""
@@ -1011,31 +1166,203 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
         # Calculate missingness at feature level
         missing_cnt = df[column].isnull().sum()  # Total count
         missing_rate = (missing_cnt / len(df) * 100).round(2)  # Missingness rate
-        print(f'Missing values: {missing_cnt} ({missing_rate}%)')
+        print(f'Missing values: {format_large_number(missing_cnt)} ({missing_rate}%)')
 
-        # Ensure the feature is not fully null before producing value counts
+        # Ensure the feature is not fully null before producing statistics
         if not df[column].isnull().all():
-            if feature_type == 'Categorical':
+            # Boolean features statistics
+            if feature_type == 'Boolean':
                 value_counts = df[column].value_counts()
-                mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else 'No mode exists'
-                print(f'Unique values: {df[column].nunique()}')
-                print(f'Mode: {mode_val}')
+                true_count = int(df[column].sum())
+                false_count = int(len(df[column].dropna()) - true_count)
+                true_pct = (true_count / len(df[column].dropna()) * 100).round(2)
+
+                print(f'True values: {format_large_number(true_count)} ({true_pct}%)')
+                print(f'False values: {format_large_number(false_count)} ({100 - true_pct:.2f}%)')
+
                 if verbose:
                     print('\nValue counts:')
                     print(value_counts)
 
-            if feature_type == 'Numerical':
-                stats = df[column].describe()
-                print(f'Mean: {stats["mean"]:.4f}')
+            # DateTime features statistics
+            elif feature_type == 'Datetime':
+                # Convert to datetime if not already
+                if not pd.api.types.is_datetime64_any_dtype(df[column]):
+                    series = pd.to_datetime(df[column], errors='coerce')
+                else:
+                    series = df[column]
 
+                # Get min and max dates
+                min_date = series.min()
+                max_date = series.max()
+
+                # Calculate date range in days
+                try:
+                    range_days = (max_date - min_date).days
+                    print(f'Date range: {min_date.date()} to {max_date.date()} ({range_days} days)')
+                except:
+                    print(f'Date range: {min_date} to {max_date}')
+
+                if verbose:
+                    # Identify common frequencies if possible
+                    try:
+                        # Sort data and calculate time differences
+                        sorted_dates = series.dropna().sort_values()
+                        time_diffs = sorted_dates.diff().dropna()
+
+                        if len(time_diffs) > 0:
+                            # Get most common time difference
+                            from collections import Counter
+                            counter = Counter(time_diffs.astype(str))
+                            common_diff = counter.most_common(1)[0][0]
+
+                            print(f'Most common time difference: {common_diff}')
+
+                            # Check for regular intervals
+                            if counter.most_common(1)[0][1] / len(time_diffs) > 0.5:
+                                print('The data appears to have regular time intervals')
+                            else:
+                                print('The data has irregular time intervals')
+                    except:
+                        pass
+
+                    # Calculate distribution by year, month, and day of week
+                    try:
+                        print('\nYear distribution:')
+                        year_counts = series.dt.year.value_counts().sort_index()
+                        for year, count in year_counts.items():
+                            print(f'- {year}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
+
+                        print('\nMonth distribution:')
+                        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                        month_counts = series.dt.month.value_counts().sort_index()
+                        for month, count in month_counts.items():
+                            print(
+                                f'- {month_names[month - 1]}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
+
+                        print('\nDay of week distribution:')
+                        day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                        day_counts = series.dt.dayofweek.value_counts().sort_index()
+                        for day, count in day_counts.items():
+                            print(
+                                f'- {day_names[day]}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
+                    except:
+                        pass
+
+            # Categorical features statistics
+            elif feature_type == 'Categorical':
+                value_counts = df[column].value_counts()
+                unique_values = df[column].nunique()
+                mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else 'No mode exists'
+
+                print(f'Unique values: {format_large_number(unique_values)}')
+                print(
+                    f'Mode: {mode_val} (appears {format_large_number(value_counts.iloc[0])} times, {value_counts.iloc[0] / len(df[column].dropna()) * 100:.2f}%)')
+
+                # Add entropy calculation
+                if len(df[column].dropna()) > 0:
+                    entropy = calculate_entropy(df[column].dropna())
+                    max_entropy = np.log2(unique_values) if unique_values > 0 else 0
+
+                    if verbose:
+                        print(f'Information entropy: {entropy:.2f} bits')
+                        if max_entropy > 0:
+                            print(
+                                f'Normalized entropy: {entropy / max_entropy:.2f} (0=constant, 1=uniform distribution)')
+                            print('\nExplanation: Entropy measures the unpredictability of the feature\'s values.')
+                            print('Low entropy (near 0) means the feature is highly predictable or skewed.')
+                            print('High entropy (near the maximum) means values are evenly distributed.')
+
+                if verbose:
+                    print('\nValue counts (top 10):')
+                    print(value_counts.head(10))
+
+                    if len(value_counts) > 10:
+                        print(f'...and {len(value_counts) - 10} more values')
+
+                    # Top frequency ratios
+                    if len(value_counts) >= 2:
+                        print('\nTop to second frequency ratio: {:.2f}'.format(
+                            value_counts.iloc[0] / value_counts.iloc[1]))
+
+                    # Show distribution pattern
+                    if len(value_counts) > 5:
+                        print('\nDistribution pattern:')
+                        total = len(df[column].dropna())
+                        cumulative = 0
+                        for i in range(min(5, len(value_counts))):
+                            v = value_counts.iloc[i]
+                            p = v / total * 100
+                            cumulative += p
+                            print(f'- Top {i + 1} values cover: {cumulative:.1f}% of data')
+
+            # Numerical features statistics
+            elif feature_type == 'Numerical':
+                stats = df[column].describe()
+
+                # Basic statistics
+                print(f'Mean: {stats["mean"]:.4f}')
+                print(f'Min: {stats["min"]:.4f}')
+                print(f'Max: {stats["max"]:.4f}')
+
+                # Enhanced statistics when verbose is True
                 if verbose:
                     print(f'Median: {stats["50%"]:.4f}')
                     print(f'Std Dev: {stats["std"]:.4f}')
 
-                print(f'Min: {stats["min"]:.4f}')
-                print(f'Max: {stats["max"]:.4f}')
+                    # Add quartile information
+                    print(f'25th percentile: {stats["25%"]:.4f}')
+                    print(f'75th percentile: {stats["75%"]:.4f}')
+                    print(f'IQR: {(stats["75%"] - stats["25%"]):.4f}')
 
-    # Display feature-level statistics
+                    # Add skewness
+                    skew = df[column].skew()
+                    print(f'Skewness: {skew:.4f}')
+                    if abs(skew) < 0.5:
+                        print('  (approximately symmetric distribution)')
+                    elif abs(skew) < 1:
+                        print('  (moderately skewed distribution)')
+                    else:
+                        print('  (highly skewed distribution)')
+
+                    # Add kurtosis
+                    kurt = df[column].kurtosis()
+                    print(f'Kurtosis: {kurt:.4f}')
+                    if kurt < -0.5:
+                        print('  (platykurtic - flatter than normal distribution)')
+                    elif kurt > 0.5:
+                        print('  (leptokurtic - more peaked than normal distribution)')
+                    else:
+                        print('  (mesokurtic - similar to normal distribution)')
+
+                    # Coefficient of variation
+                    if stats["mean"] != 0:
+                        cv = stats["std"] / stats["mean"]
+                        print(f'Coefficient of variation: {cv:.4f}')
+
+                    # Add brief explanations
+                    print('\nExplanation of statistics:')
+                    print('- Skewness: Measures asymmetry of the distribution')
+                    print('- Kurtosis: Measures "tailedness" of the distribution')
+                    print('- IQR: Interquartile range (middle 50% of data)')
+                    if stats["mean"] != 0:
+                        print('- Coefficient of variation: Relative standard deviation')
+
+                        # Display feature-level statistics
+
+    if bool_cols:
+        if verbose:
+            print('\nKEY VALUES FOR BOOLEAN FEATURES:')
+        for column in bool_cols:
+            show_key_vals(column, df, 'Boolean')
+
+    if datetime_cols:
+        if verbose:
+            print('\nKEY VALUES FOR DATETIME FEATURES:')
+        for column in datetime_cols:
+            show_key_vals(column, df, 'Datetime')
+
     if cat_cols:
         if verbose:
             print('\nKEY VALUES FOR CATEGORICAL FEATURES:')
@@ -1048,8 +1375,64 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
         for column in num_cols:
             show_key_vals(column, df, 'Numerical')
 
-    # Display feature-class level statistics if requested
+    # Display feature-class level summary statistics if requested
     if summary_stats:
+        if bool_cols:
+            if verbose:
+                print('\nBOOLEAN FEATURES SUMMARY STATISTICS:')
+                print('-' * 50)
+
+            bool_summary = pd.DataFrame({
+                'True_count': [df[column].sum() for column in bool_cols],
+                'True_rate': [(df[column].sum() / len(df[column].dropna()) * 100).round(2)
+                              for column in bool_cols],
+                'Missing_count': [df[column].isnull().sum() for column in bool_cols],
+                'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
+                                 for column in bool_cols]
+            }, index=bool_cols)
+            print('Boolean Features Summary Table:')
+            print(str(bool_summary))
+
+        if datetime_cols:
+            if verbose:
+                print('\nDATETIME FEATURES SUMMARY STATISTICS:')
+                print('-' * 50)
+
+            # Convert any string datetime columns temporarily for statistics
+            datetime_data = {}
+            for column in datetime_cols:
+                if not pd.api.types.is_datetime64_any_dtype(df[column]):
+                    series = pd.to_datetime(df[column], errors='coerce')
+                else:
+                    series = df[column]
+
+                min_date = series.min()
+                max_date = series.max()
+                try:
+                    range_days = (max_date - min_date).days
+                except:
+                    range_days = np.nan
+
+                datetime_data[column] = {
+                    'min_date': min_date,
+                    'max_date': max_date,
+                    'range_days': range_days,
+                    'missing_count': df[column].isnull().sum(),
+                    'missing_rate': (df[column].isnull().sum() / len(df) * 100).round(2)
+                }
+
+            # Create summary dataframe
+            datetime_summary = pd.DataFrame({
+                'Min_date': [datetime_data[col]['min_date'] for col in datetime_cols],
+                'Max_date': [datetime_data[col]['max_date'] for col in datetime_cols],
+                'Range_days': [datetime_data[col]['range_days'] for col in datetime_cols],
+                'Missing_count': [datetime_data[col]['missing_count'] for col in datetime_cols],
+                'Missing_rate': [datetime_data[col]['missing_rate'] for col in datetime_cols]
+            }, index=datetime_cols)
+
+            print('Datetime Features Summary Table:')
+            print(str(datetime_summary))
+
         if cat_cols:
             if verbose:
                 print('\nCATEGORICAL FEATURES SUMMARY STATISTICS:')
@@ -1057,6 +1440,13 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
 
             cat_summary = pd.DataFrame({
                 'Unique_values': [df[column].nunique() for column in cat_cols],
+                'Mode_frequency': [df[column].value_counts().iloc[0] if len(df[column].value_counts()) > 0 else 0
+                                   for column in cat_cols],
+                'Mode_percentage': [(df[column].value_counts().iloc[0] / len(df[column].dropna()) * 100).round(2)
+                                    if len(df[column].value_counts()) > 0 else 0
+                                    for column in cat_cols],
+                'Entropy': [calculate_entropy(df[column].dropna()) if len(df[column].dropna()) > 0 else 0
+                            for column in cat_cols],
                 'Missing_count': [df[column].isnull().sum() for column in cat_cols],
                 'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
                                  for column in cat_cols]
@@ -1069,9 +1459,33 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                 print('\nNUMERICAL FEATURES SUMMARY STATISTICS:')
                 print('-' * 50)
 
+            # Enhanced numerical summary with additional statistics
             num_summary = df[num_cols].describe()
+
+            # Add skewness and kurtosis
+            num_summary.loc['skew'] = df[num_cols].skew()
+            num_summary.loc['kurt'] = df[num_cols].kurtosis()
+
+            # Add coefficient of variation where mean is not zero
+            cv_row = []
+            for col in num_cols:
+                mean_val = df[col].mean()
+                std_val = df[col].std()
+                cv_row.append(std_val / mean_val if mean_val != 0 else np.nan)
+
+            num_summary.loc['cv'] = cv_row
+
+            # Add missing value count and percentage
+            num_summary.loc['missing'] = df[num_cols].isnull().sum()
+            num_summary.loc['missing %'] = (df[num_cols].isnull().sum() / len(df) * 100).round(2)
+
             print('Numerical Features Summary Table:')
             print(str(num_summary))
+
+    if verbose:
+        print('-' * 50)
+        print('Feature statistics analysis complete.')
+        print('-' * 50)
 
 
 def _impute_core(df: pd.DataFrame, verbose: bool = True, skip_warnings: bool = False) -> pd.DataFrame:
