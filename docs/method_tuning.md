@@ -213,7 +213,6 @@ and providing appropriate descriptive statistics based on feature type.
 ### Parameters:
 - `df` Input Pandas dataframe.
 - `verbose` (Boolean, default = True) which controls level of detail in output.
-- `summary_stats` (Boolean, default = False) which controls whether summary statistics tables grouped by feature type are displayed.
 
 ### Returns:
 - None. This is a void method that prints information to the console.
@@ -246,55 +245,18 @@ and providing appropriate descriptive statistics based on feature type.
 
 - If `verbose=True`, the method **also** provides:
   - Detailed feature type categorization
-  - Full descriptive statistics
+  - Expanded descriptive and explanatory statistics based on feature type
   - Formatted output with visual separators
-  - For categorical features:
-    - Complete value distribution information
-  - For numerical features:
-    - Extended descriptive statistics including median and standard deviation
-    
-
-- If `summary_stats=True`, the method **also** provides:
-  - Summary tables grouped by feature type
-  - Aggregate statistics for each feature class
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- Enhanced Feature Detection:
-  - Add identification of boolean features
-  - Add identification of datetime features
-  - Separate display of statistics by four types (boolean, datetime, categorical, numerical)
-
-- Enhanced Statistical Information:
-  - For Numerical Features:
-    - Add skewness measurement
-    - Add kurtosis measurement
-    - Add quartile information
-    - Add coefficient of variation
-    - Add explanations of these statistics in verbose mode only
-  - For Categorical Features:
-    - Add entropy/information content
-    - Add frequency ratios
-    - Add explanations of these metrics in verbose mode only
-  - For Datetime Features:
-    - Add temporal range statistics
-    
-- Data Quality Indicators:
-  - Add detection of zero-variance features
-  - Add detection of near-constant features (>95% single value)
-  - Add detection of suspicious patterns
-  - Add detection of duplicate features
-
-- Format Improvements:
-  - Improve formatting of large numbers
-  - Add percentage calculations where relevant
-  - Improve floating point number rounding
-  - Add clearer section separators
+- None as of current state
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
 
 
 ## Method: `impute`
