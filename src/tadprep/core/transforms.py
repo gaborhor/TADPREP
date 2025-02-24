@@ -953,16 +953,13 @@ def _rename_and_tag_core(df: pd.DataFrame, verbose: bool = True, tag_features: b
     return df  # Return dataframe with renamed and tagged columns
 
 
-def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: bool = False) -> None:
+def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
     """
-    Core function to aggregate the features by class (i.e. feature type) and print top-level missingness and
-    descriptive statistics information at the feature level.
-    It can build and display summary tables at the feature-class level if requested by the user.
+    Core function to provide feature-level descriptive and analytical statistical values.
 
     Args:
         df (pd.DataFrame): The input dataframe for analysis.
-        verbose (bool): Whether to print more detailed information/visuals for each feature. Defaults to True.
-        summary_stats (bool): Whether to print summary statistics at the feature-class level. Defaults to False.
+        verbose (bool): Whether to print more detailed information/explanations for each feature. Defaults to True.
 
     Returns:
         None. This is a void function which prints information to the console.
@@ -1361,116 +1358,9 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
         for column in num_cols:
             show_key_vals(column, df, 'Numerical')
 
-    # Display feature-class level summary statistics if requested
-    if summary_stats:
-        if bool_cols:
-            if verbose:
-                print('\nBOOLEAN FEATURES SUMMARY STATISTICS:')
-                print('-' * 50)
-
-            bool_summary = pd.DataFrame({
-                'True_count': [df[column].sum() for column in bool_cols],
-                'True_rate': [(df[column].sum() / len(df[column].dropna()) * 100).round(2)
-                              for column in bool_cols],
-                'Missing_count': [df[column].isnull().sum() for column in bool_cols],
-                'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
-                                 for column in bool_cols]
-            }, index=bool_cols)
-            print('Boolean Features Summary Table:')
-            print(str(bool_summary))
-
-        if datetime_cols:
-            if verbose:
-                print('\nDATETIME FEATURES SUMMARY STATISTICS:')
-                print('-' * 50)
-
-            # Convert any string datetime columns temporarily for statistics
-            datetime_data = {}
-            for column in datetime_cols:
-                if not pd.api.types.is_datetime64_any_dtype(df[column]):
-                    series = pd.to_datetime(df[column], errors='coerce')
-                else:
-                    series = df[column]
-
-                min_date = series.min()
-                max_date = series.max()
-                try:
-                    range_days = (max_date - min_date).days
-                except:
-                    range_days = np.nan
-
-                datetime_data[column] = {
-                    'min_date': min_date,
-                    'max_date': max_date,
-                    'range_days': range_days,
-                    'missing_count': df[column].isnull().sum(),
-                    'missing_rate': (df[column].isnull().sum() / len(df) * 100).round(2)
-                }
-
-            # Create summary dataframe
-            datetime_summary = pd.DataFrame({
-                'Min_date': [datetime_data[col]['min_date'] for col in datetime_cols],
-                'Max_date': [datetime_data[col]['max_date'] for col in datetime_cols],
-                'Range_days': [datetime_data[col]['range_days'] for col in datetime_cols],
-                'Missing_count': [datetime_data[col]['missing_count'] for col in datetime_cols],
-                'Missing_rate': [datetime_data[col]['missing_rate'] for col in datetime_cols]
-            }, index=datetime_cols)
-
-            print('Datetime Features Summary Table:')
-            print(str(datetime_summary))
-
-        if cat_cols:
-            if verbose:
-                print('\nCATEGORICAL FEATURES SUMMARY STATISTICS:')
-                print('-' * 50)
-
-            cat_summary = pd.DataFrame({
-                'Unique_values': [df[column].nunique() for column in cat_cols],
-                'Mode_frequency': [df[column].value_counts().iloc[0] if len(df[column].value_counts()) > 0 else 0
-                                   for column in cat_cols],
-                'Mode_percentage': [(df[column].value_counts().iloc[0] / len(df[column].dropna()) * 100).round(2)
-                                    if len(df[column].value_counts()) > 0 else 0
-                                    for column in cat_cols],
-                'Entropy': [calculate_entropy(df[column].dropna()) if len(df[column].dropna()) > 0 else 0
-                            for column in cat_cols],
-                'Missing_count': [df[column].isnull().sum() for column in cat_cols],
-                'Missing_rate': [(df[column].isnull().sum() / len(df) * 100).round(2)
-                                 for column in cat_cols]
-            }, index=cat_cols)
-            print('Categorical Features Summary Table:')
-            print(str(cat_summary))
-
-        if num_cols:
-            if verbose:
-                print('\nNUMERICAL FEATURES SUMMARY STATISTICS:')
-                print('-' * 50)
-
-            # Enhanced numerical summary with additional statistics
-            num_summary = df[num_cols].describe()
-
-            # Add skewness and kurtosis
-            num_summary.loc['skew'] = df[num_cols].skew()
-            num_summary.loc['kurt'] = df[num_cols].kurtosis()
-
-            # Add coefficient of variation where mean is not zero
-            cv_row = []
-            for col in num_cols:
-                mean_val = df[col].mean()
-                std_val = df[col].std()
-                cv_row.append(std_val / mean_val if mean_val != 0 else np.nan)
-
-            num_summary.loc['cv'] = cv_row
-
-            # Add missing value count and percentage
-            num_summary.loc['missing'] = df[num_cols].isnull().sum()
-            num_summary.loc['missing %'] = (df[num_cols].isnull().sum() / len(df) * 100).round(2)
-
-            print('Numerical Features Summary Table:')
-            print(str(num_summary))
-
     if verbose:
         print('-' * 50)
-        print('Feature statistics analysis complete.')
+        print('Feature-level analysis complete.')
         print('-' * 50)
 
 
