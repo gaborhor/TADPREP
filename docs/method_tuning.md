@@ -220,10 +220,16 @@ and providing appropriate descriptive statistics based on feature type.
 ### Current State:
 - Core Functionality (Always Run):
   - Separates features into categories by type:
+    - Boolean features (logical values or 0/1 integers)
+    - Datetime features
     - Categorical features
     - Numerical features
   - For all features:
     - Shows missingness information (count and percentage)
+  - For boolean features:
+    - Shows true/false value counts and percentages
+  - For datetime features:
+    - Shows date range information
   - For categorical features:
     - Shows unique value counts
     - Shows mode values
@@ -232,8 +238,10 @@ and providing appropriate descriptive statistics based on feature type.
     - Shows mean
     - Shows range (min/max)
     - Shows basic descriptive statistics
-  - Validates all features before processing
-  - Ensures data type appropriate statistics
+  - Performs data quality checks:
+    - Zero-variance features
+    - Near-constant features (>95% single value)
+    - Potential duplicate features
 
 
 - If `verbose=False`:
@@ -244,9 +252,13 @@ and providing appropriate descriptive statistics based on feature type.
 
 
 - If `verbose=True`, the method **also** provides:
-  - Detailed feature type categorization
-  - Expanded descriptive and explanatory statistics based on feature type
+  - Detailed feature type categorization and distribution
+  - Data quality alerts for potential issues
+  - Extended statistics:
+    - For categorical: entropy values, top frequency ratios, distribution patterns
+    - For numerical: quartile information, skewness, kurtosis, coefficient of variation
   - Formatted output with visual separators
+  - Contextual interpretation of statistical measures
 
 ### Observed Bugs/Problems:
 - None as of current state
