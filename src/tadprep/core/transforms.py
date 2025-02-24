@@ -1295,12 +1295,14 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                     print(f'Median: {stats["50%"]:.4f}')
                     print(f'Std Dev: {stats["std"]:.4f}')
 
-                    # Add quartile information
+                    # Provide quartile information
                     print(f'25th percentile: {stats["25%"]:.4f}')
                     print(f'75th percentile: {stats["75%"]:.4f}')
+                    print('NOTE: The Interquartile range (IQR) represents the middle 50% of the data.')
                     print(f'IQR: {(stats["75%"] - stats["25%"]):.4f}')
 
-                    # Add skewness
+                    # Provide skewness
+                    print('NOTE: Skewness measures the asymmetry of a numerical distribution.')
                     skew = df[column].skew()
                     print(f'Skewness: {skew:.4f}')
                     if abs(skew) < 0.5:
@@ -1310,30 +1312,30 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                     else:
                         print('  (highly skewed distribution)')
 
-                    # Add kurtosis
+                    # Provide kurtosis
+                    print('NOTE: Kurtosis measures the "tailedness" of a numerical distribution.')
                     kurt = df[column].kurtosis()
                     print(f'Kurtosis: {kurt:.4f}')
                     if kurt < -0.5:
-                        print('  (platykurtic - flatter than normal distribution)')
+                        print('  (The feature is platykurtic - flatter than a normal distribution)')
                     elif kurt > 0.5:
-                        print('  (leptokurtic - more peaked than normal distribution)')
+                        print('  (The feature is leptokurtic - more peaked than a normal distribution)')
                     else:
-                        print('  (mesokurtic - similar to normal distribution)')
+                        print('  (The feature is mesokurtic - similar to a normal distribution)')
 
                     # Coefficient of variation
                     if stats["mean"] != 0:
                         cv = stats["std"] / stats["mean"]
-                        print(f'Coefficient of variation: {cv:.4f}')
+                        print(f'Coefficient of Variation (CV): {cv:.4f}')
+                        print(f'NOTE: The CV of a feature indicates its relative variability across the dataset.')
 
-                    # Add brief explanations
-                    print('\nExplanation of statistics:')
-                    print('- Skewness: Measures asymmetry of the distribution')
-                    print('- Kurtosis: Measures "tailedness" of the distribution')
-                    print('- IQR: Interquartile range (middle 50% of data)')
-                    if stats["mean"] != 0:
-                        print('- Coefficient of variation: Relative standard deviation')
-
-                        # Display feature-level statistics
+                        # Contextual interpretation for feature-level variability
+                        if cv < 0.1:
+                            print('  - The feature\'s values are consistently similar across samples.')
+                        elif cv < 0.5:
+                            print('  - The feature shows noticeable but not extreme variation across samples.')
+                        else:
+                            print('  - The feature\'s values differ substantially across different samples.')
 
     if bool_cols:
         if verbose:
