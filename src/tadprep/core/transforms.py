@@ -1016,7 +1016,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                 valid_prop = valid_dates / max(1, len(sample))
 
                 # If more than 80% of sampled values are valid dates, classify the feature as datetime
-                # This threshold helps avoid misclassifying text fields that occasionally contain dates as datetime
+                # This threshold helps avoid classifying text fields that occasionally contain dates as datetime
                 if valid_prop > 0.8:
                     datetime_cols.append(column)
 
@@ -1024,23 +1024,25 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             except (ValueError, IndexError):
                 continue
 
-    # Categorical features (excluding those identified as datetime or boolean)
+    # Categorical features (*excluding* those identified as boolean or datetime)
     cat_cols = [column for column in df.columns
-                if (pd.api.types.is_object_dtype(df[column]) or
-                    isinstance(df[column].dtype, type(pd.Categorical.dtype))) and
-                column not in datetime_cols and
-                column not in bool_cols]
+                # Datatype check
+                if (pd.api.types.is_object_dtype(df[column])
+                    or isinstance(df[column].dtype, type(pd.Categorical.dtype)))
+                # Membership check
+                and column not in datetime_cols and column not in bool_cols]
 
     # Numerical features (excluding those identified as boolean)
     num_cols = [column for column in df.columns
-                if pd.api.types.is_numeric_dtype(df[column]) and
-                column not in bool_cols]
+                # Datatype check
+                if pd.api.types.is_numeric_dtype(df[column])
+                # Membership check
+                and column not in bool_cols]
 
-    # Data quality indicator arrays
+    # Instantiate empty arrays for potential data quality issues
     zero_var_cols = []
     near_const_cols = []
-    duplicate_cols = []
-    suspicious_cols = []
+    dup_cols = []
 
     # Detect zero-variance and near-constant features
     for column in df.columns:
@@ -1059,8 +1061,8 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             if value_counts.iloc[0] > 0.95:
                 near_const_cols.append((column, value_counts.index[0], value_counts.iloc[0] * 100))
 
-    # Detect potentially duplicate features (using sampling for efficiency)
-    # This compares the first 1000 rows of each feature for exact matches
+    # Detect potentially duplicated features (again using sampling for efficiency)
+    # I'll compare the first 1000 rows of each feature to check for exact matches
     sample_df = df.head(1000)
     cols_to_check = df.columns
 
@@ -1070,14 +1072,14 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             if df[col1].dtype != df[col2].dtype:
                 continue
 
-            # Check if the columns are identical in the sample
+            # Check if the columns are fully identical in the sample
             if sample_df[col1].equals(sample_df[col2]):
-                duplicate_cols.append((col1, col2))
+                dup_cols.append((col1, col2))
 
     # Display detection results if verbose mode is on
     if verbose:
         # Display feature type counts
-        print(f'Feature type distribution in dataset:')
+        print(f'FEATURE TYPE DISTRIBUTION IN DATASET:')
         print(f'- Boolean features: {len(bool_cols)}')
         print(f'- Datetime features: {len(datetime_cols)}')
         print(f'- Categorical features: {len(cat_cols)}')
@@ -1089,67 +1091,55 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
             print('The boolean features are:')
             print(', '.join(bool_cols))
             print('-' * 50)
-        else:
-            print('No boolean features were found in the dataset.')
-            print('-' * 50)
 
         if datetime_cols:
             print('The datetime features are:')
             print(', '.join(datetime_cols))
-            print('-' * 50)
-        else:
-            print('No datetime features were found in the dataset.')
             print('-' * 50)
 
         if cat_cols:
             print('The categorical features are:')
             print(', '.join(cat_cols))
             print('-' * 50)
-        else:
-            print('No categorical features were found in the dataset.')
-            print('-' * 50)
 
         if num_cols:
             print('The numerical features are:')
             print(', '.join(num_cols))
             print('-' * 50)
-        else:
-            print('No numerical features were found in the dataset.')
-            print('-' * 50)
 
         # Display data quality indicators if they exist
         if zero_var_cols:
-            print('ALERT: The following features have zero variance (single unique value):')
+            print('ALERT: The following features have zero variance (i.e. only a single unique value):')
             for column in zero_var_cols:
                 print(f'- {column}: {df[column].iloc[0]}')
             print('-' * 50)
 
         if near_const_cols:
             print('ALERT: The following features have near-constant values (>95% single value):')
-            for column, value, percentage in near_const_cols:
-                print(f'- {column}: value "{value}" appears in {percentage:.2f}% of non-null instances')
+            for column, val, rate in near_const_cols:
+                print(f'- {column}: value "{val}" appears in {rate:.2f}% of non-null instances')
             print('-' * 50)
 
-        if duplicate_cols:
-            print('ALERT: The following features may be duplicates:')
-            for col1, col2 in duplicate_cols:
+        if dup_cols:
+            print('ALERT: Based on an analysis of the first 1000 instances, the following features may be duplicates:')
+            for col1, col2 in dup_cols:
                 print(f'- {col1} and {col2}')
             print('-' * 50)
 
         print('Producing key values at the feature level...')
 
-    # Enhanced helper functions for statistics
+    # Helper functions to calculate useful statistical measures
     def calculate_entropy(series):
-        """Calculate Shannon entropy/information content of a series"""
+        """Calculate the Shannon entropy/information content of a series"""
         value_counts = series.value_counts(normalize=True)
         return -sum(p * np.log2(p) for p in value_counts if p > 0)
 
-    def format_large_number(num):
-        """Format large numbers with comma separators"""
+    def format_large_nums(num):
+        """Format any large numbers with comma separators"""
         return f'{num:,}'
 
-    def format_percentage(part, whole):
-        """Calculate and format percentage"""
+    def format_percents(part, whole):
+        """Calculate and format percentage values"""
         if whole == 0:
             return "0.00%"
         return f'{(part / whole * 100):.2f}%'
@@ -1165,46 +1155,41 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
 
         # Calculate missingness at feature level
         missing_cnt = df[column].isnull().sum()  # Total count
-        missing_rate = (missing_cnt / len(df) * 100).round(2)  # Missingness rate
-        print(f'Missing values: {format_large_number(missing_cnt)} ({missing_rate}%)')
+        print(f'Missing values: {format_large_nums(missing_cnt)} ({format_percents(missing_cnt, len(df))})')
 
         # Ensure the feature is not fully null before producing statistics
         if not df[column].isnull().all():
             # Boolean features statistics
             if feature_type == 'Boolean':
-                value_counts = df[column].value_counts()
-                true_count = int(df[column].sum())
-                false_count = int(len(df[column].dropna()) - true_count)
-                true_pct = (true_count / len(df[column].dropna()) * 100).round(2)
-
-                print(f'True values: {format_large_number(true_count)} ({true_pct}%)')
-                print(f'False values: {format_large_number(false_count)} ({100 - true_pct:.2f}%)')
+                value_cnt = df[column].value_counts()
+                true_cnt = int(df[column].sum())
+                false_cnt = int(len(df[column].dropna()) - true_cnt)
+                print(f'True values: {format_large_nums(true_cnt)} ({format_percents(true_cnt, 
+                                                                                     len(df[column].dropna()))})')
+                print(f'False values: {format_large_nums(false_cnt)} ({format_percents(false_cnt, 
+                                                                                       len(df[column].dropna()))})')
 
                 if verbose:
                     print('\nValue counts:')
-                    print(value_counts)
+                    print(value_cnt)
 
             # DateTime features statistics
             elif feature_type == 'Datetime':
-                # Convert to datetime if not already
+                # Convert to datetime if necessary
                 if not pd.api.types.is_datetime64_any_dtype(df[column]):
                     series = pd.to_datetime(df[column], errors='coerce')
                 else:
                     series = df[column]
 
-                # Get min and max dates
+                # Get minimum and maximum dates
                 min_date = series.min()
                 max_date = series.max()
 
-                # Calculate date range in days
-                try:
-                    range_days = (max_date - min_date).days
-                    print(f'Date range: {min_date.date()} to {max_date.date()} ({range_days} days)')
-                except:
-                    print(f'Date range: {min_date} to {max_date}')
+                # Print basic range information
+                print(f'Date range: {min_date} to {max_date}')
 
-                if verbose:
-                    # Identify common frequencies if possible
+                # Identify time granularity if possible (verbose mode only)
+                if verbose and not series.dropna().empty:
                     try:
                         # Sort data and calculate time differences
                         sorted_dates = series.dropna().sort_values()
@@ -1216,38 +1201,26 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                             counter = Counter(time_diffs.astype(str))
                             common_diff = counter.most_common(1)[0][0]
 
-                            print(f'Most common time difference: {common_diff}')
+                            # Determine approximate time interval aggregation level
+                            level = 'unknown'
+                            if 'day' in common_diff.lower():
+                                level = 'daily'
+                            elif 'hour' in common_diff.lower():
+                                level = 'hour'
+                            elif 'minute' in common_diff.lower() or 'min' in common_diff.lower():
+                                level = 'minute'
+                            elif 'second' in common_diff.lower() or 'sec' in common_diff.lower():
+                                level = 'second'
+                            elif 'month' in common_diff.lower():
+                                level = 'month'
+                            elif 'year' in common_diff.lower():
+                                level = 'year'
 
-                            # Check for regular intervals
-                            if counter.most_common(1)[0][1] / len(time_diffs) > 0.5:
-                                print('The data appears to have regular time intervals')
+                            if level != "unknown":
+                                print(f'This datetime feature appears to be organized at the "{level}" level.')
                             else:
-                                print('The data has irregular time intervals')
-                    except:
-                        pass
-
-                    # Calculate distribution by year, month, and day of week
-                    try:
-                        print('\nYear distribution:')
-                        year_counts = series.dt.year.value_counts().sort_index()
-                        for year, count in year_counts.items():
-                            print(f'- {year}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
-
-                        print('\nMonth distribution:')
-                        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                        month_counts = series.dt.month.value_counts().sort_index()
-                        for month, count in month_counts.items():
-                            print(
-                                f'- {month_names[month - 1]}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
-
-                        print('\nDay of week distribution:')
-                        day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                        day_counts = series.dt.dayofweek.value_counts().sort_index()
-                        for day, count in day_counts.items():
-                            print(
-                                f'- {day_names[day]}: {format_large_number(count)} ({count / len(series.dropna()) * 100:.1f}%)')
-                    except:
+                                print(f'Most common time difference: {common_diff}')
+                    except (AttributeError, TypeError, IndexError):
                         pass
 
             # Categorical features statistics
@@ -1256,9 +1229,9 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                 unique_values = df[column].nunique()
                 mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else 'No mode exists'
 
-                print(f'Unique values: {format_large_number(unique_values)}')
+                print(f'Unique values: {format_large_nums(unique_values)}')
                 print(
-                    f'Mode: {mode_val} (appears {format_large_number(value_counts.iloc[0])} times, {value_counts.iloc[0] / len(df[column].dropna()) * 100:.2f}%)')
+                    f'Mode: {mode_val} (appears {format_large_nums(value_counts.iloc[0])} times, {value_counts.iloc[0] / len(df[column].dropna()) * 100:.2f}%)')
 
                 # Add entropy calculation
                 if len(df[column].dropna()) > 0:
