@@ -1216,7 +1216,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                             elif 'year' in common_diff.lower():
                                 level = 'year'
 
-                            if level != "unknown":
+                            if level != 'unknown':
                                 print(f'This datetime feature appears to be organized at the "{level}" level.')
                             else:
                                 print(f'Most common time difference: {common_diff}')
@@ -1231,9 +1231,10 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
 
                 print(f'Unique values: {format_large_nums(unique_values)}')
                 print(
-                    f'Mode: {mode_val} (appears {format_large_nums(value_counts.iloc[0])} times, {value_counts.iloc[0] / len(df[column].dropna()) * 100:.2f}%)')
+                    f'Mode: {mode_val} (appears {format_large_nums(value_counts.iloc[0])} times, '
+                    f'{format_percents(value_counts.iloc[0], len(df[column].dropna()))})')
 
-                # Add entropy calculation
+                # Add entropy calculation if appropriate
                 if len(df[column].dropna()) > 0:
                     entropy = calculate_entropy(df[column].dropna())
                     max_entropy = np.log2(unique_values) if unique_values > 0 else 0
@@ -1241,34 +1242,44 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True, summary_stats: b
                     if verbose:
                         print(f'Information entropy: {entropy:.2f} bits')
                         if max_entropy > 0:
-                            print(
-                                f'Normalized entropy: {entropy / max_entropy:.2f} (0=constant, 1=uniform distribution)')
+                            print(f'Normalized entropy: {entropy / max_entropy:.2f} '
+                                  f'(Where 0=constant, 1=uniform distribution)')
                             print('\nExplanation: Entropy measures the unpredictability of the feature\'s values.')
                             print('Low entropy (near 0) means the feature is highly predictable or skewed.')
                             print('High entropy (near the maximum) means values are evenly distributed.')
 
                 if verbose:
-                    print('\nValue counts (top 10):')
-                    print(value_counts.head(10))
+                    if len(value_counts) <= 10:
+                        print('\nComplete distribution of all values:')
+                        print(value_counts)
+                    else:
+                        print(f'\nDistribution of most common values (showing top 10 out of {len(value_counts)} '
+                              f'total unique values):')
+                        print(value_counts.head(10))
 
-                    if len(value_counts) > 10:
-                        print(f'...and {len(value_counts) - 10} more values')
+                        # Calculate the percentage of total data represented by the displayed values
+                        top_cnt = value_counts.head(10).sum()
+                        total_cnt = len(df[column].dropna())
+                        top_rate = (top_cnt / total_cnt) * 100
 
-                    # Top frequency ratios
+                        print(f'These top 10 values represent {top_rate:.1f}% of all non-null data in this feature.')
+                        print(f'There are {len(value_counts) - 10} additional unique values not shown.')
+
+                    # Show top frequency ratios
                     if len(value_counts) >= 2:
-                        print('\nTop to second frequency ratio: {:.2f}'.format(
-                            value_counts.iloc[0] / value_counts.iloc[1]))
+                        print('\nTop-to-second frequency ratio: {:.2f}'
+                              .format(value_counts.iloc[0] / value_counts.iloc[1]))
 
                     # Show distribution pattern
                     if len(value_counts) > 5:
                         print('\nDistribution pattern:')
-                        total = len(df[column].dropna())
-                        cumulative = 0
-                        for i in range(min(5, len(value_counts))):
-                            v = value_counts.iloc[i]
-                            p = v / total * 100
-                            cumulative += p
-                            print(f'- Top {i + 1} values cover: {cumulative:.1f}% of data')
+                        total_cnt = len(df[column].dropna())
+                        coverage = 0
+                        for idx in range(min(5, len(value_counts))):
+                            val_freq = value_counts.iloc[i]
+                            percent = val_freq / total_cnt * 100
+                            coverage += percent  # Addition assignment
+                            print(f'- Top {i + 1} values cover: {coverage:.1f}% of data')
 
             # Numerical features statistics
             elif feature_type == 'Numerical':
