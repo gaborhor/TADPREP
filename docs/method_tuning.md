@@ -342,3 +342,92 @@ Works interactively with user to impute missing values in features using common 
 ### Method History:
 - Alpha build by Don Smith
 - Beta build by Don Smith (Current State)
+
+
+## Method: `scale`
+### Core Purpose:
+Provides interactive functionality for scaling numerical features in a dataset using standard statistical methods, enabling proper normalization of data for machine learning algorithms that are sensitive to feature magnitudes.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_scale` (List[str] | None, default = None) Optional specific features to scale. If None, method identifies numerical features interactively.
+- `verbose` (Boolean, default = True) which controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) which controls whether data quality warnings (null values, outliers, skewness) are displayed.
+
+### Returns:
+- Modified dataframe with scaled numerical features.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Identifies numerical features that are appropriate for scaling
+  - Validates all selected features exist in the dataframe
+  - Distinguishes between true numerical features and categorical features encoded as numbers
+  - Prevents scaling of constant features (no variance)
+  - Offers three scaling methods appropriate for different data characteristics:
+    - Standard Scaler (Z-score normalization)
+    - Robust Scaler (based on median and IQR)
+    - MinMax Scaler (scales to 0-1 range)
+  - Provides feature-by-feature scaling selection
+  - Maintains data integrity during scaling operations
+  - Supports individual feature skipping within the process flow
+  - Tracks all scaling operations for final reporting
+  - Returns modified dataframe with scaled features
+
+
+- Parameter `features_to_scale` Controls Feature Selection:
+  - When `features_to_scale=None` (Default):
+    - Automatically identifies numerical features in the dataset
+    - Checks for potentially miscategorized numerical features (e.g., numeric encoding of categories)
+    - Interactively determines which features to include in scaling
+    - Allows users to exclude pseudo-categorical features
+
+  - When `features_to_scale=[list of features]`:
+    - Scales only the specific features in the provided list
+    - Validates all requested features exist in the dataframe
+    - Skip automatic feature type detection
+
+
+- If `skip_warnings=False` (Default):
+  - Checks for null values in features before scaling
+  - Identifies infinite values that may disrupt scaling
+  - Detects extreme skewness that might require transformation before scaling
+  - Requires user confirmation to proceed when issues are found
+
+
+- If `skip_warnings=True`:
+  - Bypasses data quality checks for nulls, infinites, and skewness
+  - Proceeds directly with scaling operations without warnings
+  - May be preferred for experienced users confident in their data quality
+
+
+- If `verbose=False`:
+  - Shows only basic feature list
+  - Displays minimal progress information
+  - Presents only essential user prompts
+  - Shows basic confirmation of successful operations
+
+
+- If `verbose=True` (Default), the method **also** provides:
+  - Clear stage demarcation with visual separators
+  - Process initiation notifications
+  - Detailed explanations of scaling methods and their appropriate use cases
+  - Displays pre-scaling statistics and distributions for each feature
+  - Offers visualization of feature distributions
+  - Educational content about scaling methods and when each is appropriate
+  - Reminders about not scaling target features
+  - Comprehensive final summary of all scaling operations performed
+  - Groups scaled features by scaling method used
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Add support for additional scaling techniques like Quantile Transformer or Power Transformations
+- Include option to automatically select optimal scaling method based on data characteristics
+- Implement before/after distribution comparison visualizations
+- Add batch scaling option to apply same scaling method to multiple features at once
+- Provide option to export scaling parameters for later application to test data
+
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
