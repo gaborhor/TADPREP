@@ -113,7 +113,7 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
 def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
     Interactively subsets the input DataFrame according to user specification. Supports random sampling
-    (with or without a seed), stratified sampling, or time-based instance selection for timeseries data.
+    (with or without a seed), stratified sampling, and time-based instance selection for timeseries data.
 
     Parameters
     ----------
