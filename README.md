@@ -57,6 +57,7 @@ using a file browser window.
 - The script is not readily "customizable," and is intended for use in ordinary data processing tasks. 
 - Users who wish to segment or extend the core data mutation steps should import the package into an IDE and use the 
 supplied methods to augment their own task-specific data-processing code.
+- The script now includes a rollback capability, allowing users to revert to previous stages in the pipeline if needed.
 
 ### Using the Library Methods
 The TADPREP library contains a series of callable methods, each of which represent specific subsets/segments of the full
@@ -140,9 +141,10 @@ data preparation process:
 
 #### Core Pipeline Method
 
-`prep_df(df)`
+`prep_df(df, features_to_encode=None, features_to_scale=None)`
 - Runs the complete TADPREP pipeline on an existing DataFrame
 - Guides users through all preparation steps interactively
+- Takes optional parameters for specifying features to encode and scale
 - Returns the fully prepared DataFrame
 - Ideal for users who want to prepare their data in a single cohesive workflow
 - This method (in essence) runs the full interactive script without the file I/O process
@@ -156,6 +158,7 @@ data preparation process:
   - Near-constant features (>95% single value)
   - Features containing infinite values
   - Features containing empty strings (i.e. distinct from NULL/NaN values)
+  - Potentially-duplicated features
 - Provides memory usage information when verbose=True
 - Set `verbose=False` for condensed output focusing on basic statistics
 
@@ -165,12 +168,14 @@ data preparation process:
 - Set `verbose=False` for minimal process output
 
 `subset(df, verbose=True)`
-- Facilitates subsetting of instances in a dataset
-- Supported subset methods include:
-  - *Unseeded* random deletion of user-specified proportion of instances (True random subset)
-  - *Seeded* random deletion of user-specified proportion of instances (Reproducible random subset)
-  - Stratified random sampling (Representative subset)
-  - Date-based subsetting for timeseries data
+- Facilitates advanced subsetting of instances in a dataset
+- Supports multiple subsetting methods:
+  - *Unseeded* random sampling (for true randomness)
+  - *Seeded* random sampling (for reproducibility)
+  - Stratified random sampling (maintains category proportions)
+  - Time-based subsetting for timeseries data
+- Automatically detects datetime columns and indices
+- Returns subset DataFrame
 - Set `verbose=False` for minimal process output
 
 `rename_and_tag(df, verbose=True, tag_features=False)`
@@ -185,10 +190,13 @@ data preparation process:
 - Set `verbose=False` for streamlined interaction without warnings and confirmation checks
 
 `feature_stats(df, verbose=True, summary_stats=False)`
-- Analyzes features by type (categorical, numerical)
-- Displays missingness information and appropriate descriptive statistics
-- Set `summary_stats=True` to include aggregate statistics by feature type
-- Set `verbose=False` for key statistics only
+- Analyzes features by type (boolean, datetime, categorical, numerical)
+- Calculates and displays key statistics for each feature type
+  - For categorical features: shows unique values, mode, entropy
+  - For numerical features: shows distribution statistics, skewness, kurtosis
+  - For datetime features: shows date range and time granularity
+  - For boolean features: shows true/false counts and percentages
+- Set `verbose=False` for minimized output
 
 `impute(df, verbose=True, skip_warnings=False)`
 - Handles missing value imputation using various methods:
@@ -309,7 +317,10 @@ df_imputed = pd.DataFrame(imputer.fit_transform(df_initial),
 - seaborn *(For generating feature distribution plots)*
 
 ### Future Development
-Any thoughts about future development
+- Enhancing the rollback capabilities in the interactive pipeline
+- Adding support for automated feature selection
+- Improving visualization options for data distributions
+- Implementing additional data quality checks and warnings
 
 ### Acknowledgments
 - Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.
