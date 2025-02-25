@@ -52,26 +52,28 @@ Perform row- or column-dependent instance (row) removals, as well as feature (co
 - Modified dataframe containing only the subset of instances not removed by user.
 
 ### Current State:
+- ***UX-focused elements factored out of current build
+  - A bit hardline on this for now, avoiding additional user input beyond confirmation of operations.
 - Core Functionality (Always run):
   - Provides user 3 options for reshaping by removal:
     - 1. Row-dependent row removal
       - Provides user with a default missingness threshold
       - Sums, by row, total missing features
       - Encodes, by row, whether those rows' missingness is at/above threshold
-      - Provides user 3 options to proceed:
-        - Remove all such rows above missingness threshold
-        - Change missingness threshold and check again
-        - Return to other reshaping method options
     - 2. Column-dependent row removal
-      - tbd
+      - Displays row missingness by features provided
+      - Removes rows with missingness in 'features_to_reshape'
     - 3. Column removal
-      - tbd
+      - This might not need to exist outside of UX
+      - Would likely just be a pandas wrapper
 
 - "Verbosity" differentiation not fully implemented
+  - I'm leaning toward this as a UX-side feature of the package
+  - Full method functionality is a bit dense with all of the "possible" info the user is getting or not.
 
 ### Observed Bugs/Problems:
-- None observed in current state, possibly due to inappropriate testing data.
-- Likely no null values in test data, only "empty". Probably need new test set.
+- testing of current iteration incomplete
+  - bugs not detected so far
 
 ### Ideas for Development:
 - Data types considered "missing" could be subject to user interpretation
@@ -89,16 +91,20 @@ Perform row- or column-dependent instance (row) removals, as well as feature (co
 Produce relevant, straightforward visualizations on a per-feature basis as guided by user.
 
 ### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_plot` (list[str]) 
 
 ### Returns:
+- None - void method. Displays visualizations of data.
 
 ### Current State:
+- Barebones logic for sorting dtypes and features
 
 ### Observed Bugs/Problems:
 
 ### Ideas for Development:
 - As color-blind friendly as we are capable of!
-- Static viz only, based in mpl
+- Static viz only
 - Should this have ability for comparative viz? (i.e. Before & After transforms, stacked bars, etc.)
 - Should this be for in-package viz only or produce files for export?
   - File specifications could get tricky
