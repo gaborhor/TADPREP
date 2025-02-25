@@ -90,7 +90,7 @@ def _reshape_core(
         verbose: bool = True
 ) -> pd.DataFrame:
     """
-    Core function for reshaping a DataFrame by handling missing values and dropping features.
+    Core function for reshaping a DataFrame by identifying missing values and dropping rows and columns.
 
     Args:
         df (pd.DataFrame): Input DataFrame to reshape.
@@ -109,170 +109,164 @@ def _reshape_core(
         print(f'Beginning data reshape process. \nInput data of {df.shape[0]} instances x {df.shape[1]} features.')
         print('-' * 50)  # Visual separator
 
-    def methods() -> None:
-        print('\nSelect a reshaping method, or type "exit" at any time to end reshaping:')
-        print('1. Row-dependent row removal')
-        print('2. Column-dependent row removal')
-        print('3. Column removal')
-        return 
+    ## Helper func to identify current level of row-based missingness by threshold
+    # Default threshold is 25% "real" values
+    def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
+        """
+        Helper function to determine missingness of data by row for a given percentage threshold.
+
+        Args:
+            df (pd.Dataframe): Input DataFrame in process of 'reshape'.
+            threshold (float): Populated data threshold. Defaults to 0.25.
+
+        Returns:
+            int: Count of instances in 'df' with 'threshold' or less populated data.
+            
+        Raises:
+            ...
+        """
+        # Determine how many NA's at each row and encode by threshold if 
+        sum_by_missing = df.isna().sum(axis=1).tolist()
+        encode_by_thresh = [1 if ((df.shape[1] - row_cnt) / df.shape[1]) <= (threshold)
+                            else 0
+                            for row_cnt in sum_by_missing]
+        # Sum count of rows that meet threshold
+        row_missing_cnt = sum(encode_by_thresh)
+        
+        return row_missing_cnt
+
+    def recommend_thresholds(df: pd.DataFrame) -> list:
+        """
+        Helper function generates recommended degree-of-population thresholds based on size of user data.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+
+        Returns:
+            list: Array of recommended degree-of-population thresholds.
+        """
+        print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
+        print('Consider custom thresholds based on your understanding of data requirements.')
+        
+        feature_cnt = df.shape[1]
+        
+        if feature_cnt <= 5:
+            print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
+            
+            print(f'Recommend very high thresholds\n{[]}')
+            
+        ##  if feature_cnt  
+
+
+    ## Helper func to identify rows with pre-defined column values missing
+    def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
+        
+        # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
+        # missingness counts as key:val pairs
+        missing_by_feature_cnt = {feature: df[feature].isna().sum() for feature in features_to_reshape}
+        
+        # Pandas-native approach to counting rows missing ALL 'features_to_reshape'
+        missing_all_feature_cnt = df[features_to_reshape].isna().all().sum()
+        
+        # Add count of rows missing ALL 'features_to_reshape'
+        missing_by_feature_cnt['ALL'] = missing_all_feature_cnt
+        
+        return missing_by_feature_cnt
+        
+    ## Core Operation 1
+    def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
+        
+        # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
+        final_thresh = int(round(df.shape[1] * threshold))
+        
+        print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
+        print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
+        
+        # User confirmation to drop instances with fewer than 'final_tresh' populated features
+        while True:
+            proceed = input(f'Drop all instances with {final_thresh} or fewer populated features? (Y/N): ')
+        
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(thresh=final_thresh, inplace=True)
+                
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation\n')
+                break
+                
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+        
+        return df
     
-    # We handle the looping prompts with an "indexed" while-loop
-    # in order to track operations and communicate in verbose=True
-    iter = 0
-    sum_iter = 0
-    current_features = features_to_reshape
+    ## Core Operation 2
+    def column_based_row_remove(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+        
+        ## This build assumes that input arg 'features_to_reshape' will be the way user provides
+        ## what features they wish to analyze and drop by
+        ## It is also the way this func determines relevant missingness
+        
+        # Create dict of missings-by-feature
+        missing_by_feature_cnt = rows_missing_by_feature(df, features_to_reshape)
+        
+        print('Counts of instances missing by feature:')
+        for pair in sorted(missing_by_feature_cnt.items()):
+            print(pair)
+
+        # User confirmation to drop instances missingness in 'features_to_reshape'
+        while True:
+            proceed = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
+        
+            if proceed.lower() == 'y':
+                print('Dropping\n')
+                df.dropna(subset=features_to_reshape, inplace=True)
+                
+            elif proceed.lower() == 'n':
+                print('Aborting drop operation\n')
+                break
+                
+            else:
+                print('Invalid input, please enter "Y" or "N.\n')
+                continue
+        
+        return df
     
-    while iter >= 0:
+    ## Core Operation 3
+    def drop_columns(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
         
-        if iter == 0 or verbose == True:
-            methods()
+        ## This theoretically could be just a pandas wrapper.
+        ## Check with Don about how it might integrate with UX ideas.
         
-        user_method = str(input('-> '))
-        if user_method == '1':
-            
-            print('\n---Perfoming row-dependent row removals---')
-            
-            # This thresholding is done in the "inverse" in order to apply df.dropna(thresh=)
-            # We determine how many non-NA values by row, with default <=25% "real" values
-            missing_thresh = 0.75
-            present_thresh = 1 - missing_thresh
-            # Sum total NA's at each row and encode by present_thresh
-            sum_by_missing = df.isna().sum(axis=1).tolist()
-            code_by_thresh = [1 if ((df.shape[1] - row_cnt) / df.shape[1]) <= (present_thresh)
-                              else 0
-                              for row_cnt in sum_by_missing]
-            row_missing_cnt = sum(code_by_thresh)
-            
-            iter_m1 = 0
-            
-            while iter_m1 >= 0:
-                print(f'\nIdentified {row_missing_cnt} row instances with >= {(missing_thresh * 100):.2f}% missingness')
-                print('1. Remove all such instances')
-                print('2. Change missingness threshold')
-                print('3. Return to reshaping menu')
-                
-                proceed = input('-> ').strip()
-                
-                if proceed == '1':
-                    # Here we rework the threshold by rounding for simplicity and df.dropna(thresh=)
-                    final_thresh = int(round(df.shape[1] * present_thresh))
-                    df.dropna(thresh=final_thresh)
-                    
-                    iter_m1 += 1    # Operation performed
-                    
-                elif proceed == '2':
-                    # Reassign value to 'missing_thresh' variable from parent loop
-                    print('\nPlease provide a new %-missingness threshold. (float):')
-                    
-                    # if verbose:
-                    #     # Recommend some "common sense" thresholds based on df.shape[0]
-                    
-                    missing_thresh = (float(input('-> ').strip())) / 100
-                
-                elif proceed == '3':
-                    print('\n---Ending row-dependent row removals---')
-                    
-                    iter_m1 = -1
-                
-                elif proceed.lower() == 'exit':
-                    # if verbose:
-                    #     ## Summarize total changes to input df
-                    
-                    print('-' * 50)  # Visual separator
-                    print('Exiting TADPREP reshaping functionality')
-                    print('-' * 50)  # Visual separator
-                    
-                    iter_m1 = -1   # Close child loop
-                    iter = -1   # Close parent loop
-                
-                else:
-                    print('Invalid input. Please enter "1", "2", "3", or end reshaping with "exit"')
-                    continue
-            
-        ## Other use options
-        # elif user_method == '2':
-        #     ##
-            
-        # elif user_method == '3':
-        #     ##
-            
-        elif user_method.lower() == 'exit':
-            
-            # if verbose:
-            #     ## Summarize total changes to input df
-            
-            
-            print('-' * 50)  # Visual separator
-            print('Exiting TADPREP reshaping functionality')
-            print('-' * 50)  # Visual separator
-            
-            iter = -1 # Close parent loop
-            
-        else:
-            print('Invalid input. Please enter "1", "2", "3", or end reshaping with "exit"')
-            continue
-        
+        return df
+    
     return df
             
+def _plot_features(
+        df: pd.DataFrame,
+        features_to_plot: list[str] | None
+):## -> :
+    
+    # Placeholder for all dtypes present in df and categorization of features
+    features_with_type = {}
+    
+    for feature in features_to_plot:
+        features_with_type.setdefault(df[feature].dtype, []).append(feature)
         
-# #---Old implementation--------------------------------------------------------------------------------------------------------
-
-#     row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
-#     # Ask if the user wants to delete *all* instances with any missing values, if any exist
-#     if row_missing_cnt > 0:
-#         user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
-#         if user_drop_na.lower() == 'y':
-#             df = df.dropna()
-#             if verbose:
-#                 print(f'After deletion of {row_missing_cnt} instances with missing values, {len(df)} instances remain.')
-
-#     # Ask if the user wants to drop any of the columns/features in the dataset
-#     user_drop_cols = input('\nDo you want to drop any of the features in the dataset? (Y/N): ')
-#     if user_drop_cols.lower() == 'y':
-#         print('The full set of features in the dataset is:')
-#         for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
-#             print(f'{col_idx}. {column}')
-
-#         while True:  # We can justify 'while True' because we have a cancel-out input option
-#             try:
-#                 drop_cols_input = input('\nEnter the index integers of the features you wish to drop '
-#                                         '(comma-separated) or enter "C" to cancel: ')
-
-#                 # Check for user cancellation
-#                 if drop_cols_input.lower() == 'c':
-#                     if verbose:
-#                         print('Feature deletion cancelled.')
-#                     break
-
-#                 # Create list of column indices to drop
-#                 drop_cols_idx = [int(idx.strip()) for idx in drop_cols_input.split(',')]  # Splitting on comma
-
-#                 # Verify that all index numbers of columns to be dropped are valid/in range
-#                 if not all(1 <= idx <= len(df.columns) for idx in drop_cols_idx):  # Using a generator
-#                     raise ValueError('Some feature index integers entered are out of range/invalid.')
-
-#                 # Convert specified column numbers to actual column names
-#                 drop_cols_names = [df.columns[idx - 1] for idx in drop_cols_idx]  # Subtracting 1 from indices
-
-#                 # Drop the columns
-#                 df = df.drop(columns=drop_cols_names)
-#                 if verbose:
-#                     print('-' * 50)  # Visual separator
-#                     print(f'Dropped features: {",".join(drop_cols_names)}')  # Note dropped columns
-#                     print('-' * 50)  # Visual separator
-#                 break
-
-#             # Catch invalid user input
-#             except ValueError:
-#                 print('Invalid input. Please enter valid feature index integers separated by commas.')
-#                 continue  # Restart the loop
-
-#     if verbose:
-#         print('-' * 50)  # Visual separator
-#         print('Data reshape complete. Returning modified dataframe.')
-#         print('-' * 50)  # Visual separator
-
-#     return df  # Return the trimmed dataframe
+    for key in features_with_type.keys():
+        
+        if key == 'nominal':
+            ## for all features of this dtype
+        if key == 'ordinal':
+            ##
+        if key == 'numeric':
+            ##
+        if key == 'timeseries':
+            ## ^Flag this for now, as Time-Series should be an index-level check
+        
+        
+    return
+        
 
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
