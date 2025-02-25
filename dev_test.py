@@ -265,3 +265,28 @@ Need to test for:
 # print(df_ts_imputed)
 
 
+'''
+Testing augmented feature_stats method
+Need to test for:
+- Fixed distribution pattern calculation for categorical features (verifying top N value coverage percentages)
+- Empty datetime feature handling (when all values are null or can't be converted)
+- Consistent numeric formatting across all statistics
+  - Large integers (should show commas)
+  - Decimal values (should display 4 decimal places)
+  - Integer-like floats (should display as integers without decimals)
+- Skewness metric testing:
+  - Approximately symmetric distributions (|skew| < 0.5)
+  - Moderately skewed distributions (0.5 ≤ |skew| < 1)
+  - Highly skewed distributions (|skew| ≥ 1)
+- Kurtosis metric testing:
+  - Platykurtic distributions (kurt < -0.5)
+  - Mesokurtic distributions (-0.5 ≤ kurt ≤ 0.5)
+  - Leptokurtic distributions (kurt > 0.5)
+- Edge cases:
+  - Features with NaN values
+  - Single-value features
+  - Features with extremely large/small values
+- Different numerical distributions:
+  - Symmetric vs. skewed distributions
+  - Features with zero mean (for coefficient of variation)
+'''
