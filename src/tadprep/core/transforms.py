@@ -965,7 +965,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
         None. This is a void function which prints information to the console.
     """
     if verbose:
-        print('Displaying general information for all features in dataset...')
+        print('Displaying feature-level information for all features in dataset...')
         print('-' * 50)  # Visual separator
 
     # Begin with four-category feature detection process
@@ -975,10 +975,16 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
         # Check for explicit boolean datatypes
         if pd.api.types.is_bool_dtype(df[column]):
             bool_cols.append(column)
+
         # Check for 0/1 integers which function as boolean
         elif (pd.api.types.is_numeric_dtype(df[column])  # Numeric check
               and df[column].dropna().nunique() == 2  # Unique value count check
               and set(df[column].dropna().unique()).issubset({0, 1})):  # Check if unique values are a subset of {0, 1}
+            bool_cols.append(column)  # If all checks are passed, this is a boolean feature
+
+        # Check for explicit Python True/False values
+        elif (df[column].dropna().nunique() == 2  # Unique value count check
+              and set(df[column].dropna().unique()) == {True, False}):  # Check for True/False values
             bool_cols.append(column)  # If all checks are passed, this is a boolean feature
 
     # Datetime features
@@ -992,6 +998,10 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
             try:
                 # Fetch the first non-null value to check if the parsing is possible
                 first_valid = df[column].dropna().iloc[0]
+
+                # Skip boolean values - they can't be converted to datetime
+                if isinstance(first_valid, bool):
+                    continue
 
                 # Attempt to parse the first value as a datetime - raise ValueError if not possible
                 pd.to_datetime(first_valid)
@@ -1055,7 +1065,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
         # Detect near-constant features (>95% single value)
         if pd.api.types.is_numeric_dtype(df[column]) or pd.api.types.is_object_dtype(df[column]):
             value_counts = df[column].value_counts(normalize=True)
-            if value_counts.iloc[0] > 0.95:
+            if value_counts.iloc[0] >= 0.95:
                 near_const_cols.append((column, value_counts.index[0], value_counts.iloc[0] * 100))
 
     # Detect potentially duplicated features (again using sampling for efficiency)
@@ -1063,20 +1073,20 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
     sample_df = df.head(1000)
     cols_to_check = df.columns
 
-    for i, col1 in enumerate(cols_to_check):
-        for col2 in cols_to_check[i + 1:]:
+    for idx, feature_1 in enumerate(cols_to_check):
+        for feature_2 in cols_to_check[idx + 1:]:
             # Only compare features of the same type
-            if df[col1].dtype != df[col2].dtype:
+            if df[feature_1].dtype != df[feature_2].dtype:
                 continue
 
             # Check if the columns are fully identical in the sample
-            if sample_df[col1].equals(sample_df[col2]):
-                dup_cols.append((col1, col2))
+            if sample_df[feature_1].equals(sample_df[feature_2]):
+                dup_cols.append((feature_1, feature_2))
 
     # Display detection results if verbose mode is on
     if verbose:
         # Display feature type counts
-        print(f'FEATURE TYPE DISTRIBUTION IN DATASET:')
+        print(f'FEATURE TYPE DISTRIBUTION:')
         print(f'- Boolean features: {len(bool_cols)}')
         print(f'- Datetime features: {len(datetime_cols)}')
         print(f'- Categorical features: {len(cat_cols)}')
@@ -1108,22 +1118,20 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
         if zero_var_cols:
             print('ALERT: The following features have zero variance (i.e. only a single unique value):')
             for column in zero_var_cols:
-                print(f'- {column}: {df[column].iloc[0]}')
+                print(f'- Feature: "{column}" (Single unique value: "{df[column].iloc[0]}")')
             print('-' * 50)
 
         if near_const_cols:
-            print('ALERT: The following features have near-constant values (>95% single value):')
+            print('ALERT: The following features have near-constant values (>=95% single value):')
             for column, val, rate in near_const_cols:
-                print(f'- {column}: value "{val}" appears in {rate:.2f}% of non-null instances')
+                print(f' - Feature "{column}": the value "{val}" appears in {rate:.2f}% of non-null instances.')
             print('-' * 50)
 
         if dup_cols:
             print('ALERT: Based on an analysis of the first 1000 instances, the following features may be duplicates:')
             for col1, col2 in dup_cols:
-                print(f'- {col1} and {col2}')
+                print(f'- "{col1}" and "{col2}"')
             print('-' * 50)
-
-        print('Producing key values at the feature level...')
 
     # Helper functions to calculate useful statistical measures
     def calculate_entropy(series):
@@ -1204,47 +1212,69 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                         time_diffs = sorted_dates.diff().dropna()
 
                         if len(time_diffs) > 0:
-                            # Get most common time difference
-                            from collections import Counter
-                            counter = Counter(time_diffs.astype(str))
-                            common_diff = counter.most_common(1)[0][0]
+                            # Convert time differences to days for more consistent analysis
+                            days_diffs = time_diffs.dt.total_seconds() / (24 * 3600)
+                            median_days = days_diffs.median()
 
-                            # Determine approximate time interval aggregation level
+                            # Determine time granularity based on median difference
                             level = 'unknown'
-                            if 'day' in common_diff.lower():
+                            if median_days < 0.1:  # Less than 2.4 hours
+                                level = 'sub-hourly'
+                            elif median_days < 0.5:  # Less than 12 hours
+                                level = 'hourly'
+                            elif median_days < 3:  # Between 0.5 and 3 days
                                 level = 'daily'
-                            elif 'hour' in common_diff.lower():
-                                level = 'hour'
-                            elif 'minute' in common_diff.lower() or 'min' in common_diff.lower():
-                                level = 'minute'
-                            elif 'second' in common_diff.lower() or 'sec' in common_diff.lower():
-                                level = 'second'
-                            elif 'month' in common_diff.lower():
-                                level = 'month'
-                            elif 'year' in common_diff.lower():
-                                level = 'year'
+                            elif median_days < 20:  # Between 3 and 20 days
+                                level = 'weekly'
+                            elif median_days < 45:  # Between 20 and 45 days
+                                level = 'monthly'
+                            elif median_days < 120:  # Between 45 and 120 days
+                                level = 'quarterly'
+                            elif median_days < 550:  # Between 120 and 550 days
+                                level = 'yearly'
+                            else:
+                                level = 'multi-year'
 
                             if level != 'unknown':
                                 print(f'This datetime feature appears to be organized at the "{level}" level.')
                             else:
-                                print(f'Most common time difference: {common_diff}')
+                                print(f'Most common time difference: {time_diffs.iloc[0]}')
                     except (AttributeError, TypeError, IndexError):
                         pass
 
-            # Categorical features statistics
             elif feature_type == 'Categorical':
-                value_counts = df[column].value_counts()
-                unique_values = df[column].nunique()
-                mode_val = df[column].mode().iloc[0] if not df[column].mode().empty else 'No mode exists'
+                # Check for and handle empty strings before calculating statistics
+                empty_str_cnt = (df[column] == '').sum()
+                if empty_str_cnt > 0:
+                    print(f'\nALERT: Found {empty_str_cnt} empty strings in this feature.')
+                    if verbose:
+                        user_convert = input('Would you like to convert empty strings to NaN values? (Y/N): ').lower()
+                        if user_convert == 'y':
+                            # Create a temporary copy of the column for display purposes only
+                            temp_series = df[column].replace('', np.nan)
+                            print(f'Converted {empty_str_cnt} empty strings to NaN for analysis.')
+                        else:
+                            temp_series = df[column]
+                            print('Empty strings will be treated as a distinct category.')
+                    else:
+                        temp_series = df[column]
+                        print('NOTE: Empty strings are being treated as a distinct category.')
+                else:
+                    temp_series = df[column]
+
+                # Use temp_series for all calculations
+                value_counts = temp_series.value_counts()
+                unique_values = temp_series.nunique()
+                mode_val = temp_series.mode().iloc[0] if not temp_series.mode().empty else 'No mode exists'
 
                 print(f'Unique values: {format_large_nums(unique_values)}')
                 print(
                     f'Mode: {mode_val} (appears {format_large_nums(value_counts.iloc[0])} times, '
-                    f'{format_percents(value_counts.iloc[0], len(df[column].dropna()))})')
+                    f'{format_percents(value_counts.iloc[0], len(temp_series.dropna()))})')
 
                 # Add entropy calculation if appropriate
-                if len(df[column].dropna()) > 0:
-                    entropy = calculate_entropy(df[column].dropna())
+                if len(temp_series.dropna()) > 0:
+                    entropy = calculate_entropy(temp_series.dropna())
                     max_entropy = np.log2(unique_values) if unique_values > 0 else 0
 
                     if verbose:
@@ -1267,7 +1297,7 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
 
                         # Calculate the percentage of total data represented by the displayed values
                         top_cnt = value_counts.head(10).sum()
-                        total_cnt = len(df[column].dropna())
+                        total_cnt = len(temp_series.dropna())
                         top_rate = (top_cnt / total_cnt) * 100
 
                         print(f'These top 10 values represent {top_rate:.1f}% of all non-null data in this feature.')
@@ -1275,16 +1305,16 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
 
                     # Show top frequency ratios
                     if len(value_counts) >= 2:
-                        print('\nTop-to-second frequency ratio: {:.2f}'
-                              .format(value_counts.iloc[0] / value_counts.iloc[1]))
+                        ratio = value_counts.iloc[0] / value_counts.iloc[1]
+                        print(f'\nTop-to-second value frequency ratio: {ratio:.2f}:1')
 
                     # Show distribution pattern
                     if len(value_counts) > 5:
                         print('\nDistribution pattern:')
-                        total_cnt = len(df[column].dropna())
+                        total_cnt = len(temp_series.dropna())
                         coverage = 0
                         for idx in range(min(5, len(value_counts))):
-                            val_freq = value_counts.iloc[i]
+                            val_freq = value_counts.iloc[idx]
                             percent = val_freq / total_cnt * 100
                             coverage += percent  # Addition assignment
                             print(f'- Top {idx + 1} values cover: {coverage:.1f}% of data')
@@ -1310,26 +1340,28 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                     print(f'IQR: {format_numerics(stats["75%"] - stats["25%"])}')
 
                     # Provide skewness
+                    print('\nCalculating skew...')
                     print('NOTE: Skewness measures the asymmetry of a numerical distribution.')
                     skew = df[column].skew()
                     print(f'Skewness: {format_numerics(skew)}')
                     if abs(skew) < 0.5:
-                        print('  (approximately symmetric distribution)')
+                        print('NOTE: This is an approximately symmetric distribution.')
                     elif abs(skew) < 1:
-                        print('  (moderately skewed distribution)')
+                        print('NOTE: This is a moderately skewed distribution.')
                     else:
-                        print('  (highly skewed distribution)')
+                        print('NOTE: This is a highly skewed distribution.')
 
                     # Provide kurtosis
+                    print('\nCalculating kurtosis...')
                     print('NOTE: Kurtosis measures the "tailedness" of a numerical distribution.')
                     kurt = df[column].kurtosis()
                     print(f'Kurtosis: {format_numerics(kurt)}')
                     if kurt < -0.5:
-                        print('  (The feature is platykurtic - flatter than a normal distribution)')
+                        print('  - The feature is platykurtic - flatter than a normal distribution.')
                     elif kurt > 0.5:
-                        print('  (The feature is leptokurtic - more peaked than a normal distribution)')
+                        print('  - The feature is leptokurtic - more peaked than a normal distribution.')
                     else:
-                        print('  (The feature is mesokurtic - similar to a normal distribution)')
+                        print('  - The feature is mesokurtic - similar to a normal distribution.')
 
                     # Coefficient of variation
                     if stats["mean"] != 0:
