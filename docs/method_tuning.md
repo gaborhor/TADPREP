@@ -422,11 +422,10 @@ Provides interactive functionality for scaling numerical features in a dataset u
 - None as of current state
 
 ### Ideas for Development:
-- Add support for additional scaling techniques like Quantile Transformer or Power Transformations
-- Include option to automatically select optimal scaling method based on data characteristics
-- Implement before/after distribution comparison visualizations
-- Add batch scaling option to apply same scaling method to multiple features at once
-- Provide option to export scaling parameters for later application to test data
+- Before/After visualizations for pre- and post-scaling distributions
+- Option to preserve (rather than replace) original features, likely as a parameter
+- Infinite value handling (offer options for replacement)
+- Custom MinMax scale ranges provided by user, if desired
 
 ### Method History:
 - Alpha build by Don Smith
