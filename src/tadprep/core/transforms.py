@@ -1217,7 +1217,6 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                             median_days = days_diffs.median()
 
                             # Determine time granularity based on median difference
-                            level = 'unknown'
                             if median_days < 0.1:  # Less than 2.4 hours
                                 level = 'sub-hourly'
                             elif median_days < 0.5:  # Less than 12 hours
@@ -1235,10 +1234,11 @@ def _feature_stats_core(df: pd.DataFrame, verbose: bool = True) -> None:
                             else:
                                 level = 'multi-year'
 
-                            if level != 'unknown':
+                            if level:
                                 print(f'This datetime feature appears to be organized at the "{level}" level.')
+
                             else:
-                                print(f'Most common time difference: {time_diffs.iloc[0]}')
+                                print(f'This datetime feature\'s temporal aggregation level is unknown.')
                     except (AttributeError, TypeError, IndexError):
                         pass
 
