@@ -52,9 +52,11 @@ Perform row- or column-dependent instance (row) removals, as well as feature (co
 - Modified dataframe containing only the subset of instances not removed by user.
 
 ### Current State:
+- Docstrings updated for all but drop_columns child func.
+
 - ***UX-focused elements factored out of current build
   - A bit hardline on this for now, avoiding additional user input beyond confirmation of operations.
-- Core Functionality (Always run):
+- Core Functionality:
   - Provides user 3 options for reshaping by removal:
     - 1. Row-dependent row removal
       - Provides user with a default missingness threshold
@@ -99,8 +101,12 @@ Produce relevant, straightforward visualizations on a per-feature basis as guide
 
 ### Current State:
 - Barebones logic for sorting dtypes and features
+- Notes on broader approach and method relation to `_rename_and_tag_core`
 
 ### Observed Bugs/Problems:
+- Relying on Pandas .dtype would run into issues of "properly" identifying plotting approach
+- Recommend we make this a method that "exclusively" follows application of `_rename_and_tag_core`
+  - This allows user to properly define what features are Nominal, Ordinal, Numeric, etc.
 
 ### Ideas for Development:
 - As color-blind friendly as we are capable of!
