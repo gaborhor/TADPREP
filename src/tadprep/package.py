@@ -197,7 +197,7 @@ def feature_stats(df: pd.DataFrame, verbose: bool = True) -> None:
     df : pandas.DataFrame
         The DataFrame to analyze
     verbose : bool, default=True
-        Whether to print detailed information and visual formatting
+        Whether to print detailed statistical information and more extensive visual formatting
 
     Returns
     -------
