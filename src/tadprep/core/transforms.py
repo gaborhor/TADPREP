@@ -160,21 +160,47 @@ def _reshape_core(
 
     ## Helper func to identify rows with pre-defined column values missing
     def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
-        
+        """
+        Helper function generates counts of missingness by features in 'features_to_reshape'
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): User-provided list of features to constrain TADPREP behavior.
+
+        Returns:
+            missing_cnt_by_feature (dict): Keyed by feature, Val count of missing per-key
+        """
         # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
         # missingness counts as key:val pairs
-        missing_by_feature_cnt = {feature: df[feature].isna().sum() for feature in features_to_reshape}
+        missing_cnt_by_feature = {feature: df[feature].isna().sum() for feature in features_to_reshape}
         
         # Pandas-native approach to counting rows missing ALL 'features_to_reshape'
         missing_all_feature_cnt = df[features_to_reshape].isna().all().sum()
         
         # Add count of rows missing ALL 'features_to_reshape'
-        missing_by_feature_cnt['ALL'] = missing_all_feature_cnt
+        missing_cnt_by_feature['ALL'] = missing_all_feature_cnt
         
-        return missing_by_feature_cnt
+        return missing_cnt_by_feature
         
     ## Core Operation 1
     def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
+        """
+        Function to perform row-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            threshold (float | None): Decimal percent degree-of-population threshold to apply to row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
+        """
+        
+        # Set default threshold if necessary
+        if not threshold:
+            threshold = 0.25
+            
+            if verbose:
+                print('No degree-of-population threshold found. Applying default threshold of 25%.')
         
         # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
         final_thresh = int(round(df.shape[1] * threshold))
@@ -202,16 +228,27 @@ def _reshape_core(
     
     ## Core Operation 2
     def column_based_row_remove(df: pd.DataFrame, features_to_reshape: list[str]) -> pd.DataFrame:
+        """
+        Function to perform column-based row removal from input DataFrame.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+            features_to_reshape (list[str]): DataFrame columns by which to apply row removal process.
+
+        Returns:
+            df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by column-missingness.
+        """
+        
         
         ## This build assumes that input arg 'features_to_reshape' will be the way user provides
         ## what features they wish to analyze and drop by
         ## It is also the way this func determines relevant missingness
         
         # Create dict of missings-by-feature
-        missing_by_feature_cnt = rows_missing_by_feature(df, features_to_reshape)
+        missing_cnt_by_feature = rows_missing_by_feature(df, features_to_reshape)
         
         print('Counts of instances missing by feature:')
-        for pair in sorted(missing_by_feature_cnt.items()):
+        for pair in sorted(missing_cnt_by_feature.items()):
             print(pair)
 
         # User confirmation to drop instances missingness in 'features_to_reshape'
@@ -247,12 +284,77 @@ def _plot_features(
         features_to_plot: list[str] | None
 ):## -> :
     
+    ####################################################
+    ### This build assumes that pandas' .dtype will be useful.
+    ### This is often not the case (i.e. .dtype is 'int64', but values are only 0, 1)
+    
     # Placeholder for all dtypes present in df and categorization of features
     features_with_type = {}
     
     for feature in features_to_plot:
         features_with_type.setdefault(df[feature].dtype, []).append(feature)
+    
+    
+    ### Currently, I believe best implementation of this method will be for use
+    ### AFTER _rename_and_tag_core has been applied to DataFrame as user sees fit.
+    ### This would allow _plot_features to correctly categorize features every time,
+    ### assuming the user tags features correctly.
+    
+    ### Implementation would end up something like this:
+    
+    features_with_type = {}
+    
+    for feature in features_to_plot:
+        # Separate out only the "tag" at the end of feature name
+        type_split = feature.rsplit(sep="_", maxsplit=1)
         
+        # Use the user-defined tag as Key, and the feature name split from that as Val
+        features_with_type.setdefault(type_split[1], []).append(type_split[0])
+    
+    def check_indexing():
+        ### Determine index type of DataFrame
+        # All options:
+        # (non-TimeSeries) -> RangeIndex, CategoricalIndex, MultiIndex, IntervalIndex
+        # (TimeSeries) -> DatetimeIndex, TimedeltaIndex, PeriodIndex
+        
+        ## RangeIndex
+        # Simplest option
+        
+        ## CategoricalIndex
+        # Splitting data by indices before plotting necessary
+        
+        ## MultiIndex
+        # Generally complex as a data structure, difficult to make assumptions here for user
+        # Consider recommending user re-organize their data first
+        
+        ## IntervalIndex
+        # A more math-theory oriented dtype.
+        # Likely similar to Categorical, not much personal knowledge on its behavior
+        
+        ## DatetimeIndex
+        # Data indexed by time of occurence
+        # Use '_any_dtype' to include TZ-aware DataFrames
+        pd.api.types.is_datetime64_any_dtype(df.index)
+        
+        ## TimedeltaIndex
+        # Data indexed by time-delta from "start"
+        # Generally not meaningfully different from DatetimeIndex
+        
+        ## PeriodIndex
+        # Data indexed at regular periods of time
+        # Not conceptually dissimilar from a "clean" DatetimeIndex, but contains attributes of Period.
+    
+    def plot_nominals():
+        ##
+    def plot_ordinals():
+        ##
+    def plot_numerics():
+        ##
+    def plot_timeseries():
+        ##
+    
+    ####################################################
+    
     for key in features_with_type.keys():
         
         if key == 'nominal':
