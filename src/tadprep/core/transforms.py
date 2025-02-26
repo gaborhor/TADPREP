@@ -195,16 +195,10 @@ def _reshape_core(
             df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
         """
         
-        # Set default threshold if necessary
-        if not threshold:
-            threshold = 0.25
-            
-            if verbose:
-                print('No degree-of-population threshold found. Applying default threshold of 25%.')
-        
         # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
         final_thresh = int(round(df.shape[1] * threshold))
         
+        # rows_missing_by_thresh defaults to 25%
         print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
         print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
         
