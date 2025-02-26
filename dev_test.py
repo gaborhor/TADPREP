@@ -290,3 +290,94 @@ Need to test for:
   - Symmetric vs. skewed distributions
   - Features with zero mean (for coefficient of variation)
 '''
+# Create a test dataframe
+# df_feature_stats = pd.DataFrame({
+#     # Boolean features - both formats
+#     'bool_true_false': [True, True, False, True, False, True, True, False, True, False, True, False, True, True, None,
+#                         True, False, True, False, True],
+#     'bool_binary': [1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+#
+#     # Datetime feature - explicit datetime
+#     'date_explicit': [
+#         datetime(2023, 1, 1),
+#         datetime(2023, 1, 2),
+#         datetime(2023, 1, 3),
+#         datetime(2023, 1, 4),
+#         datetime(2023, 1, 5),
+#         datetime(2023, 1, 6),
+#         None,
+#         datetime(2023, 1, 8),
+#         datetime(2023, 1, 9),
+#         datetime(2023, 1, 10),
+#         datetime(2023, 1, 11),
+#         datetime(2023, 1, 12),
+#         datetime(2023, 1, 13),
+#         datetime(2023, 1, 14),
+#         datetime(2023, 1, 15),
+#         datetime(2023, 1, 16),
+#         datetime(2023, 1, 17),
+#         datetime(2023, 1, 18),
+#         datetime(2023, 1, 19),
+#         datetime(2023, 1, 20)
+#     ],
+#
+#     # Datetime as strings - to test detection logic
+#     'date_strings': ['01-01-2023', '02-01-2023', '03-01-2023', '04-01-2023', '05-01-2023', '06-01-2023', None, None,
+#                      '10-01-2023', '11-01-2023', None, '01-01-2024', '02-01-2024', '03-01-2024', '04-01-2024', None,
+#                      '06-01-2024', '07-01-2024', '08-01-2024', '09-01-2024'],
+#
+#     # Categorical features
+#     'cat_normal': ['A', 'B', 'C', 'A', 'B', 'D', 'A', 'E', 'B', 'A', 'C', 'D', 'E', 'B', None, 'A', 'C', 'B', 'A', 'D'],
+#     'cat_empty': ['A', 'B', 'C', '', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', '', 'N', 'O', 'P', 'Q', 'R'],
+#
+#     # Zero-variance feature - to test detection
+#     'zero_variance': ['Same'] * 20,
+#
+#     # Near-constant feature (exactly 95% single value)
+#     'near_constant': ['Frequent'] * 19 + ['Rare'],  # 19/20 = 95%
+#
+#     # Duplicated feature - to test potential duplicate detection
+#     'cat_normal_dup': ['A', 'B', 'C', 'A', 'B', 'D', 'A', 'E', 'B', 'A', 'C', 'D', 'E', 'B', None, 'A', 'C', 'B',
+#                        'A', 'D'],
+#
+#     # Numerical features
+#     # Large integers - for formatting with commas
+#     'num_large': [1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000, 11000000,
+#                   12000000, 13000000, 14000000, 15000000, 16000000, 17000000, 18000000, 19000000, 20000000],
+#
+#     # Decimal values - for 4 decimal place formatting
+#     'num_decimal': [10.1234, 11.5678, 9.7531, 10.5, 12.6789, 8.25, 11.125, 9.5, 10.375, None, 13.4567, 7.8901, 12.3456,
+#                     9.9999, 11.1111, 14.7890, 8.6543, 10.0001, 12.5000, 9.8765],
+#
+#     # Integer-like floats - should display as integers
+#     'num_int_floats': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0,
+#                        18.0, 19.0, 20.0],
+#
+#     # Skewness test cases
+#     # Approximately symmetric (|skew| < 0.5)
+#     'num_symmetric': [50, 45, 55, 48, 52, 47, 53, 49, 51, 50, 46, 54, 48, 52, 50, 47, 53, 49, 51, 50],
+#
+#     # Moderately skewed (0.5 ≤ |skew| < 1)
+#     'num_mod_skewed': [10, 12, 11, 13, 14, 18, 12, 11, 10, 15, 13, 12, 14, 16, 11, 17, 13, 12, 14, 11],
+#
+#     # Highly skewed (|skew| ≥ 1)
+#     'num_highly_skewed': [1, 2, 1, 3, 1, 2, 1, 10, 200, 500, 1, 2, 3, 1, 2, 1, 2, 3, 1, 100],
+#
+#     # Kurtosis test cases
+#     # Platykurtic (kurt < -0.5)
+#     'num_platykurtic': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 15, 25, 35, 45, 55, 65, 75, 85, 95, 5],
+#
+#     # Mesokurtic (-0.5 ≤ kurt ≤ 0.5)
+#     'num_mesokurtic': [100, 95, 105, 98, 102, 97, 103, 99, 101, 100, 96, 104, 98, 102, 100, 97, 103, 99, 101, 100],
+#
+#     # Leptokurtic (kurt > 0.5)
+#     'num_leptokurtic': [50, 50, 50, 50, 50, 51, 49, 10, 90, 50, 50, 50, 50, 49, 51, 50, 50, 50, 50, 50],
+#
+#     # Zero mean - for coefficient of variation handling
+#     'num_zero_mean': [-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+#
+#     # Feature with nulls
+#     'num_with_nulls': [1, 2, None, 4, 5, None, 7, 8, 9, 10, None, 12, 13, 14, 15, None, 17, 18, 19, 20]})
+#
+# # tp.feature_stats(df_feature_stats, verbose=True)  # Testing full output
+# tp.feature_stats(df_feature_stats, verbose=False)  # Testing minimal output
