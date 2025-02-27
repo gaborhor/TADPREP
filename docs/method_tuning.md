@@ -109,6 +109,9 @@ Produce relevant, straightforward visualizations on a per-feature basis as guide
   - This allows user to properly define what features are Nominal, Ordinal, Numeric, etc.
 
 ### Ideas for Development:
+- OOP likely the way to go, considering we'll need to be able to call back to prior "instances" of produces viz
+  - This should mesh well with Seaborn + MPL considering they have object-oriented paradigms available
+
 - As color-blind friendly as we are capable of!
 - Static viz only
 - Should this have ability for comparative viz? (i.e. Before & After transforms, stacked bars, etc.)
