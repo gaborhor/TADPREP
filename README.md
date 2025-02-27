@@ -198,6 +198,9 @@ data preparation process:
   - For boolean features: shows true/false counts and percentages
 - Set `verbose=False` for minimized output
 
+`plot_features(df, some_parameters=value)`
+- Gabor will be authoring this method, which provides appropriate plots for dataset features
+
 `impute(df, verbose=True, skip_warnings=False)`
 - Handles missing value imputation using various methods:
   - Statistical methods: mean, median, mode
