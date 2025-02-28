@@ -21,6 +21,27 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code_projects\personal\TADPREP\TAD
 # df_reshape = tp.reshape(df_raw, verbose=True)
 # print(df_reshape)
 
+## Testing PlotHandler class
+# plot_handler = PlotHandler()
+# age_tuple = plot_handler.det_plot_type(df_raw, 'age')
+# race_tuple = plot_handler.det_plot_type(df_raw, 'race')
+# print(age_tuple)
+# print(race_tuple)
+
+# plot_handler.plot_data(df_raw, 'age')
+# plot_handler.plot_data(df_raw, 'race')
+# plot_handler.recall_plot(age_tuple[0])
+# plot_handler.recall_plot(race_tuple[0])
+# plot_handler.compare_plots('age')
+# plot_handler.compare_plots('race')
+
+# plot_handler.plot_data(df_raw, 'age')
+# plot_handler.plot_data(df_raw, 'race')
+# plot_handler.recall_plot(age_tuple[0])
+# plot_handler.recall_plot(race_tuple[0])
+# plot_handler.compare_plots('age')
+# plot_handler.compare_plots('race')
+
 
 # Testing rename_and_tag method
 # df_renamed = tp.rename_and_tag(df_raw, verbose=False, tag_features=False)
