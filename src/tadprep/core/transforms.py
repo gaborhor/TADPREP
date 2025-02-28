@@ -299,6 +299,7 @@ class PlotHandler:
         # Use that .dtype to determine "best" plot type
         col_info = self.det_plot_type(df, col_name)
         
+        # self.plot_ methods apply plt.show() in all cases
         if col_info[1] == 'hist':
             plot = self.plot_hist(df[col_name], col_name)
             
@@ -312,7 +313,7 @@ class PlotHandler:
             plot = self.plot_scatter(df[col_name], col_name)
             
         else:
-            print(f'Unsupported data type: {dtype}')
+            print(f'Unsupported data type: {col_info[0]}')
             return
         
         # Store plot for future use, Keyed by 
