@@ -88,29 +88,36 @@ Perform row- or column-dependent instance (row) removals, as well as feature (co
 - Beta build by Gabor Horvath (Current State)
 
 
-## Method: `plot_features`
+## Class: `PlotHandler`
 ### Core Purpose:
-Produce relevant, straightforward visualizations on a per-feature basis as guided by user.
+Produce, store, and compare relevant, straightforward visualizations on a per-feature basis as guided by user.
 
-### Parameters:
-- `df` Input Pandas dataframe.
-- `features_to_plot` (list[str]) 
+### Methods:
+- `.plot_data(self, df, col_name):`
+  -  Generates and stores a Seaborn plot for a specified pandas DataFrame column with dtype and "plot type" determined by .det_plot_type().
+- `.det_plot_type(self, df, col_name):`
+  - Determines an appropriate plot type for a set of data (pd.Series) based on the pandas dtype of the user's DataFrame column.
+- `.plot_hist(self, data, col_name):`
+  - Create a Seaborn histogram for numeric-type data.
+- `.plot_box(self, data, col_name):`
+  - Create a Seaborn boxplot for categorical-type data.
+- `.plot_line(self, data, col_name):`
+  - Create a Seaborn lineplot for timeseries-type data.
+- `.plot_scatter(self, data, col_name):`
+  - Create a Seaborn scatterplot for mixed-type data.
 
 ### Returns:
-- None - void method. Displays visualizations of data.
+- None - is Class
 
 ### Current State:
-- Barebones logic for sorting dtypes and features
-- Notes on broader approach and method relation to `_rename_and_tag_core`
+- pre-Alpha build OOP
+- Accessibility in viz not implemented
 
 ### Observed Bugs/Problems:
-- Relying on Pandas .dtype would run into issues of "properly" identifying plotting approach
-- Recommend we make this a method that "exclusively" follows application of `_rename_and_tag_core`
-  - This allows user to properly define what features are Nominal, Ordinal, Numeric, etc.
+- Untested
 
 ### Ideas for Development:
-- OOP likely the way to go, considering we'll need to be able to call back to prior "instances" of produces viz
-  - This should mesh well with Seaborn + MPL considering they have object-oriented paradigms available
+- Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot types.
 
 - As color-blind friendly as we are capable of!
 - Static viz only
@@ -119,7 +126,7 @@ Produce relevant, straightforward visualizations on a per-feature basis as guide
   - File specifications could get tricky
 
 ### Method History:
-- 
+- pre-Alpha build by Gabor Horvath
 
 
 ## Method: `subset`
