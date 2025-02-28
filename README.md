@@ -225,12 +225,16 @@ data preparation process:
 - Returns DataFrame with encoded features
 - Set `skip_warnings=True` to bypass cardinality and null value warnings
 
-`scale(df, features_to_scale=None, verbose=True, skip_warnings=False)`
+`scale(df, features_to_scale=None, verbose=True, skip_warnings=False, preserve_features=False)`
 - Scales numerical features using Standard, Robust, or MinMax scaling
 - Can be passed a list of specific features to scale via the `features_to_scale` parameter
 - Auto-detects numerical features if `features_to_scale` is None
 - Returns DataFrame with scaled features
 - Set `skip_warnings=True` to bypass distribution and outlier warnings
+- Set `preserve_features=True` to create new columns with scaled values instead of replacing original features
+- Supports custom range definition for MinMax scaling
+- Provides interactive handling of infinite values with multiple replacement strategies
+- Offers visualization comparisons of pre- and post-scaling distributions
 
 #### Notes on Method Usage
 
