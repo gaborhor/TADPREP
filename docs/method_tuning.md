@@ -346,16 +346,22 @@ Works interactively with user to impute missing values in features using common 
 
 ## Method: `scale`
 ### Core Purpose:
-Provides interactive functionality for scaling numerical features in a dataset using standard statistical methods, enabling proper normalization of data for machine learning algorithms that are sensitive to feature magnitudes.
+Provides interactive functionality for scaling numerical features in a dataset using standard statistical methods, 
+enabling proper normalization of data for machine learning algorithms that are sensitive to feature magnitudes.
 
 ### Parameters:
 - `df` Input Pandas dataframe.
-- `features_to_scale` (List[str] | None, default = None) Optional specific features to scale. If None, method identifies numerical features interactively.
-- `verbose` (Boolean, default = True) which controls level of detail/guidance in output.
-- `skip_warnings` (Boolean, default = False) which controls whether data quality warnings (null values, outliers, skewness) are displayed.
+- `features_to_scale` (List[str] | None, default = None) Optional specific features to scale. If None, method 
+identifies numerical features interactively.
+- `verbose` (Boolean, default = True) Controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) Controls whether data quality warnings (null values, outliers, skewness) 
+are displayed.
+- `preserve_features` (Boolean, default = False) Controls whether original features are preserved. When True, creates 
+new columns with scaled values instead of replacing originals.
 
 ### Returns:
-- Modified dataframe with scaled numerical features.
+- Modified dataframe with scaled numerical features. If `preserve_features=True`, original features are retained and 
+new columns with scaled values are added.
 
 ### Current State:
 - Core Functionality (Always Run):
@@ -366,12 +372,15 @@ Provides interactive functionality for scaling numerical features in a dataset u
   - Offers three scaling methods appropriate for different data characteristics:
     - Standard Scaler (Z-score normalization)
     - Robust Scaler (based on median and IQR)
-    - MinMax Scaler (scales to 0-1 range)
+    - MinMax Scaler (supports custom range specification)
+  - Handles infinite values with multiple replacement strategies
   - Provides feature-by-feature scaling selection
   - Maintains data integrity during scaling operations
   - Supports individual feature skipping within the process flow
   - Tracks all scaling operations for final reporting
   - Returns modified dataframe with scaled features
+  - Offers side-by-side visualization of pre- and post-scaling distributions
+  - Supports preserving original features by creating new scaled columns
 
 
 - Parameter `features_to_scale` Controls Feature Selection:
@@ -385,6 +394,18 @@ Provides interactive functionality for scaling numerical features in a dataset u
     - Scales only the specific features in the provided list
     - Validates all requested features exist in the dataframe
     - Skip automatic feature type detection
+
+
+- Parameter `preserve_features` Controls Output Columns:
+  - When `preserve_features=False` (Default):
+    - Replaces original feature values with scaled values
+    - Original data is not retained in the returned dataframe
+
+  - When `preserve_features=True`:
+    - Creates new columns with naming pattern '{original_column}_scaled' 
+    - If column name conflicts exist, adds numeric suffixes (e.g., '{original_column}_scaled_1')
+    - Preserves original data while adding scaled versions
+    - Both original and scaled versions available in returned dataframe
 
 
 - If `skip_warnings=False` (Default):
@@ -422,11 +443,8 @@ Provides interactive functionality for scaling numerical features in a dataset u
 - None as of current state
 
 ### Ideas for Development:
-- Before/After visualizations for pre- and post-scaling distributions
-- Option to preserve (rather than replace) original features, likely as a parameter
-- Infinite value handling (offer options for replacement)
-- Custom MinMax scale ranges provided by user, if desired
+- None as of current state
 
 ### Method History:
 - Alpha build by Don Smith
-- Beta build by Don Smith (Current State)
+- Beta build by Don Smith (Current state)
