@@ -344,6 +344,73 @@ Works interactively with user to impute missing values in features using common 
 - Beta build by Don Smith (Current State)
 
 
+## Method: `encode`
+### Core Purpose:
+Works interactively with user to encode categorical features using standard encoding methods.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_encode` (list[str] | None, default=None) Optional list of features to encode.
+- `verbose` (Boolean, default = True) Controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) Controls whether to skip data quality warnings.
+
+### Returns:
+- Modified dataframe with encoded categorical features as specified by user.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Validates input parameters and feature existence
+  - Identifies categorical features when none specified
+  - Detects numeric features that might be categorical (e.g., 1/0 values)
+  - Supports two encoding methods:
+    - One-Hot Encoding (creates column for each category)
+    - Dummy Encoding (creates n-1 columns)
+  - Removes original columns after encoding
+  - Concatenates all encoded features into the dataframe
+  - Tracks encoding operations for summary reporting
+
+
+- If `verbose=False`:
+  - Shows minimal feature guidance
+  - Displays only essential user prompts
+  - Presents basic encoding choices
+  - Shows only critical warnings
+  - Provides basic confirmation of successful operations
+
+
+- If `verbose=True`, additionally provides:
+  - Comprehensive feature category information
+  - Detailed explanations of encoding methods
+  - Value distributions for categorical features
+  - Visual distribution plots for features
+  - Step-by-step guidance through encoding decisions
+  - Comprehensive encoding summary including:
+    - Feature names
+    - Encoding methods applied
+
+
+- If `skip_warnings=False`, additionally checks and warns about:
+  - Features containing null values
+  - Features with high cardinality (>20 unique values)
+  - Features with low-frequency categories (<10 instances)
+  - Provides detailed guidance on handling problematic features
+  - Allows user to 'proceed with caution' after each warning
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Reference category selection for dummy encoding (allow user to choose reference category)
+- Enhanced missing value handling (treat as separate category, drop rows, or impute)
+- Prefix customization for encoded column names
+- Handling edge cases in categories (special characters, mixed types)
+- Add `preserve_features` parameter (like in scale method) to keep original columns alongside encoded ones
+
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
+
+
 ## Method: `scale`
 ### Core Purpose:
 Provides interactive functionality for scaling numerical features in a dataset using standard statistical methods, 
