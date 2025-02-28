@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib
+from collections import defaultdict
 
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
@@ -272,96 +273,319 @@ def _reshape_core(
         return df
     
     return df
+
+# #-------New OOP-----------------------------------
+
+### Working through this has me thinking that there may be benefits to
+### handling the entire process of TADPREP through OOP, considering the
+### user's DataFrame will exist in a variety of states throughout.
+
+class PlotHandler:
+    def __init__(self):
+        self.plot_storage = defaultdict(list)
+    
+    def plot_data(self, df: pd.Dataframe, col_name: str):
+        """
+        Generates and stores a Seaborn plot for a specified pandas DataFrame column with dtype and "plot type" determined by .det_plot_type().
+
+        Args:
+            df (pd.DataFrame): User DataFrame to source data for plotting
+            col_name (str): Specified DataFrame column to plot
+
+        Raises:
+            ValueError: _description_
+        """
+
+        # Use that .dtype to determine "best" plot type
+        col_info = self.det_plot_type(df, col_name)
+        
+        if col_info[1] == 'hist':
+            plot = self.plot_hist(df[col_name], col_name)
             
-def _plot_features(
-        df: pd.DataFrame,
-        features_to_plot: list[str] | None
-):## -> :
-    
-    ####################################################
-    ### This build assumes that pandas' .dtype will be useful.
-    ### This is often not the case (i.e. .dtype is 'int64', but values are only 0, 1)
-    
-    # Placeholder for all dtypes present in df and categorization of features
-    features_with_type = {}
-    
-    for feature in features_to_plot:
-        features_with_type.setdefault(df[feature].dtype, []).append(feature)
-    
-    
-    ### Currently, I believe best implementation of this method will be for use
-    ### AFTER _rename_and_tag_core has been applied to DataFrame as user sees fit.
-    ### This would allow _plot_features to correctly categorize features every time,
-    ### assuming the user tags features correctly.
-    
-    ### Implementation would end up something like this:
-    
-    features_with_type = {}
-    
-    for feature in features_to_plot:
-        # Separate out only the "tag" at the end of feature name
-        type_split = feature.rsplit(sep="_", maxsplit=1)
+        elif col_info[1] == 'box':
+            plot = self.plot_box(df[col_name], col_name)
+            
+        elif col_info[1] == 'line':
+            plot = self.plot_line(df[col_name], col_name)
+            
+        elif col_info[1] == 'scatter':
+            plot = self.plot_scatter(df[col_name], col_name)
+            
+        else:
+            print(f'Unsupported data type: {dtype}')
+            return
         
-        # Use the user-defined tag as Key, and the feature name split from that as Val
-        features_with_type.setdefault(type_split[1], []).append(type_split[0])
+        # Store plot for future use, Keyed by 
+        self.plot_storage[col_info[0]].append((col_name, plot))
+        
+    def det_plot_type(self, df: pd.DataFrame, col_name: str) -> tuple:
+        """
+        Determines an appropriate plot type for a set of data (pd.Series)
+        based on the pandas dtype of the user's DataFrame column.
+
+        Args:
+            col_name (str): Specified DataFrame column to determine plotting info for.
+        
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot_type (tuple (pd.dtype, str)): A tuple containing dtype and its corresponding "plot type" string (hist/line/etc.).
+        """
+        
+        # Fetch .dtype of provided DataFrame column
+        dtype = df[col_name].dtype
+        # Empty str variable, will be re-valued by this method
+        plot_type = ""
+        
+        if pd.api.types.is_numeric_dtype(dtype):
+            plot_type = 'hist'  # Define 'hist' as plot type for numeric data
+            
+        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
+            plot_type = 'box'   # Define 'box' as plot type for numeric data
+            
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            # '.is_datetime64_any_dtype' allows for TZ-aware DataFrames
+            plot_type = 'line'  # Define 'line' for time-series data
+            
+        else:
+            plot_type = 'scatter'   # For all other types, assume mixed data and assign 'scatter'
+        
+        return (dtype, plot_type)
     
-    def check_indexing():
-        ### Determine index type of DataFrame
-        # All options:
-        # (non-TimeSeries) -> RangeIndex, CategoricalIndex, MultiIndex, IntervalIndex
-        # (TimeSeries) -> DatetimeIndex, TimedeltaIndex, PeriodIndex
+    def plot_hist(self, data, col_name: str):
+        """
+        Create a Seaborn histogram for numeric-type data.
+
+        Args:
+            data (_type_): Data to plot.
+            col_name (str): Name of DataFrame column for labeling.
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot (_type_): Seaborn histogram plot...
+        """
+        plot = sns.histplot(data=data, kde=True)
+        plot.set_title(f"Histogram for '{col_name}'")
+        plt.show()  # Assume viz is desired on creation for now
         
-        ## RangeIndex
-        # Simplest option
-        
-        ## CategoricalIndex
-        # Splitting data by indices before plotting necessary
-        
-        ## MultiIndex
-        # Generally complex as a data structure, difficult to make assumptions here for user
-        # Consider recommending user re-organize their data first
-        
-        ## IntervalIndex
-        # A more math-theory oriented dtype.
-        # Likely similar to Categorical, not much personal knowledge on its behavior
-        
-        ## DatetimeIndex
-        # Data indexed by time of occurence
-        # Use '_any_dtype' to include TZ-aware DataFrames
-        pd.api.types.is_datetime64_any_dtype(df.index)
-        
-        ## TimedeltaIndex
-        # Data indexed by time-delta from "start"
-        # Generally not meaningfully different from DatetimeIndex
-        
-        ## PeriodIndex
-        # Data indexed at regular periods of time
-        # Not conceptually dissimilar from a "clean" DatetimeIndex, but contains attributes of Period.
+        return plot
     
-    def plot_nominals():
-        ##
-    def plot_ordinals():
-        ##
-    def plot_numerics():
-        ##
-    def plot_timeseries():
-        ##
+    def plot_box(self, data, col_name: str):
+        """
+        Create a Seaborn boxplot for categorical-type data.
+        
+        Args:
+            data (_type_): Data to plot.
+            col_name (str): Name of DataFrame column for labeling.
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot (_type_): Seaborn boxplot...
+        """
+        plot = sns.boxplot(data=data)
+        plot.set_title(f"Box Plot for '{col_name}'")
+        plt.show()  # Assume viz is desired on creation for now
+        
+        return plot
     
-    ####################################################
+    def plot_line(self, data, col_name: str):
+        """
+        Create a Seaborn lineplot for TimeSeries-type data.
+        
+        Args:
+            data (_type_): Data to plot.
+            col_name (str): Name of DataFrame column for labeling.
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot (_type_): Seaborn lineplot...
+        """
+        plot = sns.lineplot(x=data.index, y=data)
+        plot.set_title(f"Line Plot for '{col_name}'")
+        plt.show()  # Assume viz is desired on creation for now
+        
+        return plot
     
-    for key in features_with_type.keys():
+    def plot_scatter(self, data, col_name: str):
+        """
+        Create a Seaborn scatterplot for mixed-type data.
         
-        if key == 'nominal':
-            ## for all features of this dtype
-        if key == 'ordinal':
-            ##
-        if key == 'numeric':
-            ##
-        if key == 'timeseries':
-            ## ^Flag this for now, as Time-Series should be an index-level check
+        Args:
+            data (_type_): Data to plot.
+            col_name (str): Name of DataFrame column for labeling.
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            plot (_type_): Seaborn scatterplot...
+        """
+        plot = sns.scatterplot(x=data.index, y=data)
+        plot.set_title(f"Scatter Plot for '{col_name}'")
+        plt.show()  # Assume viz is desired on creation for now
+        
+        return plot
+    
+    def recall_plot(self, dtype, col_name: str):
+        """
+        Recall a previously-created stored plot for a given dtype and DataFrame column.
+
+        Args:
+            dtype (_type_): dtype to be fetched from defaultdict.
+            col_name (str): Name of DataFrame column for fetching from defaultdict.
+
+        Raises:
+            ValueError: _description_
+        """
+        
+        stored_plots = self.plot_storage.get(dtype, [])
+        
+        for name, plot in stored_plots:
+            if name == col_name:
+                plot.figure.canvas.draw()
+                plt.show()
+                return
+            else:
+                print(f"No plot found for {col_name} with dtype {dtype}")
+                
+        ## Not sure at the moment if we need to be returning anything here.
+        ## I expect this will likely be our "artist" method and will need fleshing out for other viz functionality.
+
+    def compare_plots(self, col_name: str):
+        """
+        Compare all stored plots for a given column.
+
+        Args:
+            col_name (str): Name of DataFrame column for which plots will be compared.
+
+        Raises:
+            ValueError: _description_
+        """
+        
+        # Fetch all plots stored for given col_name
+        stored_plots = [plot for dtype_plots
+                        in self.plot_storage.values()
+                        for col, plot in dtype_plots
+                        if col == col_name]
+        
+        if not stored_plots:
+            print(f"No plots found for column '{col_name}'")
+            return
+        
+        # Display all stored plots for the column for comparison
+        for plot in stored_plots:
+            plot.figure.canvas.draw()
+            plt.show()
+
+
+
+# #-------Old functional approach-----------------------------------
+
+# def _plot_features(
+#         df: pd.DataFrame,
+#         features_to_plot: list[str] | None
+# ):## -> :
+    
+#     ####################################################
+#     ### This build assumes that pandas' .dtype will be useful.
+#     ### This is often not the case (i.e. .dtype is 'int64', but values are only 0, 1)
+    
+#     # Placeholder for all dtypes present in df and categorization of features
+#     features_with_type = {}
+    
+#     for feature in features_to_plot:
+#         features_with_type.setdefault(df[feature].dtype, []).append(feature)
+    
+    
+#     ### Currently, I believe best implementation of this method will be for use
+#     ### AFTER _rename_and_tag_core has been applied to DataFrame as user sees fit.
+#     ### This would allow _plot_features to correctly categorize features every time,
+#     ### assuming the user tags features correctly.
+    
+#     ### Implementation would end up something like this:
+    
+#     features_with_type = {}
+    
+#     for feature in features_to_plot:
+#         # Separate out only the "tag" at the end of feature name
+#         type_split = feature.rsplit(sep="_", maxsplit=1)
+        
+#         # Use the user-defined tag as Key, and the feature name split from that as Val
+#         features_with_type.setdefault(type_split[1], []).append(type_split[0])
+    
+#     def check_indexing():
+#         ### Determine index type of DataFrame
+#         # All options:
+#         # (non-TimeSeries) -> RangeIndex, CategoricalIndex, MultiIndex, IntervalIndex
+#         # (TimeSeries) -> DatetimeIndex, TimedeltaIndex, PeriodIndex
+        
+#         ## Likely need to map various possible results of this func
+        
+#         ## RangeIndex
+#         # Simplest option
+        
+#         ## CategoricalIndex
+#         # Splitting data by indices before plotting necessary
+        
+#         ## MultiIndex
+#         # Generally complex as a data structure, difficult to make assumptions here for user
+#         # Consider recommending user re-organize their data first
+        
+#         ## IntervalIndex
+#         # A more math-theory oriented dtype.
+#         # Likely similar to Categorical, not much personal knowledge on its behavior
+        
+#         ## DatetimeIndex
+#         # Data indexed by time of occurence
+#         # Use '_any_dtype' to include TZ-aware DataFrames
+#         pd.api.types.is_datetime64_any_dtype(df.index)
+        
+#         ## TimedeltaIndex
+#         # Data indexed by time-delta from "start"
+#         # Generally not meaningfully different from DatetimeIndex
+        
+#         ## PeriodIndex
+#         # Data indexed at regular periods of time
+#         # Not conceptually dissimilar from a "clean" DatetimeIndex, but contains attributes of Period.
+    
+#     def plot_nominals():
+#         ##
+#     def plot_ordinals():
+#         ##
+#     def plot_numerics():
+#         ##
+#     def plot_timeseries(df: pd.DataFrame, set_to_plot: list):
+#         ##
+        
+#         g = sns.FacetGrid(df, row=set_to_plot, height=2, aspect=4, sharey=False)
+        
+#         for feature in set_to_plot:
+#             sns.lineplot(df, x=df.index, y=df[feature], palette='colorblind')
+        
+#         g.map(sns.lineplot, set_to_plot)
+    
+#     ####################################################
+    
+#     for key in features_with_type.keys():
+        
+#         if key == 'nominal':
+#             ## for all features of this dtype
+#         if key == 'ordinal':
+#             ##
+#         if key == 'numeric':
+#             ##
+#         if key == 'timeseries':
+#             ## ^Flag this for now, as Time-Series should be an index-level check
         
         
-    return
+#     return
         
 
 
