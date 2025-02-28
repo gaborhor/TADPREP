@@ -2222,7 +2222,8 @@ def _scale_core(
         df: pd.DataFrame,
         features_to_scale: list[str] | None = None,
         verbose: bool = True,
-        skip_warnings: bool = False
+        skip_warnings: bool = False,
+        preserve_features: bool = False
 ) -> pd.DataFrame:
     """
     Core function to scale numerical features using standard, robust, or minmax scaling methods.
@@ -2236,13 +2237,97 @@ def _scale_core(
             Whether to display detailed guidance and explanations.
         skip_warnings : bool, default=False
             Whether to skip all best-practice-related warnings about nulls, outliers, etc.
+        preserve_features : bool, default=False
+            Whether to preserve original features by creating new columns with scaled values.
+            When True, new columns are created with the naming pattern '{original_column}_scaled'.
+            If a column with that name already exists, a numeric suffix is added: '{original_column}_scaled_1'.
 
     Returns:
         pd.DataFrame: DataFrame with scaled values as specified by user.
 
     Raises:
-        ValueError: If scaling fails due to data structure issues
+        ValueError: If scaling fails due to data structure issues.
     """
+
+    def plot_comp(original: pd.Series, scaled: pd.Series, feature_name: str) -> None:
+        """
+        This helper function creates and displays a side-by-side comparison of pre- and post-scaling distributions.
+
+        Args:
+            original: Original series before scaling
+            scaled: Series after scaling
+            feature_name: Name of the feature being visualized
+        """
+        try:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
+
+            # Pre-scaling distribution
+            sns.histplot(data=original.dropna(), ax=ax1)
+            ax1.set_title(f'Pre-scaling Distribution of "{feature_name}"')
+            ax1.set_xlabel(feature_name)
+
+            # Post-scaling distribution
+            sns.histplot(data=scaled, ax=ax2)
+            ax2.set_title(f'Post-scaling Distribution of "{feature_name}"')
+            ax2.set_xlabel(f'{feature_name} (scaled)')
+
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+        except Exception as exc:
+            print(f'Could not create distribution visualizations: {str(exc)}')
+            if plt.get_fignums():
+                plt.close('all')
+
+    def handle_inf(series: pd.Series, method: str, value: float = None) -> pd.Series:
+        """
+        This helper function replaces infinite values in a series based on user-specified method.
+
+        Args:
+            series: Series to handle infinities in
+            method: Method to use ('nan', 'min', 'max', or 'value')
+            value: Custom value to use if method is 'value'
+
+        Returns:
+            Series with infinite values properly handled
+        """
+        # Make a copy to avoid modifying the original
+        result = series.copy()
+
+        # Build a mask of infinite values
+        inf_mask = np.isinf(result)
+
+        # Skip if no infinite values exist
+        if not inf_mask.any():
+            return result
+
+        # Apply replacement based on method
+        if method == 'nan':
+            result[inf_mask] = np.nan
+
+        elif method == 'min':
+            # Find min of non-infinite values
+            min_val = result[~np.isinf(result)].min()
+            # Replace negative infinities with min value
+            result[result == -np.inf] = min_val
+            # Replace positive infinities with min value too (unusual but consistent)
+            result[result == np.inf] = min_val
+
+        elif method == 'max':
+            # Find max of non-infinite values
+            max_val = result[~np.isinf(result)].max()
+            # Replace positive infinities with max value
+            result[result == np.inf] = max_val
+            # Replace negative infinities with max value too (unusual but consistent)
+            result[result == -np.inf] = max_val
+
+        elif method == 'value':
+            # Replace all infinities with specified value
+            result[inf_mask] = value
+
+        return result
+
     if verbose:
         print('-' * 50)
         print('Beginning scaling process.')
@@ -2253,7 +2338,7 @@ def _scale_core(
         print(features_to_scale)
         print('-' * 50)
 
-    # If no features specified, identify potential numerical features
+    # If no features are specified, identify potential numerical features
     if features_to_scale is None:
         # Identify all numeric features
         numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
@@ -2294,6 +2379,10 @@ def _scale_core(
         print('Skipping scaling. Dataset was not modified.')
         return df
 
+    if not isinstance(preserve_features, bool):
+        print('Invalid value for preserve_original. Using default (False).')
+        preserve_features = False
+
     # Print reminder about not scaling target features
     if features_to_scale is None and verbose:
         print('REMINDER: Target features (prediction targets) should not be scaled.')
@@ -2320,8 +2409,8 @@ def _scale_core(
                   '\n- Useful for survey data with extreme ratings.'
                   '\n- Good when outliers contain important information.'
                   '\n'
-                  '\nMinMax Scaler (scales to 0-1 range):'
-                  '\n- Scales all values to a fixed range between 0 and 1.'
+                  '\nMinMax Scaler (scales to a custom range, default 0-1):'
+                  '\n- Scales all values to a fixed range (default: between 0 and 1).'
                   '\n- Good for neural networks that expect bounded inputs.'
                   '\n- Works well with sparse data.'
                   '\n- Preserves zero values in sparse data.')
@@ -2347,13 +2436,48 @@ def _scale_core(
             if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
                 continue
 
-        # Check for infinite values if warnings aren't suppressed
+        # Check for infinite values and offer handling options if warnings aren't suppressed
         inf_count = np.isinf(df[column]).sum()
-        if inf_count > 0 and not skip_warnings:
-            print(f'Warning: "{column}" contains {inf_count} infinite values.')
-            print('Scaling with infinite values present may produce unexpected results.')
-            if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
-                continue
+        if inf_count > 0:
+            if not skip_warnings:
+                print(f'Warning: "{column}" contains {inf_count} infinite values.')
+                print('Scaling with infinite values present may produce unexpected results.')
+
+                # Only ask for handling if continuing with scaling
+                if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
+                    continue
+
+                # Offer options for handling infinities
+                print('\nHow would you like to handle infinite values?')
+                print('1. Replace with NaN (missing values)')
+                print('2. Replace with minimum feature value')
+                print('3. Replace with maximum feature value')
+                print('4. Replace with a custom value')
+
+                while True:
+                    inf_choice = input('Enter your choice (1-4): ')
+                    if inf_choice == '1':
+                        df[column] = handle_inf(df[column], 'nan')
+                        print(f'Replaced {inf_count} infinite values with NaN.')
+                        break
+                    elif inf_choice == '2':
+                        df[column] = handle_inf(df[column], 'min')
+                        print(f'Replaced {inf_count} infinite values with minimum feature value.')
+                        break
+                    elif inf_choice == '3':
+                        df[column] = handle_inf(df[column], 'max')
+                        print(f'Replaced {inf_count} infinite values with maximum feature value.')
+                        break
+                    elif inf_choice == '4':
+                        try:
+                            custom_val = float(input('Enter the value to replace infinities with: '))
+                            df[column] = handle_inf(df[column], 'value', custom_val)
+                            print(f'Replaced {inf_count} infinite values with {custom_val}.')
+                            break
+                        except ValueError:
+                            print('Invalid input. Please enter a valid number.')
+                    else:
+                        print('Invalid choice. Please enter 1, 2, 3, or 4.')
 
         # Skip constant features
         if df[column].nunique() <= 1:
@@ -2368,6 +2492,9 @@ def _scale_core(
                 print('Consider applying a transformation before scaling.')
                 if input('Continue scaling this feature? (Y/N): ').lower() != 'y':
                     continue
+
+        # Store original values for visualization and preservation
+        original_values = df[column].copy()
 
         if verbose:
             # Show current distribution statistics
@@ -2395,7 +2522,7 @@ def _scale_core(
         print('\nSelect scaling method:')
         print('1. Standard Scaler (Z-score normalization)')
         print('2. Robust Scaler (median and IQR based)')
-        print('3. MinMax Scaler (0-1 range)')
+        print('3. MinMax Scaler (custom range)')
         print('4. Skip scaling for this feature')
 
         while True:
@@ -2417,6 +2544,16 @@ def _scale_core(
             # Reshape data for scikit-learn
             reshaped_data = df[column].values.reshape(-1, 1)
 
+            # Target column name (either original or new)
+            target_column = column
+            if preserve_features:
+                target_column = f'{column}_scaled'
+                # Check if target column already exists
+                counter = 1
+                while target_column in df.columns:
+                    target_column = f'{column}_scaled_{counter}'
+                    counter += 1
+
             # Apply selected scaling method
             if method == '1':
                 scaler = StandardScaler()
@@ -2426,16 +2563,49 @@ def _scale_core(
                 scaler = RobustScaler()
                 method_name = 'Robust'
 
-            else:
-                scaler = MinMaxScaler()
-                method_name = 'MinMax'
+            else:  # MinMax Scaler with custom range option
+                feature_range = (0, 1)  # Default range
+
+                custom_range = input('\nDo you want to use a custom range instead of 0-1? (Y/N): ').lower() == 'y'
+
+                if custom_range:
+                    while True:
+                        try:
+                            min_val = float(input('Enter minimum value for range: '))
+                            max_val = float(input('Enter maximum value for range: '))
+
+                            if min_val >= max_val:
+                                print('Error: Minimum value must be less than maximum value.')
+                                continue
+
+                            feature_range = (min_val, max_val)
+                            break
+                        except ValueError:
+                            print('Invalid input. Please enter valid numbers.')
+
+                scaler = MinMaxScaler(feature_range=feature_range)
+                method_name = f'MinMax (range: {feature_range[0]}-{feature_range[1]})'
 
             # Perform scaling
-            df[column] = scaler.fit_transform(reshaped_data)
-            scaled_features.append(f'{column} ({method_name})')
+            scaled_values = scaler.fit_transform(reshaped_data).flatten()
 
+            # Apply to dataframe (either replacing or adding new column)
+            if preserve_features:
+                df[target_column] = scaled_values
+            else:
+                df[column] = scaled_values
+
+            scaled_features.append(f'{column} -> {target_column} ({method_name})')
+
+            # Offer before/after visualization comparison
             if verbose:
                 print(f'\nSuccessfully scaled "{column}" using {method_name} scaler.')
+
+                if input('\nWould you like to see a comparison of before and after scaling? (Y/N): ').lower() == 'y':
+                    # Get the scaled values from the dataframe
+                    scaled_series = df[target_column]
+                    # Display comparison
+                    plot_comp(original_values, scaled_series, column)
 
         except Exception as exc:
             print(f'Error scaling feature "{column}": {exc}')
