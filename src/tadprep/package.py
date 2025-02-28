@@ -331,7 +331,8 @@ def scale(
     df: pd.DataFrame,
     features_to_scale: list[str] | None = None,
     verbose: bool = True,
-    skip_warnings: bool = False
+    skip_warnings: bool = False,
+    preserve_features: bool = False
 ) -> pd.DataFrame:
     """
     Interactively scales numerical features in the DataFrame using standard scaling methods.
@@ -346,21 +347,32 @@ def scale(
         Controls whether detailed guidance and explanations are displayed.
     skip_warnings : bool, default=False
         Controls whether all best-practice-related warnings about scaling are skipped.
+    preserve_features : bool, default=False
+        Controls whether original features are preserved when scaling. When True, creates new columns
+        with the naming pattern '{original_column}_scaled'. If a column with that name already exists,
+        a numeric suffix is added: '{original_column}_scaled_1'.
 
     Returns
     -------
     pandas.DataFrame
-        The DataFrame with scaled numerical features
+        The DataFrame with scaled numerical features. If preserve_features=True, original
+        features are retained and new columns are added with scaled values.
 
     Examples
     --------
     >>> import pandas as pd
     >>> import tadprep
     >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': ['x', 'y', 'z']})
-    >>> df_scaled = tadprep.scale(df)  # Let function identify numerical features
-    >>> df_scaled_specified = tadprep.scale(df, features_to_scale=['A'])  # Specify features to scale
-    >>> df_scaled_quiet = tadprep.scale(df, verbose=False)  # Minimize output
-    >>> df_scaled_nowarn = tadprep.scale(df, skip_warnings=True)  # Skip best-practice warnings
+    >>> # Basic usage - let function identify numerical features
+    >>> df_scaled = tadprep.scale(df)
+    >>> # Specify features to scale
+    >>> df_scaled_specified = tadprep.scale(df, features_to_scale=['A'])
+    >>> # Minimize output
+    >>> df_scaled_quiet = tadprep.scale(df, verbose=False)
+    >>> # Skip best-practice warnings
+    >>> df_scaled_nowarn = tadprep.scale(df, skip_warnings=True)
+    >>> # Preserve original features, creating new scaled columns
+    >>> df_with_both = tadprep.scale(df, preserve_features=True)
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -382,11 +394,16 @@ def scale(
             missing = [col for col in features_to_scale if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
+    # Validate preserve_features parameter
+    if not isinstance(preserve_features, bool):
+        raise TypeError('preserve_features must be a boolean')
+
     return _scale_core(
         df,
         features_to_scale=features_to_scale,
         verbose=verbose,
-        skip_warnings=skip_warnings
+        skip_warnings=skip_warnings,
+        preserve_features=preserve_features
     )
 
 
