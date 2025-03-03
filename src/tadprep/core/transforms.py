@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -1963,30 +1964,52 @@ def _encode_core(
         df: pd.DataFrame,
         features_to_encode: list[str] | None = None,
         verbose: bool = True,
-        skip_warnings: bool = False
+        skip_warnings: bool = False,
+        preserve_features: bool = False
 ) -> pd.DataFrame:
     """
     Core function to encode categorical features using one-hot or dummy encoding, as specified by user.
-    The function also looks for false-numeric features (e.g. 1/0 representations of 'Yes'/'No') and asks if they
-    should be treated as categorical and therefore be candidates for encoding.
+    The function also looks for false-numeric features (e.g. 1/0 representations of 'Yes'/'No') and asks
+    if they should be treated as categorical and therefore be candidates for encoding.
 
     Args:
         df : pd.DataFrame
             Input DataFrame containing features to encode.
         features_to_encode : list[str] | None, default=None
-            Optional list of features to encode. If None, function will help the user identify categorical features.
+            Optional list of features to encode. If None, function will help identify categorical features.
         verbose : bool, default=True
             Whether to display detailed guidance and explanations.
         skip_warnings : bool, default=False
-            Whether to skip all best-practice-related warnings about null values and cardinality issues.
+            Whether to skip best-practice-related warnings about null values and cardinality issues.
+        preserve_features : bool, default=False
+            Whether to keep original features in the DataFrame alongside encoded ones.
 
     Returns:
-        pd.DataFrame: DataFrame with encoded values as specified by user. Original features are dropped after encoding.
-
-    Raises:
-        ValueError: If all selected features have already been encoded
-        ValueError: If encoding fails due to data structure issues
+        pd.DataFrame: DataFrame with encoded values as specified by user.
     """
+
+    def clean_col_name(name: str) -> str:
+        """
+        This helper function cleans column names to ensure they're valid Python identifiers.
+        It replaces spaces and special characters with underscores.
+        """
+        # Replace spaces, special characters, and any non-alphanumeric character with underscores
+        clean_name = re.sub(r'\W', '_', str(name))
+
+        # Ensure name doesn't start with a number
+        if clean_name and clean_name[0].isdigit():
+            clean_name = 'feature_' + clean_name
+
+        # Ensure no double underscores exist
+        while '__' in clean_name:
+            clean_name = clean_name.replace('__', '_')
+
+        # Remove any trailing underscores
+        clean_name = clean_name.rstrip('_')
+
+        # Return cleaned feature name
+        return clean_name
+
     if verbose:
         print('-' * 50)  # Visual separator
         print('Beginning encoding process.')
@@ -2048,10 +2071,10 @@ def _encode_core(
         print('Skipping encoding. Dataset was not modified.')
         return df
 
-    # Instantiate empty lists for encoded data and tracking
-    encoded_dfs = []  # Will hold encoded DataFrames for each feature
-    columns_to_drop = []  # Will track original features to be dropped after encoding
-    encoded_features = []  # Will track features and their encoding methods for reporting
+    # For memory efficiency, I'll aim to modify the dataframe in place
+    columns_to_drop = []  # Track original features to be dropped after encoding
+    encoded_features = []  # Track features and their encoding methods for reporting
+    encoding_performed = False  # Track if any encoding was performed
 
     # Offer explanation of encoding methods if in verbose mode
     if verbose:
@@ -2068,6 +2091,12 @@ def _encode_core(
                   '\n- One category becomes the reference class, and is represented by all zeros.'
                   '\n- Dummy encoding is preferred for linear models, as it avoids perfect multi-collinearity.'
                   '\n- This method is more computationally- and space-efficient, but is less interpretable.')
+
+            # Explain missing value handling options
+            print('\nMissing Value Handling Options:'
+                  '\n- Ignore: Leave missing values as NaN in encoded columns'
+                  '\n- Treat as category: Create a separate indicator column for missing values'
+                  '\n- Drop instances: Remove instances with missing values before encoding is performed')
 
     if verbose:
         print('\nFinal candidate features for encoding are:')
@@ -2089,18 +2118,58 @@ def _encode_core(
 
         # Check for nulls if warnings aren't suppressed
         null_count = df[column].isnull().sum()
-        if null_count > 0 and not skip_warnings:
+        null_detected = null_count > 0
+
+        # Define default missing value strategy, which is to ignore them and leave them as NaN values
+        missing_strat = 'ignore'
+
+        if null_detected and not skip_warnings:
             # Check to see if user wants to proceed
             print(f'Warning: "{column}" contains {null_count} null values.')
-            if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
-                continue
+
+            if verbose:
+                print('\nHow would you like to handle missing values?')
+                print('1. Ignore (leave as NaN in encoded columns)')
+                print('2. Treat as separate category')
+                print('3. Drop rows with missing values')
+                print('4. Skip encoding this feature')
+
+                # Have user define missing values handling strategy
+                while True:
+                    choice = input('Enter choice (1-4): ')
+                    if choice == '1':
+                        missing_strat = 'ignore'
+                        break
+
+                    elif choice == '2':
+                        missing_strat = 'category'
+                        break
+
+                    elif choice == '3':
+                        missing_strat = 'drop'
+                        break
+
+                    # Implement feature skip
+                    elif choice == '4':
+                        print(f'Skipping encoding for feature "{column}".')
+                        continue
+
+                    # Handle bad user input
+                    else:
+                        print('Invalid choice. Please enter 1, 2, 3, or 4.')
+
+            # Default to 'ignore' strategy in non-verbose mode
+            else:
+                missing_strat = 'ignore'
+                if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
+                    continue
 
         # Perform cardinality checks if warnings aren't suppressed
         unique_count = df[column].nunique()
         if not skip_warnings:
             # Check for high cardinality
             if unique_count > 20:
-                print(f'Warning: "{column}" has high cardinality ({unique_count} unique values)')
+                print(f'\nWARNING: "{column}" has high cardinality ({unique_count} unique values)')
                 if verbose:
                     print('Consider using dimensionality reduction techniques instead of encoding this feature.')
                     print('Encoding high-cardinality features can lead to issues with the curse of dimensionality.')
@@ -2110,9 +2179,9 @@ def _encode_core(
 
             # Skip constant features (those with only one unique value)
             elif unique_count <= 1:
-                print(f'Skipping encoding for "{column}".')
                 if verbose:
-                    print(f'"{column}" has only one unique value and thus provides no meaningful information.')
+                    print(f'\nWARNING: "{column}" has only one unique value and thus provides no meaningful information.')
+                print(f'Skipping encoding for "{column}".')
                 continue
 
             # Check for low-frequency categories
@@ -2120,7 +2189,7 @@ def _encode_core(
             low_freq_cats = value_counts[value_counts < 10]  # Categories with fewer than 10 instances
             if not low_freq_cats.empty:
                 if verbose:
-                    print(f'\nWarning: Found {len(low_freq_cats)} categories with fewer than 10 instances:')
+                    print(f'\nWARNING: Found {len(low_freq_cats)} categories with fewer than 10 instances:')
                     print(low_freq_cats)
                 print('Consider grouping rare categories before encoding.')
                 if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
@@ -2129,16 +2198,16 @@ def _encode_core(
         if verbose:
             # Show current value distribution
             print(f'\nCurrent values in "{column}":')
-            print(df[column].value_counts())
+            print(df[column].value_counts(dropna=False))  # Include NA in count
 
-            # Offer distribution plot
+            # Offer to show user a distribution plot
             if input('\nWould you like to see a plot of the value distribution? (Y/N): ').lower() == 'y':
                 try:
                     plt.figure(figsize=(12, 10))
-                    value_counts = df[column].value_counts()
+                    value_counts = df[column].value_counts(dropna=False)
                     plt.bar(range(len(value_counts)), value_counts.values)
                     plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
-                    plt.title(f'Distribution of {column}')
+                    plt.title(f'Distribution of "{column}"')
                     plt.xlabel(column)
                     plt.ylabel('Count')
                     plt.tight_layout()
@@ -2151,15 +2220,25 @@ def _encode_core(
                     if plt.get_fignums():  # If any figures are open
                         plt.close('all')  # Close all figures
 
+        # Let user customize the encoding prefix for a feature
+        prefix = column  # Default prefix is the column name
+        if verbose:
+            user_prefix = input(f'\nWould you like to use a custom prefix for the encoded columns? (Y/N): ')
+            if user_prefix.lower() == 'y':
+                prefix_value = input(f'Enter custom prefix (default: "{column}"): ').strip()
+                if not prefix_value:  # If user enters empty string, use default
+                    prefix_value = column
+
         if verbose:
             # Fetch encoding method preference from user
-            print('\nEncoding methods:')
+            print('\nTADPREP-Supported Encoding Methods:')
 
-        # Show encoding options (needed regardless of verbosity)
-        print('1. One-Hot Encoding (new column for each category)')
-        print('2. Dummy Encoding (n-1 columns, drops first category)')
+        # Show encoding options
+        print('1. One-Hot Encoding (builds a new column for each category)')
+        print('2. Dummy Encoding (builds n-1 columns, drops one category)')
         print('3. Skip encoding for this feature')
 
+        # Fetch user encoding method choice
         while True:
             method = input('Select encoding method or skip encoding (Enter 1, 2 or 3): ')
             if method in ['1', '2', '3']:
@@ -2167,47 +2246,155 @@ def _encode_core(
             print('Invalid choice. Please enter 1, 2, or 3.')
 
         try:
-
             # Skip encoding if user enters the skip option
             if method == '3':
                 if verbose:
                     print(f'\nSkipping encoding for feature "{column}".')
                 continue
 
+            # Determine feature to encode based on missing value strategy
+            feature_data = df[column]
+            temp_df = df
+
+            # Handle missing values according to strategy
+            if null_detected:
+                if missing_strat == 'drop':
+                    if verbose:
+                        print(f'Dropping {null_count} rows with missing values for encoding.')
+                    # Create a temporary subset without null values
+                    temp_df = df.dropna(subset=[column])
+                    feature_data = temp_df[column]
+
             # Apply selected encoding method
-            if method == '1':
-                # One-hot encoding creates a column for every category
-                encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_')
-                encoded_features.append(f'{column} (One-Hot)')
+            if method == '1':  # One-hot encoding
+                # Set parameters based on missing value strategy
+                dummy_na = missing_strat == 'category'
+
+                # Create a temporary version for encoding
+                encoded = pd.get_dummies(
+                    feature_data,
+                    prefix=prefix,
+                    prefix_sep='_',
+                    dummy_na=dummy_na
+                )
+
+                # Sanitize column names
+                encoded.columns = [clean_col_name(col) for col in encoded.columns]
+
+                # Reindex to match original dataframe if we used a temporary subset
+                if missing_strat == 'drop':
+                    # Use reindex to create a DataFrame with same index as original, filling missing values with 0
+                    encoded = encoded.reindex(df.index, fill_value=0)
+
+                # Apply encoding directly to dataframe
+                df = pd.concat([df, encoded], axis=1)
+                columns_to_drop.append(column)
+                encoded_features.append(f'{column} (One-Hot)')  # or Dummy equivalent
+                encoding_performed = True
+
+                # Note successful encoding action
+                if verbose:
+                    print(f'\nSuccessfully one-hot encoded "{column}" with prefix "{prefix}".')
+                    print(f'Created {len(encoded.columns)} new columns.')
 
             else:
-                # Dummy encoding creates n-1 columns
-                encoded = pd.get_dummies(df[column], prefix=column, prefix_sep='_', drop_first=True)
-                encoded_features.append(f'{column} (Dummy)')
+                # Get unique values for reference category selection
+                unique_vals = df[column].dropna().unique()
 
-            # Append encoded df and add feature to list of features to drop from the df
-            encoded_dfs.append(encoded)
-            columns_to_drop.append(column)
+                # Check if there are any non-null values to encode
+                if len(unique_vals) == 0:
+                    print(f'Feature "{column}" has only null values. Skipping encoding for this feature.')
+                    continue
 
-            # Note successful encoding action
-            if verbose:
-                print(f'\nSuccessfully encoded "{column}".')
+                # Check for single-value features
+                if len(unique_vals) <= 1:
+                    print(f'Feature "{column}" has too few unique values for dummy encoding. Skipping feature.')
+                    continue
+
+                # Let user select reference category
+                if verbose:
+                    print('\nSelect reference category (the category that will be dropped):')
+                    for idx, val in enumerate(unique_vals, 1):
+                        print(f'{idx}. {val}')
+
+                    while True:
+                        try:
+                            choice = input(
+                                f'Enter category number (1-{len(unique_vals)}) or press Enter for default: ')
+                            if not choice:  # Use first category as default
+                                reference_cat = unique_vals[0]
+                                break
+
+                            # Convert user input to idx value
+                            idx = int(choice) - 1
+                            if 0 <= idx < len(unique_vals):
+                                reference_cat = unique_vals[idx]
+                                break
+                            else:
+                                print(f'Please enter a number between 1 and {len(unique_vals)}.')
+
+                        # Catch bad user input
+                        except ValueError:
+                            print('Invalid input. Please enter a number.')
+                else:
+                    # Use first category as default reference
+                    reference_cat = unique_vals[0]
+
+                # Set parameters based on missing value strategy
+                dummy_na = missing_strat == 'category'
+
+                # For the reference category, I need to ensure proper categorical order
+                if reference_cat is not None:
+                    # Create ordered categorical type with the reference first
+                    cat_order = [reference_cat] + [cat for cat in unique_vals if cat != reference_cat]
+                    feature_data = pd.Categorical(feature_data, categories=cat_order)
+
+                # Create dummy variables
+                encoded = pd.get_dummies(
+                    feature_data,
+                    prefix=prefix,
+                    prefix_sep='_',
+                    dummy_na=dummy_na,
+                    drop_first=True
+                )
+
+                # Clean column names with helper function
+                encoded.columns = [clean_col_name(col) for col in encoded.columns]
+
+                # Reindex to match original dataframe if I had to use a temporary subset
+                if missing_strat == 'drop':
+                    # Use reindex to create a DataFrame with same index as original, filling missing values with 0
+                    encoded = encoded.reindex(df.index, fill_value=0)
+
+                # Apply encoding directly to dataframe
+                df = pd.concat([df, encoded], axis=1)
+                columns_to_drop.append(column)
+                encoded_features.append(f'{column} (Dummy, reference: "{reference_cat}")')
+                encoding_performed = True
+
+                # Note successful encoding action
+                if verbose:
+                    print(f'\nSuccessfully dummy encoded "{column}" with prefix "{prefix}".')
+                    print(f'Using "{reference_cat}" as reference category.')
+                    print(f'Created {len(encoded.columns)} new columns.')
 
         # Catch all other errors
         except Exception as exc:
             print(f'Error encoding feature "{column}": {str(exc)}')
             continue
 
-    # Apply all encodings at once if any were successful
-    if encoded_dfs:
+    # Drop original columns if any encoding was performed and preserve_features is False
+    if encoding_performed and not preserve_features:
         df = df.drop(columns=columns_to_drop)  # Remove original columns
-        df = pd.concat([df] + encoded_dfs, axis=1)  # Add encoded columns
 
-        # Print summary of encoding if in verbose mode
-        if verbose:
-            print('\nENCODING SUMMARY:')
-            for feature in encoded_features:
-                print(f'- {feature}')
+    # Print summary of encoding if in verbose mode
+    if encoding_performed and verbose:
+        print('\nENCODING SUMMARY:')
+        for feature in encoded_features:
+            print(f'- {feature}')
+
+        if preserve_features:
+            print('\nNOTE: Original features were preserved alongside encoded columns.')
 
     if verbose:
         print('-' * 50)  # Visual separator
