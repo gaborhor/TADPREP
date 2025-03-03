@@ -381,3 +381,43 @@ Need to test for:
 #
 # # tp.feature_stats(df_feature_stats, verbose=True)  # Testing full output
 # tp.feature_stats(df_feature_stats, verbose=False)  # Testing minimal output
+
+'''
+Testing augmented scale method
+Need to test for:
+- Operation with and without features_to_scale list
+- Preservation of original features
+- Detection of false-numeric features (e.g. 0/1 'Yes'/'No' format)
+- Detection of null values, infinite values, high skewness
+- Before/after visualization
+- Custom minmax scaler ranges
+'''
+
+'''
+Testing refactored encode method
+Need to test for:
+1. Core Functionality:
+   - Basic one-hot and dummy encoding operations
+   - Operation with and without features_to_encode list
+   - Clean column name generation for encoded features
+2. New Features & Fixes:
+   - Preservation of original features (preserve_features=True)
+   - Handling of all-NaN columns (should be skipped)
+   - Proper reindexing when using missing_strat='drop' with non-continuous indices
+   - Memory efficiency with large datasets (performance test)
+3. Missing Value Handling:
+   - 'ignore' strategy (default) - leaves NaNs in encoded columns
+   - 'category' strategy - creates separate indicator column for NaNs
+   - 'drop' strategy - processes only non-null values
+4. Edge Cases:
+   - Detection of false-numeric features (e.g., 0/1 'Yes'/'No' format)
+   - Handling of high-cardinality features
+   - Handling columns with single value (should be skipped)
+   - Handling columns with rare categories
+   - Safely handling values that can't be converted to float
+5. User Interface:
+   - Custom reference category selection for dummy encoding
+   - Custom prefix selection for encoded columns
+   - Before/after distribution visualizations
+   - Proper warning display and suppression
+'''
