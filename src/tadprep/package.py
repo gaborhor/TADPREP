@@ -268,7 +268,8 @@ def encode(
     df: pd.DataFrame,
     features_to_encode: list[str] | None = None,
     verbose: bool = True,
-    skip_warnings: bool = False
+    skip_warnings: bool = False,
+    preserve_features: bool = False
 ) -> pd.DataFrame:
     """
     Interactively encodes categorical features in the DataFrame using standard encoding methods.
@@ -283,6 +284,9 @@ def encode(
         Controls whether detailed guidance and explanations are displayed.
     skip_warnings : bool, default=False
         Controls whether all best-practice-related warnings about encoding are skipped.
+    preserve_features : bool, default=False
+        Whether to keep original features in the DataFrame alongside encoded ones.
+        When True, original categorical columns are retained after encoding.
 
     Returns
     -------
@@ -298,6 +302,7 @@ def encode(
     >>> df_encoded_specified = tadprep.encode(df, features_to_encode=['A'])  # Specify features to encode
     >>> df_encoded_quiet = tadprep.encode(df, verbose=False)  # Minimize output
     >>> df_encoded_nowarn = tadprep.encode(df, skip_warnings=True)  # Skip best-practice warnings
+    >>> df_encoded_preserved = tadprep.encode(df, preserve_features=True)  # Keep original features
     """
     # Ensure input is a Pandas dataframe
     if not isinstance(df, pd.DataFrame):
@@ -319,11 +324,16 @@ def encode(
             missing = [col for col in features_to_encode if col not in df.columns]
             raise ValueError(f'Features not found in DataFrame: {missing}')
 
+    # Validate preserve_features parameter
+    if not isinstance(preserve_features, bool):
+        raise TypeError('preserve_features must be a boolean')
+
     return _encode_core(
         df,
         features_to_encode=features_to_encode,
         verbose=verbose,
-        skip_warnings=skip_warnings
+        skip_warnings=skip_warnings,
+        preserve_features=preserve_features
     )
 
 
