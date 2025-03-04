@@ -2031,6 +2031,10 @@ def _encode_core(
         numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
 
         for column in numeric_cols:
+            # Skip columns with all NaN values
+            if df[column].isna().all():
+                continue
+
             unique_vals = sorted(df[column].dropna().unique())  # Get sorted unique values excluding nulls
 
             # We suspect that any all-integer column with five or fewer unique values is actually categorical
@@ -2038,9 +2042,9 @@ def _encode_core(
 
                 # Ask user to assess and reply
                 if verbose:
-                    print(f'Feature "{column}" has only {len(unique_vals)} unique integer values: '
+                    print(f'ALERT: Feature "{column}" has only {len(unique_vals)} unique integer values: '
                           f'{[int(val) for val in unique_vals]}')
-                    print('ALERT: This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
+                    print('This could be a categorical feature encoded as numbers, e.g. a 1/0 representation of '
                           'Yes/No values.')
 
                 user_cat = input(f'Should "{column}" actually be treated as categorical? (Y/N): ')
@@ -2058,6 +2062,11 @@ def _encode_core(
 
     else:
         final_cat_cols = features_to_encode
+
+    # Print verbose reminder about not encoding target features
+    if features_to_encode is None and verbose:
+        print('REMINDER: Target features (prediction targets) should not be encoded.')
+        print('If any of your features are known targets, do not encode them.')
 
     # Validate that all specified features exist in the dataframe
     missing_cols = [column for column in final_cat_cols if column not in df.columns]
@@ -2078,7 +2087,7 @@ def _encode_core(
 
     # Offer explanation of encoding methods if in verbose mode
     if verbose:
-        user_encode_refresh = input('Would you like to see an explanation of encoding methods? (Y/N): ')
+        user_encode_refresh = input('\nWould you like to see an explanation of encoding methods? (Y/N): ')
         if user_encode_refresh.lower() == 'y':
             print('\nOverview of One-Hot vs. Dummy Encoding:'
                   '\nOne-Hot Encoding: '
@@ -2098,15 +2107,10 @@ def _encode_core(
                   '\n- Treat as category: Create a separate indicator column for missing values'
                   '\n- Drop instances: Remove instances with missing values before encoding is performed')
 
-    if verbose:
+    if verbose and not features_to_encode:
         print('\nFinal candidate features for encoding are:')
         print(final_cat_cols)
         print()
-
-    # Print verbose reminder about not encoding target features
-    if features_to_encode is None and verbose:
-        print('REMINDER: Target features (prediction targets) should not be encoded.')
-        print('If any of the identified encodable features are targets, do not encode them.')
 
     # Process each feature in our list
     for column in final_cat_cols:
@@ -2169,7 +2173,7 @@ def _encode_core(
         if not skip_warnings:
             # Check for high cardinality
             if unique_count > 20:
-                print(f'\nWARNING: "{column}" has high cardinality ({unique_count} unique values)')
+                print(f'WARNING: "{column}" has high cardinality ({unique_count} unique values)')
                 if verbose:
                     print('Consider using dimensionality reduction techniques instead of encoding this feature.')
                     print('Encoding high-cardinality features can lead to issues with the curse of dimensionality.')
@@ -2180,7 +2184,8 @@ def _encode_core(
             # Skip constant features (those with only one unique value)
             elif unique_count <= 1:
                 if verbose:
-                    print(f'\nWARNING: "{column}" has only one unique value and thus provides no meaningful information.')
+                    print(f'WARNING: Feature "{column}" has only one unique value and thus provides no '
+                          f'meaningful information.')
                 print(f'Skipping encoding for "{column}".')
                 continue
 
@@ -2191,7 +2196,7 @@ def _encode_core(
                 if verbose:
                     print(f'\nWARNING: Found {len(low_freq_cats)} categories with fewer than 10 instances:')
                     print(low_freq_cats)
-                print('Consider grouping rare categories before encoding.')
+                print('You should consider grouping rare categories before encoding.')
                 if input('Continue encoding this feature? (Y/N): ').lower() != 'y':
                     continue
 
@@ -2228,6 +2233,10 @@ def _encode_core(
                 prefix_value = input(f'Enter custom prefix (default: "{column}"): ').strip()
                 if not prefix_value:  # If user enters empty string, use default
                     prefix_value = column
+                prefix = prefix_value  # Set prefix to user-provided value
+
+        # Clean the prefix regardless of whether it was customized
+        prefix = clean_col_name(prefix)
 
         if verbose:
             # Fetch encoding method preference from user
