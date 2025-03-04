@@ -218,12 +218,15 @@ data preparation process:
 - Set `skip_warnings=True` to bypass data quality warnings
 - Set `verbose=False` for streamlined interaction
 
-`encode(df, features_to_encode=None, verbose=True, skip_warnings=False)`
+`encode(df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)`
 - Encodes categorical features using One-Hot or Dummy encoding
 - Can be passed a list of specific features to encode via the `features_to_encode` parameter
 - Auto-detects categorical features if `features_to_encode` is None
 - Returns DataFrame with encoded features
 - Set `skip_warnings=True` to bypass cardinality and null value warnings
+- Set `preserve_features=True` to create new columns with encoded values instead of replacing original features
+- Properly sanitizes column names with special characters or spaces
+- Allows customization of column prefixes in verbose mode
 
 `scale(df, features_to_scale=None, verbose=True, skip_warnings=False, preserve_features=False)`
 - Scales numerical features using Standard, Robust, or MinMax scaling
