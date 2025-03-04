@@ -272,7 +272,7 @@ def encode(
     preserve_features: bool = False
 ) -> pd.DataFrame:
     """
-    Interactively encodes categorical features in the DataFrame using standard encoding methods.
+    Interactively encodes categorical features in the DataFrame using specified encoding methods.
 
     Parameters
     ----------
