@@ -353,62 +353,62 @@ Works interactively with user to encode categorical features using standard enco
 - `features_to_encode` (list[str] | None, default=None) Optional list of features to encode.
 - `verbose` (Boolean, default = True) Controls level of detail/guidance in output.
 - `skip_warnings` (Boolean, default = False) Controls whether to skip data quality warnings.
+- `preserve_features` (Boolean, default = False) Controls whether original features are kept alongside encoded ones.
 
 ### Returns:
 - Modified dataframe with encoded categorical features as specified by user.
 
 ### Current State:
 - Core Functionality (Always Run):
-  - Validates input parameters and feature existence
-  - Identifies categorical features when none specified
-  - Detects numeric features that might be categorical (e.g., 1/0 values)
-  - Supports two encoding methods:
-    - One-Hot Encoding (creates column for each category)
-    - Dummy Encoding (creates n-1 columns)
-  - Removes original columns after encoding
-  - Concatenates all encoded features into the dataframe
-  - Tracks encoding operations for summary reporting
+ - Validates input parameters and feature existence
+ - Identifies categorical features when none specified
+ - Detects numeric features that might be categorical (e.g., 1/0 values)
+ - Supports two encoding methods:
+   - One-Hot Encoding (creates column for each category)
+   - Dummy Encoding (creates n-1 columns)
+ - Sanitizes column names to ensure valid Python identifiers
+ - Properly handles special characters in feature names
+ - Concatenates all encoded features into the dataframe
+ - Tracks encoding operations for summary reporting
+ - Allows preserving original features alongside encoded ones
 
 
 - If `verbose=False`:
-  - Shows minimal feature guidance
-  - Displays only essential user prompts
-  - Presents basic encoding choices
-  - Shows only critical warnings
-  - Provides basic confirmation of successful operations
+ - Shows minimal feature guidance
+ - Displays only essential user prompts
+ - Presents basic encoding choices
+ - Shows only critical warnings
+ - Provides basic confirmation of successful operations
 
 
 - If `verbose=True`, additionally provides:
-  - Comprehensive feature category information
-  - Detailed explanations of encoding methods
-  - Value distributions for categorical features
-  - Visual distribution plots for features
-  - Step-by-step guidance through encoding decisions
-  - Comprehensive encoding summary including:
-    - Feature names
-    - Encoding methods applied
+ - Comprehensive feature category information
+ - Detailed explanations of encoding methods
+ - Value distributions for categorical features
+ - Visual distribution plots for features
+ - Custom prefix options for encoded columns
+ - Step-by-step guidance through encoding decisions
+ - Comprehensive encoding summary including:
+   - Feature names
+   - Encoding methods applied
 
 
 - If `skip_warnings=False`, additionally checks and warns about:
-  - Features containing null values
-  - Features with high cardinality (>20 unique values)
-  - Features with low-frequency categories (<10 instances)
-  - Provides detailed guidance on handling problematic features
-  - Allows user to 'proceed with caution' after each warning
+ - Features containing null values
+ - Features with high cardinality (>20 unique values)
+ - Features with low-frequency categories (<10 instances)
+ - Provides detailed guidance on handling problematic features
+ - Allows user to 'proceed with caution' after each warning
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- Reference category selection for dummy encoding (allow user to choose reference category)
-- Enhanced missing value handling (treat as separate category, drop rows, or impute)
-- Prefix customization for encoded column names
-- Handling edge cases in categories (special characters, mixed types)
-- Add `preserve_features` parameter (like in scale method) to keep original columns alongside encoded ones
+- None as of current state
 
 ### Method History:
 - Alpha build by Don Smith
-- Beta build by Don Smith (Current State)
+- Beta build by Don Smith (Current state)
 
 
 ## Method: `scale`
