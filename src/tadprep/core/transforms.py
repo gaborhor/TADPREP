@@ -2493,6 +2493,14 @@ def _scale_core(
         if method == 'nan':
             result[inf_mask] = np.nan
 
+        elif method == 'mean':
+            # Find mean of non-infinite values
+            mean_val = result[~np.isinf(result)].mean()
+            # Replace negative infinities with mean value
+            result[result == -np.inf] = mean_val
+            # Replace positive infinities with mean value
+            result[result == np.inf] = mean_val
+
         elif method == 'min':
             # Find min of non-infinite values
             min_val = result[~np.isinf(result)].min()
@@ -2537,9 +2545,9 @@ def _scale_core(
             # We suspect any all-integer column with five or fewer unique values is categorical
             if len(unique_vals) <= 5 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
                 if verbose:
-                    print(f'\nFeature "{column}" has only {len(unique_vals)} unique integer values: '
+                    print(f'ALERT: Feature "{column}" has only {len(unique_vals)} unique integer values: '
                           f'{[int(val) for val in unique_vals]}')
-                    print('ALERT: This could be a categorical feature encoded as numbers, '
+                    print('This could be a categorical feature encoded as numbers, '
                           'e.g. a 1/0 representation of Yes/No values.')
 
                 user_cat = input(f'Should "{column}" be treated as categorical and excluded from scaling? (Y/N): ')
@@ -2547,7 +2555,6 @@ def _scale_core(
                     numeric_cols.remove(column)
                     if verbose:
                         print(f'Excluding "{column}" from scaling consideration.')
-                        print('-' * 50)
 
         final_numeric_cols = numeric_cols
 
@@ -2572,9 +2579,10 @@ def _scale_core(
 
     # Print reminder about not scaling target features
     if features_to_scale is None and verbose:
+        print('-' * 50)
         print('REMINDER: Target features (prediction targets) should not be scaled.')
         print('If any of the identified features are targets, do not scale them.')
-        print()
+        print('-' * 50)
 
     # Track scaled features for reporting
     scaled_features = []
@@ -2588,7 +2596,7 @@ def _scale_core(
                   '\n- Transforms features to have zero mean and unit variance.'
                   '\n- Best choice for comparing measurements in different units.'
                   '\n- Good for methods that assume normally distributed data.'
-                  '\n- Not ideal when data has many outliers.'
+                  '\n- Not ideal when the data have many outliers.'
                   '\n'
                   '\nRobust Scaler (Uses median and IQR):'
                   '\n- Scales using statistics that are resistant to outliers.'
@@ -2602,7 +2610,7 @@ def _scale_core(
                   '\n- Works well with sparse data.'
                   '\n- Preserves zero values in sparse data.')
 
-    if verbose:
+    if verbose and not features_to_scale:
         print('\nFinal candidate features for scaling are:')
         print(final_numeric_cols)
 
@@ -2637,38 +2645,49 @@ def _scale_core(
                 # Offer options for handling infinities
                 print('\nHow would you like to handle infinite values?')
                 print('1. Replace with NaN (missing values)')
-                print('2. Replace with minimum feature value')
-                print('3. Replace with maximum feature value')
-                print('4. Replace with a custom value')
+                print('2. Replace with mean feature value')
+                print('3. Replace with minimum feature value')
+                print('4. Replace with maximum feature value')
+                print('5. Replace with a custom value')
 
                 while True:
-                    inf_choice = input('Enter your choice (1-4): ')
+                    inf_choice = input('Enter your choice (1-5): ')
                     if inf_choice == '1':
                         df[column] = handle_inf(df[column], 'nan')
-                        print(f'Replaced {inf_count} infinite values with NaN.')
+                        print(f'Replaced {inf_count} infinite value(s) with NaN.')
                         break
+
                     elif inf_choice == '2':
-                        df[column] = handle_inf(df[column], 'min')
-                        print(f'Replaced {inf_count} infinite values with minimum feature value.')
+                        df[column] = handle_inf(df[column], 'mean')
+                        print(f'Replaced {inf_count} infinite value(s) with mean feature value.')
                         break
+
                     elif inf_choice == '3':
-                        df[column] = handle_inf(df[column], 'max')
-                        print(f'Replaced {inf_count} infinite values with maximum feature value.')
+                        df[column] = handle_inf(df[column], 'min')
+                        print(f'Replaced {inf_count} infinite value(s) with minimum feature value.')
                         break
+
                     elif inf_choice == '4':
+                        df[column] = handle_inf(df[column], 'max')
+                        print(f'Replaced {inf_count} infinite value(s) with maximum feature value.')
+                        break
+
+                    elif inf_choice == '5':
                         try:
                             custom_val = float(input('Enter the value to replace infinities with: '))
                             df[column] = handle_inf(df[column], 'value', custom_val)
-                            print(f'Replaced {inf_count} infinite values with {custom_val}.')
+                            print(f'Replaced {inf_count} infinite value(s) with {custom_val}.')
                             break
+
                         except ValueError:
                             print('Invalid input. Please enter a valid number.')
+
                     else:
-                        print('Invalid choice. Please enter 1, 2, 3, or 4.')
+                        print('Invalid choice. Please enter 1, 2, 3, 4, or 5.')
 
         # Skip constant features
         if df[column].nunique() <= 1:
-            print(f'Skipping "{column}" - this feature has no variance.')
+            print(f'ALERT: Skipping "{column}" - this feature has no variance.')
             continue
 
         # Check for extreme skewness if warnings aren't suppressed
@@ -2693,7 +2712,7 @@ def _scale_core(
                 try:
                     plt.figure(figsize=(12, 8))
                     sns.histplot(data=df, x=column)
-                    plt.title(f'Distribution of {column}')
+                    plt.title(f'Distribution of "{column}"')
                     plt.xlabel(column)
                     plt.ylabel('Count')
                     plt.tight_layout()
@@ -2709,7 +2728,7 @@ def _scale_core(
         print('\nSelect scaling method:')
         print('1. Standard Scaler (Z-score normalization)')
         print('2. Robust Scaler (median and IQR based)')
-        print('3. MinMax Scaler (custom range)')
+        print('3. MinMax Scaler (range can be specified)')
         print('4. Skip scaling for this feature')
 
         while True:
@@ -2753,7 +2772,8 @@ def _scale_core(
             else:  # MinMax Scaler with custom range option
                 feature_range = (0, 1)  # Default range
 
-                custom_range = input('\nDo you want to use a custom range instead of 0-1? (Y/N): ').lower() == 'y'
+                custom_range = input('\nDo you want to use a custom MinMax scaler range instead of the default '
+                                     '0-1? (Y/N): ').lower() == 'y'
 
                 if custom_range:
                     while True:
@@ -2762,7 +2782,7 @@ def _scale_core(
                             max_val = float(input('Enter maximum value for range: '))
 
                             if min_val >= max_val:
-                                print('Error: Minimum value must be less than maximum value.')
+                                print('ERROR: Minimum value must be less than maximum value.')
                                 continue
 
                             feature_range = (min_val, max_val)
@@ -2788,7 +2808,8 @@ def _scale_core(
             if verbose:
                 print(f'\nSuccessfully scaled "{column}" using {method_name} scaler.')
 
-                if input('\nWould you like to see a comparison of before and after scaling? (Y/N): ').lower() == 'y':
+                if input('\nWould you like to see a comparison plot of the feature before and after scaling? '
+                         '(Y/N): ').lower() == 'y':
                     # Get the scaled values from the dataframe
                     scaled_series = df[target_column]
                     # Display comparison
