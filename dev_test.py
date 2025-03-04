@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
+# We don't want to truncate our dataframes in our print checks
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
 
 # FIRST-PASS TESTING
 # Uploading sample datafile
@@ -408,32 +412,55 @@ Need to test for:
 # df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=True, preserve_features=False)
 # print(df_scaled)
 
-
 '''
 Testing refactored encode method
 Need to test for:
-1. Core Functionality:
-   - Basic one-hot and dummy encoding operations
-   - Operation with and without features_to_encode list
-   - Clean column name generation for encoded features
-2. New Features & Fixes:
-   - Preservation of original features (preserve_features=True)
-   - Handling of all-NaN columns (should be skipped)
-   - Proper reindexing when using missing_strat='drop' with non-continuous indices
-   - Memory efficiency with large datasets (performance test)
-3. Missing Value Handling:
+- Operation with and without features_to_encode list
+- Clean column name generation for encoded features
+- Preservation of original features (preserve_features=True)
+- Handling of all-NaN columns (should be skipped)
+- Proper reindexing when using missing_strat='drop' with non-continuous indices
+- Missing Value Handling:
    - 'ignore' strategy (default) - leaves NaNs in encoded columns
    - 'category' strategy - creates separate indicator column for NaNs
    - 'drop' strategy - processes only non-null values
-4. Edge Cases:
-   - Detection of false-numeric features (e.g., 0/1 'Yes'/'No' format)
-   - Handling of high-cardinality features
-   - Handling columns with single value (should be skipped)
-   - Handling columns with rare categories
-   - Safely handling values that can't be converted to float
-5. User Interface:
-   - Custom reference category selection for dummy encoding
-   - Custom prefix selection for encoded columns
-   - Before/after distribution visualizations
-   - Proper warning display and suppression
+- Detection of false-numeric features (e.g., 0/1 'Yes'/'No' format)
+- Handling of high-cardinality features
+- Handling columns with single value (should be skipped)
+- Handling columns with rare categories
+- Safely handling values that can't be converted to float
+- Custom reference category selection for dummy encoding
+- Custom prefix selection for encoded columns
+- Before/after distribution visualizations
 '''
+# # Create sample test dataset
+# encode_df = pd.DataFrame({
+#     # Binary categorical feature with missing values (20%)
+#     'bin_cat': ['Yes', 'No', 'Yes', np.nan, 'Yes', 'No', 'Yes', 'No', 'Yes', np.nan],
+#     # False-numeric feature (0/1 representation of Yes/No)
+#     'false_num': [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+#     # Feature with special characters in name - should create clean column names
+#     'special chars & symbols!': ['X', 'Y', 'Z', 'X', 'Y', 'Z', 'X', 'Y', 'Z', 'X'],
+#     # Feature with a single value (should be skipped)
+#     'single_val': ['Constant'] * 10,
+#     # Feature with values that can't be converted to float
+#     'non_num_vals': ['Value_A', 'Value_B', 'Value_C', 'Value_A', 'Value_B', 'Value_C', 'Value_A', 'Value_B',
+#                      'Value_C', 'Value_A'],
+#     # True numerical feature (should not be encoding candidate)
+#     'true_num': [45.2, 67.8, 32.1, 58.9, 71.3, 49.5, 62.7, 38.4, 53.6, 44.9],
+#     # Ordinal feature
+#     'ordinal': ['Low', 'Medium', 'High', 'Low', 'Medium', 'High', 'Low', 'Medium', 'High', 'Medium'],
+#     # Column with all NaN values (should be skipped)
+#     'all_nan': [np.nan] * 10,
+#     # Unicode characters to test handling of special encoding situations - the special characters should persist
+#     'unicode_chars': ['café', 'résumé', 'piñata', 'café', 'résumé', 'piñata', 'café', 'résumé', 'piñata', 'café']})
+
+# # Build list of features to encode
+# encode_feats = ['bin_cat', 'ordinal']
+
+# df_encoded = tp.encode(encode_df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=True)
+# df_encoded = tp.encode(encode_df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=True, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=True, preserve_features=False)
+# print(df_encoded)
