@@ -392,6 +392,22 @@ Need to test for:
 - Before/after visualization
 - Custom minmax scaler ranges
 '''
+# Build test dataframe
+# df_scale = pd.DataFrame({'Name': ['John', 'Joe', 'Jack', 'Jake', 'Jeff', 'Jim'],
+#                          'Weight': [165, 186, 199, 207, 153, 223],
+#                          'Citizen': [1, 0, 0, 1, 1, 1],
+#                          'Score': [78, 89, np.inf, np.nan, np.nan, 92],
+#                          'Happiness': [81, 84, 76, 91, 65, 79],
+#                          'Zero_var': [55, 55, 55, 55, 55, np.nan]})
+# Build list of features to scale
+# scale_feats = ['Weight', 'Happiness']
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=True, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=scale_feats, verbose=True, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=False, preserve_features=False)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=True, preserve_features=False)
+# print(df_scaled)
+
 
 '''
 Testing refactored encode method
