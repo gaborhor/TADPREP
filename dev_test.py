@@ -3,9 +3,16 @@ import pandas as pd
 from datetime import datetime, timedelta
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
 
+from tadprep.core.transforms import PlotHandler
+
+# import sys
+# import os
+# print(sys.path)
+# print(os.environ.get('PYTHONPATH'))
+
 # FIRST-PASS TESTING
 # Uploading sample datafile
-df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code_projects\personal\TADPREP\TADPREP\data\sample_data_sparse.csv")
+df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_sparse.csv")
 
 # Checking import
 # print(df_raw)
@@ -22,23 +29,23 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code_projects\personal\TADPREP\TAD
 # print(df_reshape)
 
 ## Testing PlotHandler class
-# plot_handler = PlotHandler()
-# age_tuple = plot_handler.det_plot_type(df_raw, 'age')
-# race_tuple = plot_handler.det_plot_type(df_raw, 'race')
-# print(age_tuple)
-# print(race_tuple)
+plot_handler = PlotHandler()
+age_tuple = plot_handler.det_plot_type(df_raw, 'age')
+race_tuple = plot_handler.det_plot_type(df_raw, 'race')
+print(age_tuple)
+print(race_tuple)
 
-# plot_handler.plot_data(df_raw, 'age')
-# plot_handler.plot_data(df_raw, 'race')
-# plot_handler.recall_plot(age_tuple[0])
-# plot_handler.recall_plot(race_tuple[0])
-# plot_handler.compare_plots('age')
-# plot_handler.compare_plots('race')
+plot_handler.plot_data(df_raw, 'age')
+plot_handler.plot_data(df_raw, 'race')
+# plot_handler.recall_plot(age_tuple[0], 'age')   ## Recall & Compare do not successfully show plots
+# plot_handler.recall_plot(race_tuple[0], 'race') ## Recall & Compare do not successfully show plots
+# plot_handler.compare_plots('age')               ## Recall & Compare do not successfully show plots
+# plot_handler.compare_plots('race')              ## Recall & Compare do not successfully show plots
 
-# plot_handler.plot_data(df_raw, 'age')
-# plot_handler.plot_data(df_raw, 'race')
-# plot_handler.recall_plot(age_tuple[0])
-# plot_handler.recall_plot(race_tuple[0])
+plot_handler.plot_data(df_raw, 'age')
+plot_handler.plot_data(df_raw, 'race')
+plot_handler.recall_plot(age_tuple[0], 'age')
+plot_handler.recall_plot(race_tuple[0], 'race')
 # plot_handler.compare_plots('age')
 # plot_handler.compare_plots('race')
 
