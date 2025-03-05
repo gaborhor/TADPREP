@@ -271,6 +271,13 @@ and providing appropriate descriptive statistics based on feature type.
 - Beta build by Don Smith (Current State)
 
 
+## Method: `plot_features`
+
+### Core Purpose:
+Displays feature-level plots of appropriate types/formats.
+
+Gabor is writing the Alpha for this. He has some neat OOP-related ideas on how to do it.
+
 ## Method: `impute`
 ### Core Purpose:
 Works interactively with user to impute missing values in features using common imputation methods.
