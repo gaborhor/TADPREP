@@ -326,11 +326,11 @@ df_imputed = pd.DataFrame(imputer.fit_transform(df_initial),
 - matplotlib *(For basic plotting)*
 - seaborn *(For generating feature distribution plots)*
 
-### Future Development
-- Enhancing the rollback capabilities in the interactive pipeline
-- Adding support for automated feature selection
-- Improving visualization options for data distributions
-- Implementing additional data quality checks and warnings
+### Future Development Ideas/Questions
+- Are we sure the "tagging" feature in `rename_and_tag` is actually useful?
+- Should we build some kind of assumption-testing method, like whether linear models are appropriate, etc.?
+- Are there core capabilities missing from the library? Are we failing to notice a process-need in tabular data prep?
+- What procedural shape and UX should the `prep_df` method have?
 
 ### Acknowledgments
 - Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.
