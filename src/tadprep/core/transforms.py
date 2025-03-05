@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib
+import pickle
 from collections import defaultdict
 
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
@@ -281,10 +282,12 @@ def _reshape_core(
 ### user's DataFrame will exist in a variety of states throughout.
 
 class PlotHandler:
-    def __init__(self):
+    def __init__(self, palette: str = 'colorblind'):
         self.plot_storage = defaultdict(list)
+        self.palette = palette
+        sns.set_palette(palette)
     
-    def plot_data(self, df: pd.Dataframe, col_name: str):
+    def plot_data(self, df: pd.DataFrame, col_name: str):
         """
         Generates and stores a Seaborn plot for a specified pandas DataFrame column with dtype and "plot type" determined by .det_plot_type().
 
@@ -316,7 +319,8 @@ class PlotHandler:
             print(f'Unsupported data type: {col_info[0]}')
             return
         
-        # Store plot for future use, Keyed by 
+        # Store plot for future use, using pickle.dumps() first to avoid Axes object re-drawing issues in other methods
+        # plot = pickle.dumps(plot)
         self.plot_storage[col_info[0]].append((col_name, plot))
         
     def det_plot_type(self, df: pd.DataFrame, col_name: str) -> tuple:
@@ -372,7 +376,7 @@ class PlotHandler:
         plot.set_title(f"Histogram for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return plot
+        return pickle.dumps(plot)
     
     def plot_box(self, data, col_name: str):
         """
@@ -392,7 +396,7 @@ class PlotHandler:
         plot.set_title(f"Box Plot for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return plot
+        return pickle.dumps(plot)
     
     def plot_line(self, data, col_name: str):
         """
@@ -412,7 +416,10 @@ class PlotHandler:
         plot.set_title(f"Line Plot for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return plot
+        fig = plot.get_figure()
+        pfig = pickle.dumps(fig)
+
+        return pfig
     
     def plot_scatter(self, data, col_name: str):
         """
@@ -447,14 +454,23 @@ class PlotHandler:
         """
         
         stored_plots = self.plot_storage.get(dtype, [])
-        
-        for name, plot in stored_plots:
-            if name == col_name:
-                plot.figure.canvas.draw()
-                plt.show()
-                return
-            else:
-                print(f"No plot found for {col_name} with dtype {dtype}")
+        ##debug
+        # print(stored_plots[-1])
+        # print(stored_plots[-1][0])
+        # print(stored_plots[-1][1])
+
+        # Currently, always fetches most recently created plot for a given dtype
+        if stored_plots[-1][0] == col_name:
+            fig = pickle.loads(stored_plots[-1][1])
+            # print(f"figure should go here: {ax}")
+            # recall.canvas.draw(stored_plots[1])
+            # fig.show()
+            # fig.gca()
+            fig = fig.get_figure()
+            plt.show()
+            return
+        else:
+            print(f"No plot found for '{col_name}' with dtype '{dtype}'")
                 
         ## Not sure at the moment if we need to be returning anything here.
         ## I expect this will likely be our "artist" method and will need fleshing out for other viz functionality.
