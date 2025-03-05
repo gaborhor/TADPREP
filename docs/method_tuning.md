@@ -114,7 +114,25 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
 - Accessibility in viz not implemented
 
 ### Observed Bugs/Problems:
-- Untested
+- `__init__.py` and `tadprep` import functionality has issues recognizing the `PlotHandler` class
+  - Have to specify the following to enable instantiation of PlotHandler() class objects for testing:
+    - 'from tadprep.core.tansforms import PlotHandler'
+    - Unsure if this is expected behavior or if is issue with file structure
+
+- MPL Axes objects not generally compatible with "reuse" or "redraw"
+  - Redrawing Axes object not supported
+  - Axes object storage essentially stores "labels" for the Axes, not exactly a plot itself that can be viewed
+
+- Need to address the creation/storage methods for these viz to enable recall and comparison
+  - Even 'deepcopy' approaches do not enable repeat viz
+  - Possible approaches:
+    - **Use 'pickle' and 'io' libs to create "store-able" versions of viz on each instantiation**
+      - This seems the most straightforward approach, but would need some handling of "interim" pickle files on session close
+      - Possibly outdated info, but the only way that had decent presence in my research
+    - Use 'np.array(fig.axes)'
+      - Might be able to "preserve" full Axes object info for later use
+      - Found recent info about this, but far less presence in total research
+
 
 ### Ideas for Development:
 - Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot types.
