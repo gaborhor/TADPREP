@@ -331,6 +331,8 @@ df_imputed = pd.DataFrame(imputer.fit_transform(df_initial),
 - Should we build some kind of assumption-testing method, like whether linear models are appropriate, etc.?
 - Are there core capabilities missing from the library? Are we failing to notice a process-need in tabular data prep?
 - What procedural shape and UX should the `prep_df` method have?
+- How are we going to re-conceptualize/reconfigure the CLI pipeline?
+- Testing structure - what's the best programmatic way to test the methods?
 
 ### Acknowledgments
 - Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.
