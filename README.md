@@ -162,6 +162,23 @@ data preparation process:
 - Provides memory usage information when verbose=True
 - Set `verbose=False` for condensed output focusing on basic statistics
 
+
+`diagnose(df, outliers=True, correlations=True, assumptions=True, model_type='linear', outlier_method='iqr', correlation_method='pearson', correlation_threshold=0.7, features=None, target=None, verbose=True)`
+- Performs comprehensive diagnostics on tabular data to identify issues and patterns
+- Includes three major diagnostic components:
+  - **Outlier detection**: Identifies unusual values in numerical features using statistical methods (IQR, Z-score, Modified Z-score)
+  - **Correlation analysis**: Finds strongly correlated feature pairs that might indicate redundancy
+  - **Assumption validation**: Tests whether data meets common modeling assumptions for linear, logistic, or tree-based models
+- Returns a dictionary with detailed diagnostic results and actionable recommendations
+- Each diagnostic component can be enabled/disabled independently
+- Supports focused analysis by allowing specification of features to analyze
+- Provides visualizations of findings when `verbose=True`
+- Set `outliers=False` to skip outlier detection
+- Set `correlations=False` to skip correlation analysis
+- Set `assumptions=False` to skip assumption testing, or specify `model_type` to test specific model assumptions
+- Customize detection sensitivity with `outlier_threshold` and `correlation_threshold` parameters
+
+
 `reshape(df, verbose=True)`
 - Handles missing value deletion and feature deletion
 - Returns reshaped DataFrame
