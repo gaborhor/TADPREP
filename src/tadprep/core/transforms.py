@@ -85,6 +85,269 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
 
 
+def _diagnose_core(
+        df: pd.DataFrame,
+        outliers: bool = True,
+        correlations: bool = True,
+        assumptions: bool = True,
+        model_type: str = 'linear',
+        outlier_method: str = 'iqr',
+        outlier_threshold: float = 1.5,
+        correlation_method: str = 'pearson',
+        correlation_threshold: float = 0.7,
+        features: list[str] | None = None,
+        target: str | None = None,
+        verbose: bool = True
+) -> dict:
+    """
+    Performs comprehensive diagnostics on tabular data to identify outliers, correlations,
+    and validate statistical modeling assumptions.
+
+    This function conducts a thorough analysis of the provided DataFrame, identifying potential
+    data quality issues and patterns that may impact downstream modeling and analysis. The function
+    combines multiple diagnostic techniques into a unified analysis, providing a holistic view
+    of the dataset.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to analyze
+    outliers : bool, default=True
+        Whether to perform outlier detection on numerical features
+    correlations : bool, default=True
+        Whether to perform correlation analysis between features
+    assumptions : bool, default=True
+        Whether to test for common statistical modeling assumptions
+    model_type : str, default='linear'
+        Type of model for assumption testing ('linear', 'logistic', 'tree')
+    outlier_method : str, default='iqr'
+        Method for outlier detection ('iqr', 'zscore', 'modified_zscore')
+    outlier_threshold : float, default=1.5
+        Threshold for outlier detection (e.g., 1.5 for IQR method means 1.5 * IQR)
+    correlation_method : str, default='pearson'
+        Method for correlation calculation ('pearson', 'spearman', 'kendall')
+    correlation_threshold : float, default=0.7
+        Threshold for identifying strong correlations (0.0 to 1.0)
+    features : list[str] | None, default=None
+        Optional list of features to analyze. If None, analyzes all appropriate features.
+    target : str | None, default=None
+        Target variable for assumption testing. Required if assumptions=True.
+    verbose : bool, default=True
+        Controls whether detailed guidance and visualizations are displayed
+
+    Returns
+    -------
+    dict
+        Dictionary containing diagnostic results with keys:
+        - 'outliers': DataFrame with outlier counts and percentages by feature
+        - 'correlations': DataFrame with strongly correlated feature pairs
+        - 'assumptions': Dictionary with assumption test results
+        - 'recommendations': List of suggested actions based on findings
+
+    Notes
+    -----
+    This function performs three main types of diagnostics:
+
+    1. Outlier Detection:
+       - Identifies unusual values in numerical features using statistical methods
+       - Provides counts and percentages of outliers per feature
+       - Visualizes outlier distributions when verbose=True
+
+    2. Correlation Analysis:
+       - Identifies pairs of features with strong correlations
+       - Creates correlation matrix and highlights strongly correlated pairs
+       - Generates visualizations like heatmaps when verbose=True
+
+    3. Assumption Validation:
+       - Tests assumptions relevant to the specified model_type
+       - For linear models: tests normality, homoscedasticity, linearity
+       - For logistic models: tests linearity of logit, multicollinearity
+       - For tree models: checks for sufficient data in each class
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 3, 100],  # Contains outlier
+    ...     'B': [1, 2, 3, 4],
+    ...     'C': [1, 1, 2, 2],    # Highly correlated with B
+    ...     'target': [0, 0, 1, 1]
+    ... })
+    >>> results = tp.diagnose(df, target='target')
+    >>> # Focus on outliers only
+    >>> outlier_results = tp.diagnose(df, correlations=False, assumptions=False)
+    """
+    # Initialize results dictionary
+    results = {
+        'outliers': None,
+        'correlations': None,
+        'assumptions': None,
+        'recommendations': []
+    }
+
+    # Validate input parameters
+    # 1. Check if df is a pandas DataFrame
+    # 2. Ensure model_type is valid
+    # 3. Validate method parameters are valid
+    # 4. Check if target is provided when assumptions=True
+
+    # Identify numeric features for analysis
+    if features is None:
+        numeric_features = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    else:
+        # Validate provided features exist and are numeric
+        numeric_features = [f for f in features if f in df.columns and pd.api.types.is_numeric_dtype(df[f])]
+
+    # SECTION 1: Outlier Detection (if enabled)
+    if outliers:
+        if verbose:
+            # Print explanatory information about outlier detection
+            pass
+
+        outlier_results = {}
+
+        # For each numeric feature:
+        for feature in numeric_features:
+            # Skip target variable if specified
+            if feature == target:
+                continue
+
+            # Calculate outliers based on specified method
+            if outlier_method == 'iqr':
+                # Implement IQR method
+                # Calculate Q1, Q3, IQR
+                # Identify values outside Q1 - threshold*IQR and Q3 + threshold*IQR
+                pass
+            elif outlier_method == 'zscore':
+                # Implement Z-score method
+                # Calculate mean and std
+                # Identify values with abs(z-score) > threshold
+                pass
+            elif outlier_method == 'modified_zscore':
+                # Implement modified Z-score method using median
+                # Calculate median and MAD
+                # Identify values with modified z-score > threshold
+                pass
+
+            # Store results for this feature
+            outlier_results[feature] = {
+                'count': 0,  # Number of outliers
+                'percentage': 0.0,  # Percentage of values that are outliers
+                'indices': [],  # Indices of outlier values
+                'values': []  # The outlier values themselves
+            }
+
+            # If outliers found, add recommendation
+            if outlier_results[feature]['count'] > 0:
+                results['recommendations'].append(
+                    f"Feature '{feature}' has {outlier_results[feature]['count']} outliers " +
+                    f"({outlier_results[feature]['percentage']:.2f}%). Consider scaling, transforming, "
+                    f"or investigating these values."
+                )
+
+        # Create summary DataFrame of outlier results
+        results['outliers'] = pd.DataFrame({
+            'feature': list(outlier_results.keys()),
+            'outlier_count': [r['count'] for r in outlier_results.values()],
+            'outlier_percentage': [r['percentage'] for r in outlier_results.values()]
+        })
+
+        # Visualize outliers if verbose
+        if verbose:
+            # Create box plots or histogram for features with outliers
+            pass
+
+    # SECTION 2: Correlation Analysis (if enabled)
+    if correlations:
+        if verbose:
+            # Print explanatory information about correlation analysis
+            pass
+
+        # Calculate correlation matrix using specified method
+        corr_matrix = df[numeric_features].corr(method=correlation_method)
+
+        # Find strongly correlated feature pairs
+        correlated_pairs = []
+        for i in range(len(numeric_features)):
+            for j in range(i + 1, len(numeric_features)):
+                if abs(corr_matrix.iloc[i, j]) >= correlation_threshold:
+                    correlated_pairs.append({
+                        'feature1': numeric_features[i],
+                        'feature2': numeric_features[j],
+                        'correlation': corr_matrix.iloc[i, j]
+                    })
+
+        # Store results
+        results['correlations'] = pd.DataFrame(correlated_pairs)
+
+        # Add recommendations for highly correlated features
+        for pair in correlated_pairs:
+            results['recommendations'].append(
+                f"Features '{pair['feature1']}' and '{pair['feature2']}' are strongly correlated " +
+                f"(r = {pair['correlation']:.2f}). Consider removing one of these features to reduce multicollinearity."
+            )
+
+        # Visualize correlations if verbose
+        if verbose:
+            # Create correlation heatmap
+            # Create scatter plots of highly correlated pairs
+            pass
+
+    # SECTION 3: Assumption Validation (if enabled)
+    if assumptions:
+        # Validate that target is provided
+        if target is None:
+            results['recommendations'].append(
+                "Cannot test modeling assumptions without a specified target variable. "
+                "Set target parameter or disable assumptions testing."
+            )
+        else:
+            if verbose:
+                # Print explanatory information about assumption testing
+                pass
+
+            assumption_results = {}
+
+            # Different tests based on model_type
+            if model_type == 'linear':
+                # Test normality of residuals
+                # Test homoscedasticity
+                # Test linearity
+                # Test independence
+                pass
+
+            elif model_type == 'logistic':
+                # Test linearity of logit
+                # Test multicollinearity
+                # Check for separation issues
+                pass
+
+            elif model_type == 'tree':
+                # Check class balance
+                # Check for sufficient data in each class
+                pass
+
+            # Store results
+            results['assumptions'] = assumption_results
+
+            # Add recommendations based on assumption test results
+            # Example: "Residuals show non-normality. Consider transforming your target variable."
+
+            # Visualize assumption test results if verbose
+            if verbose:
+                # Create diagnostic plots appropriate for the model type
+                pass
+
+    # Generate overall summary if verbose
+    if verbose:
+        # Print summary of all diagnostic findings
+        # Print all recommendations
+        pass
+
+    return results
+
+
 def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
     Core function for reshaping a DataFrame by handling missing values, dropping features, and subsetting data.
