@@ -2,6 +2,7 @@
 
 from .transforms import (
     _df_info_core,
+    _diagnose_core,
     _reshape_core,
     _subset_core,
     _rename_and_tag_core,
@@ -14,6 +15,7 @@ from .transforms import (
 
 __all__ = [
     '_df_info_core',
+    '_diagnose_core',
     '_reshape_core',
     '_subset_core',
     '_rename_and_tag_core',
