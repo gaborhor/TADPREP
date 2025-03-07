@@ -1,7 +1,7 @@
 import pandas as pd
 from .core.transforms import (
     _df_info_core,
-    diagnose_core,
+    _diagnose_core,
     _reshape_core,
     _subset_core,
     _rename_and_tag_core,
