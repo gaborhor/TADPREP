@@ -31,22 +31,22 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_spar
 ## Testing PlotHandler class
 plot_handler = PlotHandler()
 age_tuple = plot_handler.det_plot_type(df_raw, 'age')
-race_tuple = plot_handler.det_plot_type(df_raw, 'race')
+# race_tuple = plot_handler.det_plot_type(df_raw, 'race')
 print(age_tuple)
-print(race_tuple)
+# print(race_tuple)
 
 plot_handler.plot_data(df_raw, 'age')
-plot_handler.plot_data(df_raw, 'race')
+# plot_handler.plot_data(df_raw, 'race')
 # plot_handler.recall_plot(age_tuple[0], 'age')   ## Recall & Compare do not successfully show plots
 # plot_handler.recall_plot(race_tuple[0], 'race') ## Recall & Compare do not successfully show plots
 # plot_handler.compare_plots('age')               ## Recall & Compare do not successfully show plots
 # plot_handler.compare_plots('race')              ## Recall & Compare do not successfully show plots
 
 plot_handler.plot_data(df_raw, 'age')
-plot_handler.plot_data(df_raw, 'race')
-plot_handler.recall_plot(age_tuple[0], 'age')
-plot_handler.recall_plot(race_tuple[0], 'race')
-# plot_handler.compare_plots('age')
+# plot_handler.plot_data(df_raw, 'race')
+plot_handler.recall_plot('age', age_tuple[1])
+# plot_handler.recall_plot(race_tuple[0], 'race')
+plot_handler.compare_plots('age')
 # plot_handler.compare_plots('race')
 
 

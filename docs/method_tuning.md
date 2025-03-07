@@ -111,7 +111,13 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
 
 ### Current State:
 - pre-Alpha build OOP
-- Accessibility in viz not implemented
+- Colorblind color palette active
+- Data "snapshot" storage system implemented
+  - Relies on storing a pd.Series of the data used for a given viz when that viz is created
+  - Plot "recall/redraw" and basic comparative viz functionality implemented for histplots
+    - `plot_data`, `det_plot_type`, `plot_hist`, `recall_plot`, and `compare_plots` all adjusted
+
+- Adjustments to other methods remain. Following those, Alpha Build will be complete
 
 ### Observed Bugs/Problems:
 - `__init__.py` and `tadprep` import functionality has issues recognizing the `PlotHandler` class
@@ -119,19 +125,10 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
     - 'from tadprep.core.tansforms import PlotHandler'
     - Unsure if this is expected behavior or if is issue with file structure
 
-- MPL Axes objects not generally compatible with "reuse" or "redraw"
-  - Redrawing Axes object not supported
-  - Axes object storage essentially stores "labels" for the Axes, not exactly a plot itself that can be viewed
-
-- Need to address the creation/storage methods for these viz to enable recall and comparison
-  - Even 'deepcopy' approaches do not enable repeat viz
-  - Possible approaches:
-    - **Use 'pickle' and 'io' libs to create "store-able" versions of viz on each instantiation**
-      - This seems the most straightforward approach, but would need some handling of "interim" pickle files on session close
-      - Possibly outdated info, but the only way that had decent presence in my research
-    - Use 'np.array(fig.axes)'
-      - Might be able to "preserve" full Axes object info for later use
-      - Found recent info about this, but far less presence in total research
+- Using defaultdict() has the advantage of maintaining expected storage structure across all data and plot types
+  - When checking for existence of given stored data, a data structure will be created "on location" if not already present
+    - This results in some awkward indexing behavior when checking how much data there is to plot
+    - IMO, better to leave the defaultdict() and adjust values when checking for viz purposes
 
 
 ### Ideas for Development:

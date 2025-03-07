@@ -283,9 +283,23 @@ def _reshape_core(
 
 class PlotHandler:
     def __init__(self, palette: str = 'colorblind'):
-        self.plot_storage = defaultdict(list)
+        
         self.palette = palette
-        sns.set_palette(palette)
+        sns.set_palette(self.palette)
+
+        # Triple-layer defaultdict() allows for automatic data structuring
+        # when we expect all plots to be stored in the same way
+        self.plot_storage = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+        # Basic structure for data snapshot storage
+        # {
+        #     'col_name': {
+        #         'plot_type': {
+        #             'plot_num': [int],
+        #             'data': [pd.Series] (pd.Series will contain indexing info)
+        #         }
+        #     }
+        # }
     
     def plot_data(self, df: pd.DataFrame, col_name: str):
         """
@@ -319,11 +333,8 @@ class PlotHandler:
             print(f'Unsupported data type: {col_info[0]}')
             return
         
-        # Store plot for future use, using pickle.dumps() first to avoid Axes object re-drawing issues in other methods
-        # plot = pickle.dumps(plot)
-        self.plot_storage[col_info[0]].append((col_name, plot))
         
-    def det_plot_type(self, df: pd.DataFrame, col_name: str) -> tuple:
+    def det_plot_type(self, data: pd.DataFrame | pd.Series, col_name: str) -> tuple:
         """
         Determines an appropriate plot type for a set of data (pd.Series)
         based on the pandas dtype of the user's DataFrame column.
@@ -337,9 +348,17 @@ class PlotHandler:
         Returns:
             plot_type (tuple (pd.dtype, str)): A tuple containing dtype and its corresponding "plot type" string (hist/line/etc.).
         """
+
+        #####################################
+        # This may not be necessary, but is currently a placeholder method in the case
+        # we decide to add more user-controlled plot-type determination.
+        #####################################
         
-        # Fetch .dtype of provided DataFrame column
-        dtype = df[col_name].dtype
+        # Determine if input is pd.DataFrame or pd.Series
+        if isinstance(data, pd.DataFrame):
+            dtype = data[col_name].dtype
+        elif isinstance(data, pd.Series):
+            dtype = data.dtype
         # Empty str variable, will be re-valued by this method
         plot_type = ""
         
@@ -360,7 +379,7 @@ class PlotHandler:
     
     def plot_hist(self, data, col_name: str):
         """
-        Create a Seaborn histogram for numeric-type data.
+        Create a Seaborn histogram for numeric-type data and copy current data state to PlotHandler class instance self.plot_storage.
 
         Args:
             data (_type_): Data to plot.
@@ -372,11 +391,28 @@ class PlotHandler:
         Returns:
             plot (_type_): Seaborn histogram plot...
         """
+        # Check dtype of pd.Series for indexing in self.plot_storage
+        plot_type = self.det_plot_type(data, col_name)[1]
+
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
+        ##debug
+        # print(self.plot_storage)
+
         plot = sns.histplot(data=data, kde=True)
         plot.set_title(f"Histogram for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return pickle.dumps(plot)
+        return# pickle.dumps(plot)
     
     def plot_box(self, data, col_name: str):
         """
@@ -441,7 +477,7 @@ class PlotHandler:
         
         return plot
     
-    def recall_plot(self, dtype, col_name: str):
+    def recall_plot(self, col_name: str, plot_type: str):
         """
         Recall a previously-created stored plot for a given dtype and DataFrame column.
 
@@ -452,28 +488,21 @@ class PlotHandler:
         Raises:
             ValueError: _description_
         """
-        
-        stored_plots = self.plot_storage.get(dtype, [])
-        ##debug
-        # print(stored_plots[-1])
-        # print(stored_plots[-1][0])
-        # print(stored_plots[-1][1])
 
         # Currently, always fetches most recently created plot for a given dtype
-        if stored_plots[-1][0] == col_name:
-            fig = pickle.loads(stored_plots[-1][1])
-            # print(f"figure should go here: {ax}")
-            # recall.canvas.draw(stored_plots[1])
-            # fig.show()
-            # fig.gca()
-            fig = fig.get_figure()
-            plt.show()
-            return
+        if not self.plot_storage[col_name][plot_type]:
+            print(f"No plot found for '{col_name}' with dtype '{plot_type}'")
         else:
-            print(f"No plot found for '{col_name}' with dtype '{dtype}'")
-                
-        ## Not sure at the moment if we need to be returning anything here.
-        ## I expect this will likely be our "artist" method and will need fleshing out for other viz functionality.
+            # Fetch data for single most recent plot of specified dtype and col_name
+            stored_data = self.plot_storage[col_name][plot_type]['data'][-1]
+            stored_order = self.plot_storage[col_name][plot_type]['plot_num'][-1]
+
+            print(f"Redrawing plot #{stored_order} for '{col_name}'")
+            plot = sns.histplot(data=stored_data, kde=True)
+            plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
+            plt.show()
+        
+        return
 
     def compare_plots(self, col_name: str):
         """
@@ -485,125 +514,66 @@ class PlotHandler:
         Raises:
             ValueError: _description_
         """
-        
-        # Fetch all plots stored for given col_name
-        stored_plots = [plot for dtype_plots
-                        in self.plot_storage.values()
-                        for col, plot in dtype_plots
-                        if col == col_name]
-        
-        if not stored_plots:
-            print(f"No plots found for column '{col_name}'")
-            return
-        
-        # Display all stored plots for the column for comparison
-        for plot in stored_plots:
-            plot.figure.canvas.draw()
-            plt.show()
+        ##debug
+        # print(self.plot_storage)
+
+        max_plots_check = set()
+
+        if self.plot_storage[col_name]['hist']['plot_num']:
+            max_plots_check.add(max(self.plot_storage[col_name]['hist']['plot_num']))
+        if self.plot_storage[col_name]['box']['plot_num']:
+            max_plots_check.add(max(self.plot_storage[col_name]['box']['plot_num']))
+        if self.plot_storage[col_name]['line']['plot_num']:
+            max_plots_check.add(max(self.plot_storage[col_name]['line']['plot_num']))
+        if self.plot_storage[col_name]['scatter']['plot_num']:
+            max_plots_check.add(max(self.plot_storage[col_name]['scatter']['plot_num']))
+
+        subplots_nrows = max(max_plots_check)               # Max number of plots across all plot types for a given column
+        subplots_ncols = len(self.plot_storage[col_name])   # Number of plot types stored for the column
+
+        ##debug
+        print(self.plot_storage[col_name])
+        print(subplots_nrows, subplots_ncols)
+
+        ### SPACE FOR ALL PLOT TYPES HAS ALREADY BEEN RESERVED
+        ### 
+
+        # Create subplots basis for all stored plots for the column
+        fig, ax = plt.subplots(nrows=subplots_nrows,
+                               ncols=subplots_ncols,
+                               sharex=True
+                               )
 
 
+        for col in range(subplots_ncols):
+            for row in range(subplots_nrows):
+                if col == 0:
+                    sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], ax=ax[row, col])
+                # elif col == 1:
+                #     sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row, col])
+                # elif col == 2:
+                #     sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row, col])
+                # elif col == 3:
+                #     sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row, col])
 
-# #-------Old functional approach-----------------------------------
+        fig.suptitle(f"Comparison of all plots for '{col_name}'")
+        plt.show()
 
-# def _plot_features(
-#         df: pd.DataFrame,
-#         features_to_plot: list[str] | None
-# ):## -> :
-    
-#     ####################################################
-#     ### This build assumes that pandas' .dtype will be useful.
-#     ### This is often not the case (i.e. .dtype is 'int64', but values are only 0, 1)
-    
-#     # Placeholder for all dtypes present in df and categorization of features
-#     features_with_type = {}
-    
-#     for feature in features_to_plot:
-#         features_with_type.setdefault(df[feature].dtype, []).append(feature)
-    
-    
-#     ### Currently, I believe best implementation of this method will be for use
-#     ### AFTER _rename_and_tag_core has been applied to DataFrame as user sees fit.
-#     ### This would allow _plot_features to correctly categorize features every time,
-#     ### assuming the user tags features correctly.
-    
-#     ### Implementation would end up something like this:
-    
-#     features_with_type = {}
-    
-#     for feature in features_to_plot:
-#         # Separate out only the "tag" at the end of feature name
-#         type_split = feature.rsplit(sep="_", maxsplit=1)
+        # # Fetch all plots stored for given col_name
+        # stored_plots = [plot for dtype_plots
+        #                 in self.plot_storage.values()
+        #                 for col, plot in dtype_plots
+        #                 if col == col_name]
         
-#         # Use the user-defined tag as Key, and the feature name split from that as Val
-#         features_with_type.setdefault(type_split[1], []).append(type_split[0])
-    
-#     def check_indexing():
-#         ### Determine index type of DataFrame
-#         # All options:
-#         # (non-TimeSeries) -> RangeIndex, CategoricalIndex, MultiIndex, IntervalIndex
-#         # (TimeSeries) -> DatetimeIndex, TimedeltaIndex, PeriodIndex
+        # if not stored_plots:
+        #     print(f"No plots found for column '{col_name}'")
+        #     return
         
-#         ## Likely need to map various possible results of this func
-        
-#         ## RangeIndex
-#         # Simplest option
-        
-#         ## CategoricalIndex
-#         # Splitting data by indices before plotting necessary
-        
-#         ## MultiIndex
-#         # Generally complex as a data structure, difficult to make assumptions here for user
-#         # Consider recommending user re-organize their data first
-        
-#         ## IntervalIndex
-#         # A more math-theory oriented dtype.
-#         # Likely similar to Categorical, not much personal knowledge on its behavior
-        
-#         ## DatetimeIndex
-#         # Data indexed by time of occurence
-#         # Use '_any_dtype' to include TZ-aware DataFrames
-#         pd.api.types.is_datetime64_any_dtype(df.index)
-        
-#         ## TimedeltaIndex
-#         # Data indexed by time-delta from "start"
-#         # Generally not meaningfully different from DatetimeIndex
-        
-#         ## PeriodIndex
-#         # Data indexed at regular periods of time
-#         # Not conceptually dissimilar from a "clean" DatetimeIndex, but contains attributes of Period.
-    
-#     def plot_nominals():
-#         ##
-#     def plot_ordinals():
-#         ##
-#     def plot_numerics():
-#         ##
-#     def plot_timeseries(df: pd.DataFrame, set_to_plot: list):
-#         ##
-        
-#         g = sns.FacetGrid(df, row=set_to_plot, height=2, aspect=4, sharey=False)
-        
-#         for feature in set_to_plot:
-#             sns.lineplot(df, x=df.index, y=df[feature], palette='colorblind')
-        
-#         g.map(sns.lineplot, set_to_plot)
-    
-#     ####################################################
-    
-#     for key in features_with_type.keys():
-        
-#         if key == 'nominal':
-#             ## for all features of this dtype
-#         if key == 'ordinal':
-#             ##
-#         if key == 'numeric':
-#             ##
-#         if key == 'timeseries':
-#             ## ^Flag this for now, as Time-Series should be an index-level check
-        
-        
-#     return
-        
+        # # Display all stored plots for the column for comparison
+        # for plot in stored_plots:
+        #     plot.figure.canvas.draw()
+        #     plt.show()
+
 
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
