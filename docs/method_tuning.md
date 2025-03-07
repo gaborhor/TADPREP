@@ -39,6 +39,71 @@ Prints summary, top-level information about a dataframe to the console.
  - Beta build by Don Smith (Current State)
 
 
+## Method: `diagnose`
+### Core Purpose:
+Performs comprehensive diagnostics on tabular data to identify outliers, correlations, and validate statistical modeling assumptions.
+
+### Parameters:
+- `df` Input Pandas dataframe to analyze.
+- `outliers` (Boolean, default = True) whether to perform outlier detection.
+- `correlations` (Boolean, default = True) whether to perform correlation analysis.
+- `assumptions` (Boolean, default = True) whether to test for common statistical modeling assumptions.
+- `model_type` (String, default = 'linear') type of model for assumption testing ('linear', 'logistic', 'tree').
+- `outlier_method` (String, default = 'iqr') method for outlier detection ('iqr', 'zscore', 'modified_zscore').
+- `outlier_threshold` (Float, default = 1.5) threshold for outlier detection.
+- `correlation_method` (String, default = 'pearson') method for correlation calculation ('pearson', 'spearman', 'kendall').
+- `correlation_threshold` (Float, default = 0.7) threshold for identifying strong correlations.
+- `features` (List of strings or None, default = None) optional list of features to analyze. If None, analyzes all appropriate features.
+- `target` (String or None, default = None) target variable for assumption testing. Required if assumptions=True.
+- `verbose` (Boolean, default = True) controls whether detailed guidance and visualizations are displayed.
+
+### Returns:
+- Dictionary containing diagnostic results with keys:
+ - 'outliers': DataFrame with outlier counts and percentages by feature
+ - 'correlations': DataFrame with strongly correlated feature pairs
+ - 'assumptions': Dictionary with assumption test results
+ - 'recommendations': List of suggested actions based on findings
+
+### Current State:
+- For outlier detection:
+ - Identifies unusual values in numerical features using statistical methods
+ - Calculates the count and percentage of outliers per feature
+ - Visualizes outlier distributions when verbose=True
+ - Provides recommendations for handling outliers
+
+- For correlation analysis:
+ - Identifies pairs of features with correlations exceeding the threshold
+ - Creates correlation matrix and highlights strongly correlated pairs
+ - Generates visualizations (heatmaps, scatter plots) when verbose=True
+ - Suggests features to consider removing to reduce multicollinearity
+
+- For assumption validation:
+ - Tests assumptions relevant to the specified model_type
+ - For linear models: tests normality, homoscedasticity, linearity
+ - For logistic models: tests linearity of logit, multicollinearity
+ - For tree models: checks for sufficient data in each class
+ - Provides visual diagnostics when verbose=True
+
+- When verbose=True, also provides:
+ - Detailed explanations of each diagnostic technique
+ - Visual representations of findings
+ - Educational content about why each test matters
+ - Interactive visualization of detected patterns
+
+### Observed Bugs/Problems:
+- None as of current state (new method)
+
+### Ideas for Development:
+- Add support for more outlier detection methods (DBSCAN, Isolation Forest)
+- Include detection of non-linear relationships between features
+- Enhance assumption testing for additional model types (time series, clustering)
+- Add an interactive mode allowing users to specify threshold values during execution
+- Integrate with other TADPREP methods for direct action on identified issues
+
+### Method History
+- Initial design by Don Smith (Current State)
+
+
 ## Method: `reshape`
 ### Core Purpose:
 
