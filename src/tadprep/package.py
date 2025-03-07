@@ -1,6 +1,7 @@
 import pandas as pd
 from .core.transforms import (
     _df_info_core,
+    diagnose_core,
     _reshape_core,
     _subset_core,
     _rename_and_tag_core,
@@ -71,6 +72,149 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
         raise ValueError('Input DataFrame is empty')
 
     _df_info_core(df, verbose)
+
+
+def diagnose(
+        df: pd.DataFrame,
+        outliers: bool = True,
+        correlations: bool = True,
+        assumptions: bool = True,
+        model_type: str = 'linear',
+        outlier_method: str = 'iqr',
+        outlier_threshold: float = 1.5,
+        correlation_method: str = 'pearson',
+        correlation_threshold: float = 0.7,
+        features: list[str] | None = None,
+        target: str | None = None,
+        verbose: bool = True
+) -> dict:
+    """
+    Performs comprehensive diagnostics on tabular data to identify outliers, correlations,
+    and validate statistical modeling assumptions.
+
+    This function conducts a thorough analysis of the provided DataFrame, identifying potential
+    data quality issues and patterns that may impact downstream modeling and analysis. The function
+    combines multiple diagnostic techniques into a unified analysis, providing a holistic view
+    of the dataset.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to analyze
+    outliers : bool, default=True
+        Whether to perform outlier detection on numerical features
+    correlations : bool, default=True
+        Whether to perform correlation analysis between features
+    assumptions : bool, default=True
+        Whether to test for common statistical modeling assumptions
+    model_type : str, default='linear'
+        Type of model for assumption testing ('linear', 'logistic', 'tree')
+    outlier_method : str, default='iqr'
+        Method for outlier detection ('iqr', 'zscore', 'modified_zscore')
+    outlier_threshold : float, default=1.5
+        Threshold for outlier detection (e.g., 1.5 for IQR method means 1.5 * IQR)
+    correlation_method : str, default='pearson'
+        Method for correlation calculation ('pearson', 'spearman', 'kendall')
+    correlation_threshold : float, default=0.7
+        Threshold for identifying strong correlations (0.0 to 1.0)
+    features : list[str] | None, default=None
+        Optional list of features to analyze. If None, analyzes all appropriate features.
+    target : str | None, default=None
+        Target variable for assumption testing. Required if assumptions=True and model_type is specified.
+    verbose : bool, default=True
+        Controls whether detailed guidance and visualizations are displayed
+
+    Returns
+    -------
+    dict
+        Dictionary containing diagnostic results with keys:
+        - 'outliers': DataFrame with outlier counts and percentages by feature
+        - 'correlations': DataFrame with strongly correlated feature pairs
+        - 'assumptions': Dictionary with assumption test results
+        - 'recommendations': List of suggested actions based on findings
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 3, 100],  # Contains outlier
+    ...     'B': [1, 2, 3, 4],
+    ...     'C': [1, 1, 2, 2],    # Highly correlated with B
+    ...     'target': [0, 0, 1, 1]
+    ... })
+    >>> results = tp.diagnose(df, target='target')
+    >>> # Focus on outliers only
+    >>> outlier_results = tp.diagnose(df, correlations=False, assumptions=False)
+    >>> # Check correlations with Spearman method
+    >>> corr_results = tp.diagnose(df, outliers=False, assumptions=False,
+    ...                           correlation_method='spearman', correlation_threshold=0.6)
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate model_type parameter
+    valid_model_types = ['linear', 'logistic', 'tree']
+    if model_type not in valid_model_types:
+        raise ValueError(f"Invalid model_type. Must be one of: {', '.join(valid_model_types)}")
+
+    # Validate outlier_method parameter
+    valid_outlier_methods = ['iqr', 'zscore', 'modified_zscore']
+    if outlier_method not in valid_outlier_methods:
+        raise ValueError(f"Invalid outlier_method. Must be one of: {', '.join(valid_outlier_methods)}")
+
+    # Validate correlation_method parameter
+    valid_correlation_methods = ['pearson', 'spearman', 'kendall']
+    if correlation_method not in valid_correlation_methods:
+        raise ValueError(f"Invalid correlation_method. Must be one of: {', '.join(valid_correlation_methods)}")
+
+    # Validate correlation_threshold parameter
+    if not 0 <= correlation_threshold <= 1:
+        raise ValueError("correlation_threshold must be between 0 and 1")
+
+    # Validate outlier_threshold parameter
+    if outlier_threshold <= 0:
+        raise ValueError("outlier_threshold must be positive")
+
+    # Check if target is provided when assumptions=True
+    if assumptions and target is None:
+        raise ValueError("Target feature must be specified when testing modeling assumptions")
+
+    # Validate target exists in DataFrame if provided
+    if target is not None and target not in df.columns:
+        raise ValueError(f"Target feature '{target}' not found in DataFrame")
+
+    # Validate features if provided
+    if features is not None:
+        if not isinstance(features, list):
+            raise TypeError("features must be a list of strings")
+
+        if not all(isinstance(f, str) for f in features):
+            raise TypeError("All feature names must be strings")
+
+        missing_features = [f for f in features if f not in df.columns]
+        if missing_features:
+            raise ValueError(f"Features not found in DataFrame: {missing_features}")
+
+    return _diagnose_core(
+        df,
+        outliers=outliers,
+        correlations=correlations,
+        assumptions=assumptions,
+        model_type=model_type,
+        outlier_method=outlier_method,
+        outlier_threshold=outlier_threshold,
+        correlation_method=correlation_method,
+        correlation_threshold=correlation_threshold,
+        features=features,
+        target=target,
+        verbose=verbose
+    )
 
 
 def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
