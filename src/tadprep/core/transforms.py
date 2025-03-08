@@ -318,16 +318,16 @@ class PlotHandler:
         
         # self.plot_ methods apply plt.show() in all cases
         if col_info[1] == 'hist':
-            plot = self.plot_hist(df[col_name], col_name)
+            self.plot_hist(df[col_name], col_name)
             
         elif col_info[1] == 'box':
-            plot = self.plot_box(df[col_name], col_name)
+            self.plot_box(df[col_name], col_name)
             
         elif col_info[1] == 'line':
-            plot = self.plot_line(df[col_name], col_name)
+            self.plot_line(df[col_name], col_name)
             
         elif col_info[1] == 'scatter':
-            plot = self.plot_scatter(df[col_name], col_name)
+            self.plot_scatter(df[col_name], col_name)
             
         else:
             print(f'Unsupported data type: {col_info[0]}')
@@ -405,14 +405,11 @@ class PlotHandler:
 
         self.plot_storage[col_name][plot_type]['data'].append(data)
 
-        ##debug
-        # print(self.plot_storage)
-
         plot = sns.histplot(data=data, kde=True)
         plot.set_title(f"Histogram for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return# pickle.dumps(plot)
+        return
     
     def plot_box(self, data, col_name: str):
         """
@@ -428,11 +425,25 @@ class PlotHandler:
         Returns:
             plot (_type_): Seaborn boxplot...
         """
+        # Check dtype of pd.Series for indexing in self.plot_storage
+        plot_type = self.det_plot_type(data, col_name)[1]
+
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
         plot = sns.boxplot(data=data)
         plot.set_title(f"Box Plot for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return pickle.dumps(plot)
+        return
     
     def plot_line(self, data, col_name: str):
         """
@@ -448,14 +459,25 @@ class PlotHandler:
         Returns:
             plot (_type_): Seaborn lineplot...
         """
-        plot = sns.lineplot(x=data.index, y=data)
+        # Check dtype of pd.Series for indexing in self.plot_storage
+        plot_type = self.det_plot_type(data, col_name)[1]
+
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
+        plot = sns.lineplot(data=data)
         plot.set_title(f"Line Plot for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        fig = plot.get_figure()
-        pfig = pickle.dumps(fig)
-
-        return pfig
+        return
     
     def plot_scatter(self, data, col_name: str):
         """
@@ -471,11 +493,25 @@ class PlotHandler:
         Returns:
             plot (_type_): Seaborn scatterplot...
         """
-        plot = sns.scatterplot(x=data.index, y=data)
+        # Check dtype of pd.Series for indexing in self.plot_storage
+        plot_type = self.det_plot_type(data, col_name)[1]
+
+        # Create 'plot_num' list with first value 1 if not already present
+        if not self.plot_storage[col_name][plot_type]['plot_num']:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
+        # Otherwise, append the next number in the sequence
+        else:
+            self.plot_storage[col_name][plot_type]['plot_num'].append(
+                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
+            )
+
+        self.plot_storage[col_name][plot_type]['data'].append(data)
+
+        plot = sns.scatterplot(data=data)
         plot.set_title(f"Scatter Plot for '{col_name}'")
         plt.show()  # Assume viz is desired on creation for now
         
-        return plot
+        return
     
     def recall_plot(self, col_name: str, plot_type: str):
         """
@@ -497,9 +533,20 @@ class PlotHandler:
             stored_data = self.plot_storage[col_name][plot_type]['data'][-1]
             stored_order = self.plot_storage[col_name][plot_type]['plot_num'][-1]
 
-            print(f"Redrawing plot #{stored_order} for '{col_name}'")
-            plot = sns.histplot(data=stored_data, kde=True)
-            plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
+            print(f"Redrawing {plot_type} plot #{stored_order} for '{col_name}'")
+
+            if plot_type == 'hist':
+                plot = sns.histplot(data=stored_data, kde=True)
+                plot.set_title(f"Histogram #{stored_order} for '{col_name}'")
+            elif plot_type == 'box':
+                plot = sns.boxplot(data=stored_data)
+                plot.set_title(f"Box Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'line':
+                plot = sns.lineplot(data=stored_data)
+                plot.set_title(f"Line Plot #{stored_order} for '{col_name}'")
+            elif plot_type == 'scatter':
+                plot = sns.scatterplot(data=stored_data)
+                plot.set_title(f"Scatter Plot #{stored_order} for '{col_name}'")
             plt.show()
         
         return
@@ -514,8 +561,6 @@ class PlotHandler:
         Raises:
             ValueError: _description_
         """
-        ##debug
-        # print(self.plot_storage)
 
         max_plots_check = set()
 
@@ -528,15 +573,20 @@ class PlotHandler:
         if self.plot_storage[col_name]['scatter']['plot_num']:
             max_plots_check.add(max(self.plot_storage[col_name]['scatter']['plot_num']))
 
-        subplots_nrows = max(max_plots_check)               # Max number of plots across all plot types for a given column
-        subplots_ncols = len(self.plot_storage[col_name])   # Number of plot types stored for the column
+        # subplots() dimensions check:
+        subplots_nrows = max(max_plots_check)   # Max number of plots across all plot types for a given column
+        
+        subplots_ncols = 0                      # Number of plot types with actual data stored
+        for plot_type in ['hist', 'box', 'line', 'scatter']:
+            if self.plot_storage[col_name][plot_type]['data']:
+                subplots_ncols += 1
 
         ##debug
-        print(self.plot_storage[col_name])
-        print(subplots_nrows, subplots_ncols)
+        print(f"\ncol_name: {col_name}")
+        print(f"nrows: {subplots_nrows}, ncols: {subplots_ncols}")
 
         ### SPACE FOR ALL PLOT TYPES HAS ALREADY BEEN RESERVED
-        ### 
+        ### This means that conditional check for data needs to check specifically if data is present
 
         # Create subplots basis for all stored plots for the column
         fig, ax = plt.subplots(nrows=subplots_nrows,
@@ -544,37 +594,81 @@ class PlotHandler:
                                sharex=True
                                )
 
+        if subplots_nrows == 0:
+            print(f"No plots have been created for '{col_name}'")
+            return
+        if subplots_ncols == 0:
+            print(f"No plots have been created for '{col_name}'")
+            return
+        
+        ## There is some argument to be made that comparing between an "old" and "new" plot type
+        ## for the same Feature could be useful. However, this is not currently implemented.
+        ## As such, if subplots_nrows == 1, we will exit the method early to catch errors from this case.
+        if subplots_nrows == 1:
+            print(f"A maximum of one plot per type has been created for '{col_name}'")
+            print(f"Comparison between plot types not currently supported.")
+            return
 
-        for col in range(subplots_ncols):
+        ##debug
+        print([i for i in range(subplots_nrows)])
+        print([i for i in range(subplots_ncols)])
+        
+        ## Check for dimentionality of suplots()
+        # If 1D, then we just iterate over rows
+        if subplots_ncols == 1:
+            # for col in range(subplots_ncols):
             for row in range(subplots_nrows):
-                if col == 0:
-                    sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], ax=ax[row, col])
-                # elif col == 1:
-                #     sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row, col])
-                # elif col == 2:
-                #     sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row, col])
-                # elif col == 3:
-                #     sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row, col])
+                if self.plot_storage[col_name]['hist']['data']:
+                    print(f"Writing Histplot to row {row}")
+                    sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], kde=True, ax=ax[row])
+                    if row == 0:
+                        ax[row].set_title("Histograms")
+
+                elif self.plot_storage[col_name]['box']['data']:
+                    print(f"Writing Boxplot to row {row}")
+                    sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row])
+                    if row == 0:
+                        ax[row].set_title("Boxplots")
+                
+                elif self.plot_storage[col_name]['line']['data']:
+                    print(f"Writing Lineplot to row {row}")
+                    sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row])
+                    if row == 0:
+                        ax[row].set_title("Lineplots")
+                
+                elif elf.plot_storage[col_name]['scatter']['data']:
+                    print(f"Writing Scatterplot to row {row}")
+                    sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row])
+                    if row == 0:
+                        ax[row].set_title("Scatterplots")
+
+        # If 2D, we iterate over columns, then rows 
+        else:
+            for col in range(subplots_ncols):
+                for row in range(subplots_nrows):
+                    if self.plot_storage[col_name]['hist']['data']:
+                        print(f"row: {row, col}")
+                        sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], ax=ax[row, col])
+                    elif self.plot_storage[col_name]['box']['data']:
+                        print(f"row: {row, col}")
+                        sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row, col])
+                    elif self.plot_storage[col_name]['line']['data']:
+                        print(f"row: {row, col}")
+                        sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row, col])
+                    elif elf.plot_storage[col_name]['scatter']['data']:
+                        print(f"row: {row, col}")
+                        sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row, col])
+            # Additionally, we return to the first row of each col to label the sets by plot type
+            for i, plot_type in enumerate(['hist', 'box', 'line', 'scatter']):
+                if self.plot_storage[col_name][plot_type]['data']:
+                    ax[0, i].set_title(f"{plot_type}")
+
 
         fig.suptitle(f"Comparison of all plots for '{col_name}'")
+        plt.tight_layout()
         plt.show()
 
-        # # Fetch all plots stored for given col_name
-        # stored_plots = [plot for dtype_plots
-        #                 in self.plot_storage.values()
-        #                 for col, plot in dtype_plots
-        #                 if col == col_name]
-        
-        # if not stored_plots:
-        #     print(f"No plots found for column '{col_name}'")
-        #     return
-        
-        # # Display all stored plots for the column for comparison
-        # for plot in stored_plots:
-        #     plot.figure.canvas.draw()
-        #     plt.show()
-
-
+        return
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """

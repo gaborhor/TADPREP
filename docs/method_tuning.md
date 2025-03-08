@@ -98,26 +98,25 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
 - `.det_plot_type(self, df, col_name):`
   - Determines an appropriate plot type for a set of data (pd.Series) based on the pandas dtype of the user's DataFrame column.
 - `.plot_hist(self, data, col_name):`
-  - Create a Seaborn histogram for numeric-type data.
+  - Draws a Seaborn histogram for numeric-type data and stores a snapshot of the data used to draw it.
 - `.plot_box(self, data, col_name):`
-  - Create a Seaborn boxplot for categorical-type data.
+  - Draws a Seaborn histogram for categorical-type data and stores a snapshot of the data used to draw it.
 - `.plot_line(self, data, col_name):`
-  - Create a Seaborn lineplot for timeseries-type data.
+  - Draws a Seaborn histogram for timeseries-type data and stores a snapshot of the data used to draw it.
 - `.plot_scatter(self, data, col_name):`
-  - Create a Seaborn scatterplot for mixed-type data.
+  - Draws a Seaborn histogram for mixed-type data and stores a snapshot of the data used to draw it.
 
 ### Returns:
 - None - is Class
 
 ### Current State:
-- pre-Alpha build OOP
+- Alpha build
 - Colorblind color palette active
 - Data "snapshot" storage system implemented
   - Relies on storing a pd.Series of the data used for a given viz when that viz is created
   - Plot "recall/redraw" and basic comparative viz functionality implemented for histplots
     - `plot_data`, `det_plot_type`, `plot_hist`, `recall_plot`, and `compare_plots` all adjusted
-
-- Adjustments to other methods remain. Following those, Alpha Build will be complete
+    - plt.subplots() implementation with control-flow for proper axes object positioning and labeling
 
 ### Observed Bugs/Problems:
 - `__init__.py` and `tadprep` import functionality has issues recognizing the `PlotHandler` class
@@ -125,23 +124,19 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
     - 'from tadprep.core.tansforms import PlotHandler'
     - Unsure if this is expected behavior or if is issue with file structure
 
-- Using defaultdict() has the advantage of maintaining expected storage structure across all data and plot types
-  - When checking for existence of given stored data, a data structure will be created "on location" if not already present
-    - This results in some awkward indexing behavior when checking how much data there is to plot
-    - IMO, better to leave the defaultdict() and adjust values when checking for viz purposes
+- `compare_plots` method shows a blank plt.subplots() figure in an unidentified case where 'subplots_nrows' == 1
 
 
 ### Ideas for Development:
-- Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot types.
+- Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot type determination.
 
 - As color-blind friendly as we are capable of!
 - Static viz only
-- Should this have ability for comparative viz? (i.e. Before & After transforms, stacked bars, etc.)
 - Should this be for in-package viz only or produce files for export?
   - File specifications could get tricky
 
 ### Method History:
-- pre-Alpha build by Gabor Horvath
+- Alpha build by Gabor Horvath
 
 
 ## Method: `subset`
