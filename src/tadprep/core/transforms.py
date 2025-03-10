@@ -85,266 +85,232 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
 
 
-def _diagnose_core(
-        df: pd.DataFrame,
-        outliers: bool = True,
-        correlations: bool = True,
-        assumptions: bool = True,
-        model_type: str = 'linear',
-        outlier_method: str = 'iqr',
-        outlier_threshold: float = 1.5,
-        correlation_method: str = 'pearson',
-        correlation_threshold: float = 0.7,
-        features: list[str] | None = None,
-        target: str | None = None,
-        verbose: bool = True
-) -> dict:
+def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float = None,
+                        verbose: bool = True) -> dict:
     """
-    Performs comprehensive diagnostics on tabular data to identify outliers, correlations,
-    and validate statistical modeling assumptions.
+    Core function to detect outliers in dataframe features using a specified detection method.
 
-    This function conducts a thorough analysis of the provided DataFrame, identifying potential
-    data quality issues and patterns that may impact downstream modeling and analysis. The function
-    combines multiple diagnostic techniques into a unified analysis, providing a holistic view
-    of the dataset.
+    This function analyzes numerical features in the dataframe and identifies outliers using the specified detection
+    method. It supports three common approaches for outlier detection: IQR-based detection, Z-score method, and
+    Modified Z-score method.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The DataFrame to analyze
-    outliers : bool, default=True
-        Whether to perform outlier detection on numerical features
-    correlations : bool, default=True
-        Whether to perform correlation analysis between features
-    assumptions : bool, default=True
-        Whether to test for common statistical modeling assumptions
-    model_type : str, default='linear'
-        Type of model for assumption testing ('linear', 'logistic', 'tree')
-    outlier_method : str, default='iqr'
-        Method for outlier detection ('iqr', 'zscore', 'modified_zscore')
-    outlier_threshold : float, default=1.5
-        Threshold for outlier detection (e.g., 1.5 for IQR method means 1.5 * IQR)
-    correlation_method : str, default='pearson'
-        Method for correlation calculation ('pearson', 'spearman', 'kendall')
-    correlation_threshold : float, default=0.7
-        Threshold for identifying strong correlations (0.0 to 1.0)
-    features : list[str] | None, default=None
-        Optional list of features to analyze. If None, analyzes all appropriate features.
-    target : str | None, default=None
-        Target variable for assumption testing. Required if assumptions=True.
-    verbose : bool, default=True
-        Controls whether detailed guidance and visualizations are displayed
-
-    Returns
-    -------
-    dict
-        Dictionary containing diagnostic results with keys:
-        - 'outliers': DataFrame with outlier counts and percentages by feature
-        - 'correlations': DataFrame with strongly correlated feature pairs
-        - 'assumptions': Dictionary with assumption test results
-        - 'recommendations': List of suggested actions based on findings
-
-    Notes
-    -----
-    This function performs three main types of diagnostics:
-
-    1. Outlier Detection:
-       - Identifies unusual values in numerical features using statistical methods
-       - Provides counts and percentages of outliers per feature
-       - Visualizes outlier distributions when verbose=True
-
-    2. Correlation Analysis:
-       - Identifies pairs of features with strong correlations
-       - Creates correlation matrix and highlights strongly correlated pairs
-       - Generates visualizations like heatmaps when verbose=True
-
-    3. Assumption Validation:
-       - Tests assumptions relevant to the specified model_type
-       - For linear models: tests normality, homoscedasticity, linearity
-       - For logistic models: tests linearity of logit, multicollinearity
-       - For tree models: checks for sufficient data in each class
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> import tadprep as tp
-    >>> df = pd.DataFrame({
-    ...     'A': [1, 2, 3, 100],  # Contains outlier
-    ...     'B': [1, 2, 3, 4],
-    ...     'C': [1, 1, 2, 2],    # Highly correlated with B
-    ...     'target': [0, 0, 1, 1]
-    ... })
-    >>> results = tp.diagnose(df, target='target')
-    >>> # Focus on outliers only
-    >>> outlier_results = tp.diagnose(df, correlations=False, assumptions=False)
+    Args:
+        df (pd.DataFrame): The DataFrame to analyze for outliers
+        method (str, optional): Outlier detection method to use.
+            Options:
+              - 'iqr': Interquartile Range (default)
+              - 'zscore': Standard Z-score
+              - 'modified_zscore': Modified Z-score
+        threshold (float, optional): Threshold value for outlier detection. If None, uses method-specific defaults:
+            - For IQR: 1.5 × IQR
+            - For Z-score: 3.0 standard deviations
+            - For Modified Z-score: 3.5
+        verbose (bool, default=True): Whether to print detailed information about outliers
     """
+    # Validate selected method
+    valid_methods = ['iqr', 'zscore', 'modified_zscore']
+    if method not in valid_methods:
+        raise ValueError(f'Invalid outlier detection method: "{method}". '
+                         f'Valid options are: {", ".join(valid_methods)}')
+
+    # Set appropriate default thresholds based on method
+    if threshold is None:
+        if method == 'iqr':
+            threshold = 1.5
+        elif method == 'zscore':
+            threshold = 3.0
+        elif method == 'modified_zscore':
+            threshold = 3.5
+
+    # Identify all numerical features
+    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
+
+    # Handle any case where no numerical features are present
+    if not num_cols:
+        if verbose:
+            print('No numerical features found in dataframe. Outlier detection requires numerical data.')
+        return {
+            'summary': {
+                'total_outliers': 0,
+                'affected_rows_count': 0,
+                'affected_rows_percent': 0.0,
+                'features_with_outliers': []
+            },
+            'feature_results': {}
+        }
+
+    if verbose:
+        print('-' * 50)
+        print(f'Analyzing {len(num_cols)} numerical features for outliers...')
+        print(f'Detection method: {method}')
+
+        # Print threshold information based on the selected method
+        if method == 'iqr':
+            print(f'IQR threshold multiplier: {threshold}')
+
+        elif method == 'zscore':
+            print(f'Z-score threshold: {threshold} standard deviations')
+
+        elif method == 'modified_zscore':
+            print(f'Modified Z-score threshold: {threshold}')
+        print('-' * 50)
+
     # Initialize results dictionary
     results = {
-        'outliers': None,
-        'correlations': None,
-        'assumptions': None,
-        'recommendations': []
+        'summary': {
+            'total_outliers': 0,
+            'affected_rows_count': 0,
+            'affected_rows_percent': 0.0,
+            'features_with_outliers': []
+        },
+        'feature_results': {}
     }
 
-    # Validate input parameters
-    # 1. Check if df is a pandas DataFrame
-    # 2. Ensure model_type is valid
-    # 3. Validate method parameters are valid
-    # 4. Check if target is provided when assumptions=True
+    # Initialize array to track all instances with outliers
+    outlier_rows = np.zeros(len(df), dtype=bool)
 
-    # Identify numeric features for analysis
-    if features is None:
-        numeric_features = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
-    else:
-        # Validate provided features exist and are numeric
-        numeric_features = [f for f in features if f in df.columns and pd.api.types.is_numeric_dtype(df[f])]
+    # Process each numerical feature
+    for column in num_cols:
+        # Skip columns with all NaN values
+        if df[column].isna().all():
+            if verbose:
+                print(f'Skipping "{column}": All values are NaN/Missing.')
+            continue
 
-    # SECTION 1: Outlier Detection (if enabled)
-    if outliers:
+        # Skip columns with only one unique value
+        if df[column].nunique() <= 1:
+            if verbose:
+                print(f'Skipping "{column}": No variance present in feature.')
+            continue
+
         if verbose:
-            # Print explanatory information about outlier detection
-            pass
+            print(f'\nAnalyzing feature: "{column}"')
 
-        outlier_results = {}
+        # Get data without NaN values
+        data = df[column].dropna()
 
-        # For each numeric feature:
-        for feature in numeric_features:
-            # Skip target variable if specified
-            if feature == target:
+        if method == 'iqr':
+            # IQR-based outlier detection
+            q1 = data.quantile(0.25)
+            q3 = data.quantile(0.75)
+            iqr = q3 - q1
+
+            # Define bounds using threshold (default 1.5)
+            lower_bound = q1 - threshold * iqr
+            upper_bound = q3 + threshold * iqr
+
+            method_desc = 'IQR-based detection'
+
+        elif method == 'zscore':
+            # Z-score based outlier detection
+            mean = data.mean()
+            std = data.std()
+
+            # Skip if standard deviation is zero
+            if std == 0:
+                if verbose:
+                    print(f'Skipping "{column}": Standard deviation is zero.')
                 continue
 
-            # Calculate outliers based on specified method
-            if outlier_method == 'iqr':
-                # Implement IQR method
-                # Calculate Q1, Q3, IQR
-                # Identify values outside Q1 - threshold*IQR and Q3 + threshold*IQR
-                pass
-            elif outlier_method == 'zscore':
-                # Implement Z-score method
-                # Calculate mean and std
-                # Identify values with abs(z-score) > threshold
-                pass
-            elif outlier_method == 'modified_zscore':
-                # Implement modified Z-score method using median
-                # Calculate median and MAD
-                # Identify values with modified z-score > threshold
-                pass
+            # Define bounds using Z-score threshold
+            lower_bound = mean - threshold * std
+            upper_bound = mean + threshold * std
 
-            # Store results for this feature
-            outlier_results[feature] = {
-                'count': 0,  # Number of outliers
-                'percentage': 0.0,  # Percentage of values that are outliers
-                'indices': [],  # Indices of outlier values
-                'values': []  # The outlier values themselves
-            }
+            method_desc = 'Z-score based detection'
 
-            # If outliers found, add recommendation
-            if outlier_results[feature]['count'] > 0:
-                results['recommendations'].append(
-                    f"Feature '{feature}' has {outlier_results[feature]['count']} outliers " +
-                    f"({outlier_results[feature]['percentage']:.2f}%). Consider scaling, transforming, "
-                    f"or investigating these values."
-                )
+        elif method == 'modified_zscore':
+            # Modified Z-score based outlier detection
+            median = data.median()
+            # Median Absolute Deviation
+            mad = np.median(np.abs(data - median))
 
-        # Create summary DataFrame of outlier results
-        results['outliers'] = pd.DataFrame({
-            'feature': list(outlier_results.keys()),
-            'outlier_count': [r['count'] for r in outlier_results.values()],
-            'outlier_percentage': [r['percentage'] for r in outlier_results.values()]
-        })
+            # Skip if MAD is zero
+            if mad == 0:
+                if verbose:
+                    print(f'Skipping "{column}": Median Absolute Deviation is zero.')
+                continue
 
-        # Visualize outliers if verbose
-        if verbose:
-            # Create box plots or histogram for features with outliers
-            pass
+            # Constant 0.6745 is used to make MAD comparable to standard deviation for normal distributions
+            lower_bound = median - threshold * (mad / 0.6745)
+            upper_bound = median + threshold * (mad / 0.6745)
 
-    # SECTION 2: Correlation Analysis (if enabled)
-    if correlations:
-        if verbose:
-            # Print explanatory information about correlation analysis
-            pass
+            method_desc = 'Modified Z-score based detection'
 
-        # Calculate correlation matrix using specified method
-        corr_matrix = df[numeric_features].corr(method=correlation_method)
-
-        # Find strongly correlated feature pairs
-        correlated_pairs = []
-        for i in range(len(numeric_features)):
-            for j in range(i + 1, len(numeric_features)):
-                if abs(corr_matrix.iloc[i, j]) >= correlation_threshold:
-                    correlated_pairs.append({
-                        'feature1': numeric_features[i],
-                        'feature2': numeric_features[j],
-                        'correlation': corr_matrix.iloc[i, j]
-                    })
+        # Identify outliers
+        outliers = df[
+            ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()]
 
         # Store results
-        results['correlations'] = pd.DataFrame(correlated_pairs)
+        if not outliers.empty:
+            outlier_count = len(outliers)
+            outlier_percent = (outlier_count / len(data)) * 100
 
-        # Add recommendations for highly correlated features
-        for pair in correlated_pairs:
-            results['recommendations'].append(
-                f"Features '{pair['feature1']}' and '{pair['feature2']}' are strongly correlated " +
-                f"(r = {pair['correlation']:.2f}). Consider removing one of these features to reduce multicollinearity."
-            )
+            # Update global summary counts
+            results['summary']['total_outliers'] += outlier_count
 
-        # Visualize correlations if verbose
-        if verbose:
-            # Create correlation heatmap
-            # Create scatter plots of highly correlated pairs
-            pass
+            # Update outlier rows tracking
+            outlier_rows = outlier_rows | (
+                    ((df[column] < lower_bound) | (df[column] > upper_bound)) & ~df[column].isna()).values
 
-    # SECTION 3: Assumption Validation (if enabled)
-    if assumptions:
-        # Validate that target is provided
-        if target is None:
-            results['recommendations'].append(
-                "Cannot test modeling assumptions without a specified target variable. "
-                "Set target parameter or disable assumptions testing."
-            )
-        else:
+            # Add feature to list of features with outliers
+            results['summary']['features_with_outliers'].append(column)
+
+            # Store feature-specific results
+            results['feature_results'][column] = {
+                'method': method,
+                'method_description': method_desc,
+                'outlier_count': outlier_count,
+                'outlier_percent': outlier_percent,
+                'outlier_indices': outliers.index.tolist(),
+                'thresholds': {
+                    'lower': lower_bound,
+                    'upper': upper_bound
+                }
+            }
+
             if verbose:
-                # Print explanatory information about assumption testing
-                pass
+                print(f'Method: {method_desc}')
+                print(f'Found {outlier_count} outliers ({outlier_percent:.2f}% of non-null values)')
+                print(f'Thresholds: Lower = {lower_bound:.4f}, Upper = {upper_bound:.4f}')
 
-            assumption_results = {}
+                # Show extreme outliers (up to 3 min and max)
+                if outlier_count > 0:
+                    print('Sample of outlier values:')
+                    extreme_low = outliers[outliers[column] < lower_bound][column].nsmallest(3)
+                    extreme_high = outliers[outliers[column] > upper_bound][column].nlargest(3)
 
-            # Different tests based on model_type
-            if model_type == 'linear':
-                # Test normality of residuals
-                # Test homoscedasticity
-                # Test linearity
-                # Test independence
-                pass
+                    if not extreme_low.empty:
+                        print('Low outliers:', extreme_low.tolist())
+                    if not extreme_high.empty:
+                        print('High outliers:', extreme_high.tolist())
 
-            elif model_type == 'logistic':
-                # Test linearity of logit
-                # Test multicollinearity
-                # Check for separation issues
-                pass
+        elif verbose:
+            print(f'No outliers detected using {method_desc}')
 
-            elif model_type == 'tree':
-                # Check class balance
-                # Check for sufficient data in each class
-                pass
+    # Update summary with affected rows information
+    affected_rows_count = np.sum(outlier_rows)
+    affected_rows_percent = (affected_rows_count / len(df)) * 100
+    results['summary']['affected_rows_count'] = int(affected_rows_count)
+    results['summary']['affected_rows_percent'] = affected_rows_percent
 
-            # Store results
-            results['assumptions'] = assumption_results
-
-            # Add recommendations based on assumption test results
-            # Example: "Residuals show non-normality. Consider transforming your target variable."
-
-            # Visualize assumption test results if verbose
-            if verbose:
-                # Create diagnostic plots appropriate for the model type
-                pass
-
-    # Generate overall summary if verbose
+    # Print summary if in verbose mode
     if verbose:
-        # Print summary of all diagnostic findings
-        # Print all recommendations
-        pass
+        print('-' * 50)
+        print('OUTLIER DETECTION SUMMARY:')
+        print('-' * 50)
+        print(f'Total outliers detected: {results["summary"]["total_outliers"]}')
+        print(f'Rows containing outliers: {affected_rows_count} ({affected_rows_percent:.2f}% of all rows)')
 
+        if results['summary']['features_with_outliers']:
+            print(f'Features containing outliers: {len(results["summary"]["features_with_outliers"])}')
+            for feature in results['summary']['features_with_outliers']:
+                result = results['feature_results'][feature]
+                print(f'- {feature}: {result["outlier_count"]} outliers ({result["outlier_percent"]:.2f}%)')
+
+        else:
+            print('No outliers detected in any features.')
+
+    # Return dictionary summarizing results of outlier analysis
     return results
 
 
