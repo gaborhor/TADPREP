@@ -3,7 +3,7 @@
 # Import public-facing methods that users will access
 from .package import (
     df_info,
-    diagnose,
+    find_outliers,
     reshape,
     subset,
     rename_and_tag,
@@ -17,7 +17,7 @@ from .package import (
 # Define exposure if "from tadprep import *" is called
 __all__ = [
     'df_info',
-    'diagnose',
+    'find_outliers',
     'reshape',
     'subset',
     'rename_and_tag',
