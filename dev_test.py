@@ -464,3 +464,21 @@ Need to test for:
 # df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=False, preserve_features=False)
 # df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=True, preserve_features=False)
 # print(df_encoded)
+
+'''
+Testing new find_outliers method
+Need to test for:
+- Verbose and non-verbose operation
+- All three outlier detection methods
+- Custom and default thresholds
+- Structure of returned dictionary output
+'''
+
+'''
+Testing new find_corrs method
+Need to test for:
+- Verbose and non-verbose operation
+- All three correlation detection methods
+- Custom and default correlation thresholds
+- Structure of returned dictionary output
+'''
