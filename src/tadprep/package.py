@@ -162,6 +162,82 @@ def find_outliers(df: pd.DataFrame, method: str = 'iqr', threshold: float = None
     return _find_outliers_core(df, method=method, threshold=threshold, verbose=verbose)
 
 
+def find_corrs(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8, verbose: bool = True) -> dict:
+    """
+    Detects highly-correlated features in a DataFrame using the specified correlation method.
+
+    Analyzes numerical features in the dataframe and identifies feature pairs with correlation
+    coefficients exceeding the specified threshold. High correlations often indicate redundant
+    features that could be simplified or removed to improve model performance and interpretability.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to analyze for feature correlations
+    method : str, default='pearson'
+        Correlation method to use.
+        Options:
+          - 'pearson': Standard correlation coefficient (default, best for linear relationships)
+          - 'spearman': Rank correlation (robust to outliers and non-linear relationships)
+          - 'kendall': Rank correlation (more robust for small samples, handles ties differently)
+    threshold : float, default=0.8
+        Absolute correlation coefficient threshold above which features are considered highly correlated.
+        Values should be between 0 and 1.
+    verbose : bool, default=True
+        Whether to print detailed information about detected correlations
+
+    Returns
+    -------
+    dict
+        A dictionary containing correlation information with summary statistics and detailed pair information.
+        Structure:
+        {
+            'summary': {
+                'method': str,                # Correlation method used
+                'num_correlated_pairs': int,  # Total number of highly correlated pairs
+                'max_correlation': float,     # Maximum correlation found
+                'avg_correlation': float,     # Average correlation among high pairs
+                'features_involved': list,    # List of features involved in high correlations
+            },
+            'correlation_pairs': [
+                {
+                    'feature1': str,          # Name of first feature
+                    'feature2': str,          # Name of second feature
+                    'correlation': float,     # Correlation coefficient
+                    'abs_correlation': float  # Absolute correlation value
+                },
+                ...
+            ]
+        }
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 3, 4, 5],
+    ...     'B': [5, 4, 3, 2, 1],
+    ...     'C': [1, 3, 5, 7, 9],
+    ...     'D': [2, 4, 6, 8, 10]
+    ... })
+    >>> # Use default Pearson correlation
+    >>> corr_results = tp.find_corrs(df)
+    >>> # Use Spearman correlation with lower threshold
+    >>> corr_results = tp.find_corrs(df, method='spearman', threshold=0.6)
+    >>> # Hide detailed output
+    >>> corr_results = tp.find_corrs(df, verbose=False)
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    return _find_corrs_core(df, method=method, threshold=threshold, verbose=verbose)
+
+
 def subset(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
     Interactively subsets the input DataFrame according to user specification. Supports random sampling
