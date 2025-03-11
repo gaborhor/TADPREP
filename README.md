@@ -174,6 +174,17 @@ data preparation process:
 - Set `verbose=False` for minimal process output
 - Set custom `threshold` values appropriate for your data
 
+`find_corrs(df, method='pearson', threshold=0.8, verbose=True)`
+- Identifies highly-correlated numerical feature pairs in a dataset
+- Supports multiple correlation methods: Pearson (default), Spearman, and Kendall
+- Automatically analyzes all numerical features in the DataFrame
+- Returns a comprehensive dictionary with correlation information and summary statistics
+- Set custom `threshold` parameter to adjust sensitivity (higher values = fewer correlations)
+- Use `method='spearman'` for non-linear relationships or data with outliers
+- Use `method='kendall'` for small sample sizes or when handling many tied ranks
+- Set `verbose=False` for minimal output when running in scripts or notebooks
+- Provides counts of correlations per feature to identify the most redundant variables
+
 `reshape(df, verbose=True)`
 - Handles missing value deletion and feature deletion
 - Returns reshaped DataFrame
