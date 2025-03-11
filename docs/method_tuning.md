@@ -42,12 +42,14 @@ Prints summary, top-level information about a dataframe to the console.
 ## Method: `find_outliers`
 
 ### Core Purpose:
-Provides functionality for detecting outliers in numerical features using various statistical detection methods, with comprehensive information about outliers at both the feature and dataset level.
+Provides functionality for detecting outliers in numerical features using various statistical detection methods, 
+with comprehensive information about outliers at both the feature and dataset level.
 
 ### Parameters:
 - `df` Input Pandas dataframe.
 - `method` (String, default = 'iqr') which specifies the outlier detection method to use.
-- `threshold` (Float, default = None) which controls the sensitivity of outlier detection, with method-specific defaults.
+- `threshold` (Float, default = None) which controls the sensitivity of outlier detection, with method-specific 
+defaults.
 - `verbose` (Boolean, default = True) which controls level of detail in output.
 
 ### Returns:
@@ -102,6 +104,52 @@ Provides functionality for detecting outliers in numerical features using variou
   - Local Outlier Factor (LOF) method support
 
 ### Method History:
+- Alpha build by Don Smith (Current State)
+
+## Method: `find_corrs`
+### Core Purpose:
+Identifies and returns information about highly-correlated feature pairs in a dataframe.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `method` (String, default = 'pearson') Correlation method to use. Options: 'pearson', 'spearman', 'kendall'.
+- `threshold` (Float, default = 0.8) Correlation coefficient threshold (absolute value) above which features are considered highly correlated.
+- `verbose` (Boolean, default = True) Controls whether detailed correlation information is printed to console.
+
+### Returns:
+- Dictionary containing correlation information with the following structure:
+  - `summary`: Dictionary with correlation statistics
+    - `method`: Correlation method used
+    - `num_correlated_pairs`: Total count of highly correlated pairs
+    - `max_correlation`: Maximum correlation coefficient found
+    - `avg_correlation`: Average correlation among high pairs
+    - `features_involved`: List of features involved in high correlations
+  - `correlation_pairs`: List of dictionaries, each containing:
+    - `feature1`: Name of first feature in pair
+    - `feature2`: Name of second feature in pair
+    - `correlation`: Actual correlation coefficient (can be negative)
+    - `abs_correlation`: Absolute value of correlation coefficient
+
+### Current State:
+- Automatically identifies numerical features in the provided dataframe
+- Calculates correlations between all numerical feature pairs using specified method
+- Identifies feature pairs with correlation coefficients exceeding the threshold
+- Returns comprehensive dictionary with correlation information
+- When `verbose=True`:
+  - Prints analysis information including feature count and threshold used
+  - Prints each highly-correlated feature pair with its correlation sign and value
+  - Displays maximum and average correlation values found
+  - Lists all features involved in high correlations and their occurrence count
+  - Uses visual separators for readability
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Add visualization option to generate a filtered correlation heatmap
+- Add capability to analyze relationship types (linear vs. non-linear)
+
+### Method History
 - Alpha build by Don Smith (Current State)
 
 
