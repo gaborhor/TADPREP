@@ -4,6 +4,7 @@
 from .package import (
     df_info,
     find_outliers,
+    find_corrs,
     reshape,
     subset,
     rename_and_tag,
@@ -18,6 +19,7 @@ from .package import (
 __all__ = [
     'df_info',
     'find_outliers',
+    'find_corrs',
     'reshape',
     'subset',
     'rename_and_tag',
