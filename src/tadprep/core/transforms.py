@@ -314,6 +314,179 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
     return results
 
 
+def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float = 0.8, verbose: bool = True) -> dict:
+    """
+    Core function to detect highly-correlated features in a dataframe.
+
+    This function analyzes numerical features in the dataframe and identifies pairs with
+    correlation coefficients exceeding the specified threshold. High correlations may indicate
+    redundant features that could be simplified or removed to improve model performance.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to analyze for correlated features
+        method (str, optional): Correlation method to use. Options:
+            - 'pearson': Standard correlation coefficient (default)
+            - 'spearman': Rank correlation, robust to outliers and non-linear relationships
+            - 'kendall': Another rank correlation, more robust for small samples
+        threshold (float, optional): Correlation coefficient threshold (absolute value).
+            Defaults to 0.8. Values should be between 0 and 1.
+        verbose (bool, optional): Whether to print detailed information about correlations.
+            Defaults to True.
+
+    Returns:
+        dict: A dictionary containing correlation information with the following structure:
+            {
+                'summary': {
+                    'method': str,                # Correlation method used
+                    'num_correlated_pairs': int,  # Total number of highly correlated pairs
+                    'max_correlation': float,     # Maximum correlation found
+                    'avg_correlation': float,     # Average correlation among high pairs
+                    'features_involved': list,    # List of features involved in high correlations
+                },
+                'correlation_pairs': [
+                    {
+                        'feature1': str,          # Name of first feature
+                        'feature2': str,          # Name of second feature
+                        'correlation': float,     # Correlation coefficient
+                        'abs_correlation': float  # Absolute correlation value
+                    },
+                    ...
+                ]
+            }
+    """
+    # Validate correlation method
+    valid_methods = ['pearson', 'spearman', 'kendall']
+    if method not in valid_methods:
+        raise ValueError(f'Invalid correlation method: "{method}". '
+                         f'Valid options are: {", ".join(valid_methods)}')
+
+    # Validate threshold
+    if not 0 <= threshold <= 1:
+        raise ValueError(f'Threshold must be between 0 and 1, got {threshold}')
+
+    # Identify numerical features
+    num_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
+
+    # Handle any case where not enough numerical features are present
+    if len(num_cols) <= 1:
+        if verbose:
+            print(
+                'Insufficient numerical features found. Correlation analysis requires at least two numerical features.')
+
+        return {
+            'summary': {
+                'method': method,
+                'num_correlated_pairs': 0,
+                'max_correlation': None,
+                'avg_correlation': None,
+                'features_involved': []
+            },
+            'correlation_pairs': []
+        }
+
+    # Process/procedural information for verbose mode
+    if verbose:
+        print('-' * 50)
+        print(f'Analyzing correlations among {len(num_cols)} numerical features...')
+        print(f'Using {method} correlation with threshold: ±{threshold}')
+        print('-' * 50)
+
+    # Build correlation matrix
+    corr_matrix = df[num_cols].corr(method=method)
+
+    # Initialize results dictionary and tracking lists
+    results = {
+        'summary': {
+            'method': method,
+            'num_correlated_pairs': 0,
+            'max_correlation': 0.0,
+            'avg_correlation': 0.0,
+            'features_involved': []
+        },
+        'correlation_pairs': []
+    }
+
+    # Instantiate empty data structures for tracking correlated features
+    corr_features = set()
+    corr_values = []
+
+    # Find highly correlated pairs
+    # I'll iterate only through the 'upper triangle' of the correlation matrix
+    # The idea is to avoid duplicating pairs (e.g. corr of A,B is same as corr of B,A)
+    for i in range(len(num_cols)):
+        for j in range(i + 1, len(num_cols)):
+            corr_value = corr_matrix.iloc[i, j]
+            abs_corr = abs(corr_value)
+
+            # Check if correlation exceeds threshold
+            if abs_corr >= threshold:
+                feature1 = num_cols[i]
+                feature2 = num_cols[j]
+
+                # Add features to tracking set
+                corr_features.add(feature1)
+                corr_features.add(feature2)
+
+                # Add correlation value to tracking list
+                corr_values.append(abs_corr)
+
+                # Add pair details to results
+                results['correlation_pairs'].append({
+                    'feature1': feature1,
+                    'feature2': feature2,
+                    'correlation': corr_value,
+                    'abs_correlation': abs_corr
+                })
+
+    # Update summary information
+    num_pairs = len(results['correlation_pairs'])
+    results['summary']['num_correlated_pairs'] = num_pairs
+    results['summary']['features_involved'] = sorted(list(corr_features))
+
+    if num_pairs > 0:
+        results['summary']['max_correlation'] = max(corr_values)
+        results['summary']['avg_correlation'] = sum(corr_values) / num_pairs
+
+    # Sort correlation pairs by absolute correlation value (descending)
+    results['correlation_pairs'] = sorted(
+        results['correlation_pairs'],
+        key=lambda x: x['abs_correlation'],
+        reverse=True
+    )
+
+    # Print results if verbose is True
+    if verbose:
+        if num_pairs > 0:
+            print(f'Found {num_pairs} feature pairs with {method} correlations {threshold} or higher:')
+            print('-' * 50)
+
+            # Print each highly correlated pair
+            for pair in results['correlation_pairs']:
+                corr_sign = '+' if pair['correlation'] >= 0 else '-'
+                print(f"{pair['feature1']} and {pair['feature2']}: {corr_sign}{pair['abs_correlation']:.4f}")
+
+            print('-' * 50)
+            print(f'Maximum correlation found: {results["summary"]["max_correlation"]:.4f}')
+            print(f'Average correlation among high pairs: {results["summary"]["avg_correlation"]:.4f}')
+            print(f'Number of features involved in high correlations: {len(corr_features)}')
+
+            if len(corr_features) > 0:
+                print('\nFeatures having high correlations:')
+                for feature in sorted(corr_features):
+                    # Count how many correlations involve this feature
+                    count = sum(1 for pair in results['correlation_pairs']
+                                if pair['feature1'] == feature or pair['feature2'] == feature)
+                    print(f'- {feature} (involved in {count} correlation{"s" if count > 1 else ""})')
+
+        else:
+            print(f'No feature pairs found with {method} correlation ≥ {threshold}')
+
+        print('-' * 50)
+
+    # Return results dictionary
+    return results
+
+
 def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
     Core function for reshaping a DataFrame by handling missing values, dropping features, and subsetting data.
