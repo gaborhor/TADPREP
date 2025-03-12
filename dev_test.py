@@ -473,6 +473,17 @@ Need to test for:
 - Custom and default thresholds
 - Structure of returned dictionary output
 '''
+outlier_df = pd.DataFrame({'high_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, 8000],
+                           'low_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, -8000],
+                           'one_outlier': [1, 1, 1, 2, 2, 2, 3, 3, 4, 20],
+                           'two_outliers': [1, 1, 2, 2, 2, 3, 3, 3, 45, 65]})
+
+# outlier_dict = tp.find_outliers(outlier_df, method='iqr', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='zscore', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='zscore', threshold=1, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='modified_zscore', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='modified_zscore', threshold=None, verbose=False)
+# print(outlier_dict)
 
 '''
 Testing new find_corrs method
