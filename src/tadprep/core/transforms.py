@@ -107,6 +107,18 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
             - For Modified Z-score: 3.5
         verbose (bool, default=True): Whether to print detailed information about outliers
     """
+    def numpy_to_python(obj):
+        """This helper function converts Numpy numeric types to Python native types."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: numpy_to_python(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [numpy_to_python(item) for item in obj]
+        return obj
+
     # Validate selected method
     valid_methods = ['iqr', 'zscore', 'modified_zscore']
     if method not in valid_methods:
@@ -147,12 +159,24 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
         # Print threshold information based on the selected method
         if method == 'iqr':
             print(f'IQR threshold multiplier: {threshold}')
+            print('\nIQR METHOD CONTEXT:')
+            print('- Best for: Data with unknown distribution, resistant to extreme outliers')
+            print('- Limitations: Less effective with small datasets, may miss subtle outliers')
+            print('- Use case: General-purpose outlier detection for most datasets')
 
         elif method == 'zscore':
             print(f'Z-score threshold: {threshold} standard deviations')
+            print('\nZ-SCORE METHOD CONTEXT:')
+            print('- Best for: Normally distributed data, larger datasets')
+            print('- Limitations: Sensitive to extreme outliers, skewed distributions')
+            print('- Use case: When data approximates normal distribution and outliers are moderate')
 
         elif method == 'modified_zscore':
             print(f'Modified Z-score threshold: {threshold}')
+            print('\nMODIFIED Z-SCORE METHOD CONTEXT:')
+            print('- Best for: Datasets with extreme outliers, skewed distributions')
+            print('- Limitations: More complex to interpret than standard Z-score')
+            print('- Use case: Small datasets or when extreme outliers are present')
         print('-' * 50)
 
     # Initialize results dictionary
@@ -309,6 +333,9 @@ def _find_outliers_core(df: pd.DataFrame, method: str = 'iqr', threshold: float 
 
         else:
             print('No outliers detected in any features.')
+
+    # Apply Numpy-to-Python conversion to the results dictionary
+    results = numpy_to_python(results)
 
     # Return dictionary summarizing results of outlier analysis
     return results
