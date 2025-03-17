@@ -473,10 +473,10 @@ Need to test for:
 - Custom and default thresholds
 - Structure of returned dictionary output
 '''
-outlier_df = pd.DataFrame({'high_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, 8000],
-                           'low_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, -8000],
-                           'one_outlier': [1, 1, 1, 2, 2, 2, 3, 3, 4, 20],
-                           'two_outliers': [1, 1, 2, 2, 2, 3, 3, 3, 45, 65]})
+# outlier_df = pd.DataFrame({'high_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, 8000],
+#                            'low_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, -8000],
+#                            'one_outlier': [1, 1, 1, 2, 2, 2, 3, 3, 4, 20],
+#                            'two_outliers': [1, 1, 2, 2, 2, 3, 3, 3, 45, 65]})
 
 # outlier_dict = tp.find_outliers(outlier_df, method='iqr', threshold=None, verbose=True)
 # outlier_dict = tp.find_outliers(outlier_df, method='zscore', threshold=None, verbose=True)
@@ -493,3 +493,45 @@ Need to test for:
 - Custom and default correlation thresholds
 - Structure of returned dictionary output
 '''
+# # Base feature - simple linear sequence
+# base = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+
+# # Create features with controlled correlation levels
+# corr_df = pd.DataFrame({
+#     'base_feature': base,
+#     # Perfect positive correlation
+#     'perfect_pos': base,
+#     # Perfect negative correlation
+#     'perfect_neg': -base + 16,
+#     # Strong positive correlation
+#     'strong_pos': base + np.random.normal(0, 3, len(base)),
+#     # Strong negative correlation
+#     'strong_neg': -base + 16 + np.random.normal(0, 3, len(base)),
+#     # Moderate positive correlation
+#     'mod_pos': base + np.random.normal(0, 6, len(base)),
+#     # Moderate negative correlation
+#     'mod_neg': -base + 16 + np.random.normal(0, 6, len(base)),
+#     # Weak positive correlation
+#     'weak_pos': base + np.random.normal(0, 12, len(base)),
+#     # Weak negative correlation
+#     'weak_neg': -base + 16 + np.random.normal(0, 12, len(base)),
+#     # Uncorrelated
+#     'uncorr': np.random.normal(8, 4, len(base)),
+#     # Object-type feature which should be ignored
+#     'object': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']
+# })
+
+# # Add a column with missing values (based on perfect_pos)
+# corr_df['missing_vals'] = corr_df['perfect_pos'].copy()
+# # Set ~20% of values to NaN
+# mask = np.random.choice([True, False], size=len(base), p=[0.2, 0.8])
+# corr_df.loc[mask, 'missing_vals'] = None
+
+# # Build results dictionary
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='spearman', verbose=True)
+# corr_dict = tp.find_corrs(corr_df, method='kendall', verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', threshold=0.5, verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', threshold=0.9, verbose=False)
+# # Display results dictionary
+# print(corr_dict)
