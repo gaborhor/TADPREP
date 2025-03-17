@@ -381,11 +381,32 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
                 ]
             }
     """
+    def numpy_to_python(obj):
+        """This helper function converts Numpy numeric types to Python native types."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: numpy_to_python(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [numpy_to_python(item) for item in obj]
+        return obj
+
     # Validate correlation method
     valid_methods = ['pearson', 'spearman', 'kendall']
     if method not in valid_methods:
         raise ValueError(f'Invalid correlation method: "{method}". '
                          f'Valid options are: {", ".join(valid_methods)}')
+
+    # Set appropriate default thresholds based on method if None is passed as value for threshold parameter
+    if threshold is None:
+        if method == 'pearson':
+            threshold = 0.8
+        elif method == 'spearman':
+            threshold = 0.6
+        elif method == 'kendall':
+            threshold = 0.5
 
     # Validate threshold
     if not 0 <= threshold <= 1:
@@ -415,7 +436,25 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
     if verbose:
         print('-' * 50)
         print(f'Analyzing correlations among {len(num_cols)} numerical features...')
-        print(f'Using {method} correlation with threshold: ±{threshold}')
+        print(f'Using {method} correlation with threshold: ± {threshold}')
+
+        # Add method descriptions here
+        if method == 'pearson':
+            print('\nMethod description: Pearson correlation measures linear relationships between features.')
+            print('Best for: Normally distributed data with linear relationships and no significant outliers.')
+            print('Limitations: Sensitive to outliers and only detects linear relationships.')
+
+        elif method == 'spearman':
+            print('\nMethod description: Spearman correlation measures monotonic (consistently increasing or '
+                  'decreasing) relationships using ranks.')
+            print('Best for: Data with non-linear but monotonic relationships or when outliers are present.')
+            print('Limitations: Less powerful than Pearson for detecting truly linear relationships.')
+
+        elif method == 'kendall':
+            print('\nMethod description: Kendall\'s Tau measures concordance (agreement in ranking direction) between '
+                  'feature pairs.')
+            print('Best for: Small samples, ordinal data, or when robustness to outliers is essential.')
+            print('Limitations: More computationally intensive and typically has lower values than other methods.')
         print('-' * 50)
 
     # Build correlation matrix
@@ -459,10 +498,10 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
 
                 # Add pair details to results
                 results['correlation_pairs'].append({
-                    'feature1': feature1,
-                    'feature2': feature2,
+                    'feature_1': feature1,
+                    'feature_2': feature2,
                     'correlation': corr_value,
-                    'abs_correlation': abs_corr
+                    'absolute_correlation': abs_corr
                 })
 
     # Update summary information
@@ -477,38 +516,42 @@ def _find_corrs_core(df: pd.DataFrame, method: str = 'pearson', threshold: float
     # Sort correlation pairs by absolute correlation value (descending)
     results['correlation_pairs'] = sorted(
         results['correlation_pairs'],
-        key=lambda x: x['abs_correlation'],
+        key=lambda x: x['absolute_correlation'],
         reverse=True
     )
 
     # Print results if verbose is True
     if verbose:
         if num_pairs > 0:
-            print(f'Found {num_pairs} feature pairs with {method} correlations {threshold} or higher:')
+            print(f'Found {num_pairs} feature pairs with {method} correlations of {threshold} or higher:')
             print('-' * 50)
 
             # Print each highly correlated pair
             for pair in results['correlation_pairs']:
                 corr_sign = '+' if pair['correlation'] >= 0 else '-'
-                print(f"{pair['feature1']} and {pair['feature2']}: {corr_sign}{pair['abs_correlation']:.4f}")
+                print(f"{pair['feature_1']} and {pair['feature_2']}: {corr_sign}{pair['absolute_correlation']:.4f}")
 
             print('-' * 50)
             print(f'Maximum correlation found: {results["summary"]["max_correlation"]:.4f}')
-            print(f'Average correlation among high pairs: {results["summary"]["avg_correlation"]:.4f}')
-            print(f'Number of features involved in high correlations: {len(corr_features)}')
+            print(f'Average absolute correlation among highly-correlated pairs: '
+                  f'{results["summary"]["avg_correlation"]:.4f}')
+            print(f'Total count of unique features involved in high correlations: {len(corr_features)}')
 
             if len(corr_features) > 0:
-                print('\nFeatures having high correlations:')
+                print('\nIndividual features participating in high correlations:')
                 for feature in sorted(corr_features):
                     # Count how many correlations involve this feature
                     count = sum(1 for pair in results['correlation_pairs']
-                                if pair['feature1'] == feature or pair['feature2'] == feature)
-                    print(f'- {feature} (involved in {count} correlation{"s" if count > 1 else ""})')
+                                if pair['feature_1'] == feature or pair['feature_2'] == feature)
+                    print(f'- {feature} (appears in {count} high-correlation pair{"s" if count > 1 else ""})')
 
         else:
-            print(f'No feature pairs found with {method} correlation ≥ {threshold}')
+            print(f'No feature pairs found with {method} correlation of ≥ {threshold}')
 
         print('-' * 50)
+
+    # Apply Numpy-to-Python conversion to the results dictionary
+    results = numpy_to_python(results)
 
     # Return results dictionary
     return results
