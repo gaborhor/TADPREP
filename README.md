@@ -262,6 +262,51 @@ data preparation process:
 - Provides interactive handling of infinite values with multiple replacement strategies
 - Offers visualization comparisons of pre- and post-scaling distributions
 
+`transform(df, features_to_transform=None, verbose=True, preserve_features=False, skip_warnings=False)`
+- Applies mathematical transformations to numerical features to improve their distributions
+- Supports multiple transformation methods:
+  - Log transformation (natural log, log10)
+  - Square root transformation
+  - Box-Cox transformation
+  - Yeo-Johnson transformation
+  - Power transformations (squared, cubed)
+  - Reciprocal transformation
+- Automatically suggests transformations based on feature distribution characteristics
+- Handles special cases like zeros and negative values appropriately
+- Set `features_to_transform` to specify which features to transform
+- Set `preserve_features=True` to keep original features alongside transformed versions
+- Set `verbose=False` for minimal process output
+- Set `skip_warnings=True` to bypass distribution anomaly warnings
+
+`extract_datetime(df, datetime_features=None, verbose=True, preserve_features=False, components=None)`
+- Extracts useful features from datetime columns to enable ML algorithms to capture temporal patterns
+- Creates new features representing various datetime components:
+  - Year, month, day, day of week, hour, minute
+  - Quarter, week of year, day of year
+  - Is weekend, is month start/end, is quarter start/end
+- Supports cyclical encoding of periodic features using sin/cos transformations
+- Automatically detects datetime columns or attempts to parse string columns as dates
+- Set `datetime_features` to specify which columns to process
+- Set `components` to select specific datetime components to extract
+- Set `preserve_features=True` to keep original datetime columns
+- Set `verbose=False` for minimal process output
+
+`build_interactions(df, features_to_combine=None, interaction_types=None, verbose=True, preserve_features=True, 
+max_features=None)`
+- Creates new features by combining existing features through mathematical operations
+- Enables linear models to capture non-linear relationships and feature interactions
+- Supports multiple interaction types:
+  - Multiplication (pairwise products)
+  - Division (with safeguards against division by zero)
+  - Addition and subtraction
+  - Polynomial transformations (squared, cubed features)
+- Intelligently names new features based on source features and operations
+- Set `features_to_combine` to specify which features to consider for interactions
+- Set `interaction_types` to control which types of interactions to create
+- Set `max_features` to limit the number of interaction features generated
+- Set `verbose=False` for minimal process output
+- Set `preserve_features=False` to remove original features after interaction creation
+
 #### Notes on Method Usage
 
 - All methods include interactive prompts to guide users through the preparation process
