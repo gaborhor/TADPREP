@@ -7,6 +7,7 @@ matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from scipy import stats
 
 
 def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
@@ -3684,13 +3685,11 @@ def _transform_core(
 
         elif method == 'boxcox':
             # Box-Cox transform (finds optimal lambda parameter)
-            from scipy import stats
             result, lambda_val = stats.boxcox(result)
             description = f"Box-Cox (lambda={lambda_val:.4f})"
 
         elif method == 'yeojohnson':
             # Yeo-Johnson transform (works with negative values)
-            from scipy import stats
             result, lambda_val = stats.yeojohnson(result)
             description = f"Yeo-Johnson (lambda={lambda_val:.4f})"
 
@@ -3872,8 +3871,8 @@ def _transform_core(
         if verbose:
             # Show current distribution statistics
             print(f'\nCurrent statistics for "{feature}":')
-            stats = df[feature].describe()
-            print(stats)
+            desc_stats = df[feature].describe()
+            print(desc_stats)
 
             # Show skewness and kurtosis
             skewness = df[feature].skew()
