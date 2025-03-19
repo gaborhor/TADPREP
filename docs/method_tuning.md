@@ -637,3 +637,207 @@ new columns with scaled values are added.
 ### Method History:
 - Alpha build by Don Smith
 - Beta build by Don Smith (Current state)
+
+
+# Method: `transform`
+
+### Core Purpose:
+Applies mathematical transformations to numerical features to improve their distributions for modeling, with a 
+focus on normalization and linearization.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_transform` (list[str] | None, default=None) Optional list of features to transform.
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=False) Controls whether original features are preserved.
+- `skip_warnings` (Boolean, default=False) Controls whether to skip distribution and outlier warnings.
+
+### Returns:
+- Modified dataframe with transformed features. If `preserve_features=True`, original features are retained.
+
+### Implementation Plan:
+- **Input Validation**
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified features if provided
+  - Ensure DataFrame is not empty
+
+- **Feature Identification**
+  - If `features_to_transform` is None:
+    - Identify numerical features in DataFrame
+    - Filter out Boolean/binary features (0/1 values)
+    - Allow user to select which features to transform
+
+- **Feature Analysis**
+  - For each feature to transform:
+    - Calculate descriptive statistics (mean, median, min, max)
+    - Measure skewness and kurtosis
+    - Check for infinities and nulls
+    - If `verbose=True`, show distribution plots
+    - Suggest appropriate transformations based on statistics
+
+- **Transformation Options**
+  - Implement the following transformations:
+    - Log transformation (natural log, log10)
+    - Square root transformation
+    - Box-Cox transformation
+    - Yeo-Johnson transformation
+    - Power transformations (squared, cubed)
+    - Reciprocal transformation
+    - Min-max scaling with custom range
+
+- **Transformation Process**
+  - For each selected feature:
+    - Present transformation options based on data characteristics
+    - Handle special cases (zeros for log transforms, negative values)
+    - Apply selected transformation
+    - If `verbose=True`, show before/after plots
+    - Track transformation details for reporting
+
+- **Output Handling**
+  - If `preserve_features=True`:
+    - Create new columns with naming pattern '{feature}_transformed'
+  - If `preserve_features=False`:
+    - Replace original features with transformed versions
+  - Return updated DataFrame
+
+- **Error Handling**
+  - Handle invalid transformations (e.g., log of negative values)
+  - Provide informative error messages
+  - Offer fallback options when primary transformation fails
+  - Allow skipping problematic features
+
+- **Reporting**
+  - If `verbose=True`:
+    - Summarize transformations applied
+    - Report improvement in normality metrics
+    - Show before/after summary statistics
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+  - Analyzes numerical features for distribution characteristics
+  - Provides appropriate transformation options based on data properties
+  - Supports multiple transformation methods for different distribution types
+  - Handles edge cases like zeros and negative values
+  - Properly names and organizes transformed features
+  - Maintains data integrity during transformation
+
+- If `verbose=False`:
+  - Shows minimal feature guidance
+  - Displays only essential user prompts
+  - Presents basic transformation choices
+  - Shows only critical warnings
+  - Provides basic confirmation of successful operations
+
+- If `verbose=True`:
+  - Shows detailed feature distribution analysis
+  - Provides visualization of before/after distributions
+  - Explains reasoning behind suggested transformations
+  - Displays comprehensive normality metrics
+  - Offers educational content about transformation methods
+
+- If `skip_warnings=False`:
+  - Provides warnings about skewed distributions
+  - Alerts about potential issues with transformations
+  - Suggests alternative approaches for problematic features
+
+### Method History:
+- Proposed by Don Smith (Current State)
+
+
+# Method: `extract_datetime`
+
+### Core Purpose:
+Extracts useful features from datetime columns in a dataframe, converting temporal information into features that 
+machine learning models can use more effectively.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `datetime_features` (list[str] | None, default=None) Optional list of datetime features to process.
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=False) Controls whether original datetime features are preserved.
+- `components` (list[str] | None, default=None) Optional list of specific datetime components to extract.
+
+### Returns:
+- Modified dataframe with extracted datetime features. If `preserve_features=True`, original datetime columns are 
+retained.
+
+### Implementation Plan:
+- **Input Validation**
+ - Verify input is a Pandas DataFrame
+ - Validate existence of specified datetime features if provided
+ - Ensure DataFrame is not empty
+
+- **Feature Identification**
+ - If `datetime_features` is None:
+   - Identify columns with datetime dtype
+   - Attempt to parse string columns as datetime
+   - Allow user to select which columns to process
+
+- **Component Identification**
+ - If `components` is None:
+   - Offer standard components: year, month, day, dayofweek, hour, minute, quarter, weekofyear, dayofyear
+   - For time series data, offer additional components: is_weekend, is_month_start, is_month_end, is_quarter_start, 
+ is_quarter_end
+   - Allow user to select which components to extract
+
+- **DateTime Extraction Process**
+ - For each selected datetime feature:
+   - Ensure column is in datetime format (convert if needed)
+   - Extract selected components into new columns
+   - Handle timezone information if present
+   - Apply appropriate naming conventions for new columns
+   - Encode cyclical features (like month, day of week) using sin/cos transformation if requested
+
+- **Output Handling**
+ - Create new columns with naming pattern '{original_column}_{component}'
+ - If `preserve_features=False`:
+   - Remove original datetime columns
+ - Return updated DataFrame
+
+- **Time Series Detection**
+ - Detect if data appears to be time series based on:
+   - Regular intervals between datetime values
+   - Sorted datetime values
+   - If identified as time series, suggest additional useful features
+   - Offer lagged features or rolling statistics if appropriate
+
+- **Error Handling**
+ - Handle invalid datetime formats
+ - Provide informative error messages
+ - Offer parsing options for ambiguous formats (MM/DD vs DD/MM)
+ - Allow skipping problematic features
+
+- **Reporting**
+ - If `verbose=True`:
+   - Summarize extracted components
+   - Show examples of original and extracted values
+   - Provide guidance on using extracted features in models
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+ - Identifies datetime columns (explicit datetime types and string-based dates)
+ - Extracts selected components into separate columns
+ - Maintains data integrity during extraction
+ - Applies appropriate naming conventions
+ - Creates all specified datetime-derived features
+ - Returns modified dataframe with new features
+
+- If `verbose=False`:
+ - Shows minimal feature guidance
+ - Displays only essential user prompts
+ - Provides basic confirmation of successful operations
+ - Minimizes explanatory text
+
+- If `verbose=True`:
+ - Explains datetime feature extraction concepts
+ - Provides component selection guidance
+ - Shows examples of extracted values
+ - Offers visualization of time-based patterns if appropriate
+ - Explains cyclical encoding concepts for periodic features
+
+- Parameter `preserve_features`:
+ - When `True`, keeps original datetime columns alongside extracted features
+ - When `False`, removes original datetime columns after extraction
+
+### Method History:
+- Proposed by Don Smith (Current State)
