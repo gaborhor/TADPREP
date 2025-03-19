@@ -12,7 +12,8 @@ from .package import (
     impute,
     encode,
     scale,
-    prep_df
+    prep_df,
+    transform
 )
 
 # Define exposure if "from tadprep import *" is called
@@ -27,7 +28,8 @@ __all__ = [
     'impute',
     'encode',
     'scale',
-    'prep_df'
+    'prep_df',
+    'transform'
 ]
 
 # Package metadata
