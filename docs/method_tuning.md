@@ -113,7 +113,8 @@ Identifies and returns information about highly-correlated feature pairs in a da
 ### Parameters:
 - `df` Input Pandas dataframe.
 - `method` (String, default = 'pearson') Correlation method to use. Options: 'pearson', 'spearman', 'kendall'.
-- `threshold` (Float, default = 0.8) Correlation coefficient threshold (absolute value) above which features are considered highly correlated.
+- `threshold` (Float, default = 0.8) Correlation coefficient threshold (absolute value) above which features are 
+considered highly correlated.
 - `verbose` (Boolean, default = True) Controls whether detailed correlation information is printed to console.
 
 ### Returns:
