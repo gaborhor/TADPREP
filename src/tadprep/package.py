@@ -10,7 +10,8 @@ from .core.transforms import (
     _impute_core,
     _encode_core,
     _scale_core,
-    _prep_df_core
+    _prep_df_core,
+    _transform_core
 )
 
 
@@ -634,3 +635,95 @@ def prep_df(
     print("- Enter '2' to set the parameter to False")
 
     return _prep_df_core(df, features_to_encode=features_to_encode, features_to_scale=features_to_scale)
+
+
+def transform(
+        df: pd.DataFrame,
+        features_to_transform: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = False,
+        skip_warnings: bool = False
+) -> pd.DataFrame:
+    """
+    Interactively transforms numerical features using various mathematical transformations.
+
+    Applies transformations to improve data distributions for modeling, with a focus on
+    normalization and linearization. Supports log, square root, Box-Cox, Yeo-Johnson,
+    power transformations, and scaling methods.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing features to transform.
+    features_to_transform : list[str] | None, default=None
+        Optional list of features to transform. If None, method will help identify
+        numerical features.
+    verbose : bool, default=True
+        Controls whether detailed guidance and explanations are displayed.
+    preserve_features : bool, default=False
+        Controls whether original features are preserved when transforming. When True,
+        creates new columns with the naming pattern '{original_column}_transformed'.
+        If a column with that name already exists, a numeric suffix is added:
+        '{original_column}_transformed_1'.
+    skip_warnings : bool, default=False
+        Controls whether all best-practice-related warnings about distributions and
+        nulls are skipped.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame with transformed features. If preserve_features=True, original
+        features are retained and new columns are added with transformed values.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({'A': [1, 2, 100, 200], 'B': ['x', 'y', 'z', 'w']})
+    >>> # Basic usage - let function identify numerical features
+    >>> df_transformed = tp.transform(df)
+    >>> # Specify features to transform
+    >>> df_transformed_specified = tp.transform(df, features_to_transform=['A'])
+    >>> # Minimize output
+    >>> df_transformed_quiet = tp.transform(df, verbose=False)
+    >>> # Skip distribution warnings
+    >>> df_transformed_nowarn = tp.transform(df, skip_warnings=True)
+    >>> # Preserve original features, creating new transformed columns
+    >>> df_with_both = tp.transform(df, preserve_features=True)
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate features_to_transform if provided
+    if features_to_transform is not None:
+        if not isinstance(features_to_transform, list):
+            raise TypeError('features_to_transform must be a list of strings')
+
+        if not all(isinstance(col, str) for col in features_to_transform):
+            raise TypeError('All feature names in features_to_transform must be strings')
+
+        if not all(col in df.columns for col in features_to_transform):
+            missing = [col for col in features_to_transform if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    # Validate preserve_features parameter
+    if not isinstance(preserve_features, bool):
+        raise TypeError('preserve_features must be a boolean')
+
+    # Validate skip_warnings parameter
+    if not isinstance(skip_warnings, bool):
+        raise TypeError('skip_warnings must be a boolean')
+
+    # Call the core implementation
+    return _transform_core(
+        df,
+        features_to_transform=features_to_transform,
+        verbose=verbose,
+        preserve_features=preserve_features,
+        skip_warnings=skip_warnings
+    )
