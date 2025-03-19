@@ -3486,7 +3486,8 @@ def _transform_core(
 ) -> pd.DataFrame:
     """
     Core function to transform numerical features in a DataFrame using various mathematical transformations.
-    Supports transformations to improve data distributions for modeling, with a focus on normalization and linearization.
+    Supports transformations to improve data distributions for modeling, with a focus on normalization and
+    linearization.
 
     Args:
         df (pd.DataFrame): Input DataFrame containing features to transform.
