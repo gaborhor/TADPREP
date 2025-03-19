@@ -741,7 +741,7 @@ focus on normalization and linearization.
   - Suggests alternative approaches for problematic features
 
 ### Method History:
-- Proposed by Don Smith (Current State)
+- Alpha build by Don Smith (Current State)
 
 
 # Method: `extract_datetime`
