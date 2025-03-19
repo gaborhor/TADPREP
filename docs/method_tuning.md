@@ -841,3 +841,117 @@ retained.
 
 ### Method History:
 - Proposed by Don Smith (Current State)
+
+
+# Method: `build_interactions`
+
+### Core Purpose:
+Creates new features by combining existing features through mathematical operations, enabling linear models to 
+capture non-linear relationships and interactions between variables.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_combine` (list[str] | None, default=None) Optional list of features to consider for interactions.
+- `interaction_types` (list[str] | None, default=None) Optional list of interaction types to create 
+(e.g., 'multiply', 'divide', 'add', 'subtract', 'polynomial').
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=True) Controls whether original features are preserved alongside interactions.
+- `max_features` (int | None, default=None) Optional maximum number of interaction features to create.
+
+
+### Returns:
+- Modified dataframe with original features and newly created interaction features.
+
+### Implementation Plan:
+- **Input Validation**
+ - Verify input is a Pandas DataFrame
+ - Validate existence of specified features if provided
+ - Ensure DataFrame is not empty
+ - Validate interaction_types if provided
+
+- **Feature Identification**
+ - If `features_to_combine` is None:
+   - Identify numerical features in DataFrame
+   - Allow user to select which features to consider for interactions
+   - Provide option to include categorical features (after encoding)
+
+- **Interaction Type Selection**
+ - If `interaction_types` is None:
+   - Offer standard interaction types: multiply, divide, add, subtract, polynomial
+   - Allow user to select which types to create
+   - If `verbose=True`, explain each interaction type's purpose
+
+- **Interaction Creation Process**
+ - For multiplication interactions:
+   - Create pairwise products between selected features
+   - Name new features as '{feature1}_x_{feature2}'
+ 
+ - For division interactions (with safeguards):
+   - Create pairwise divisions between selected features
+   - Handle division by zero with appropriate methods
+   - Name new features as '{feature1}_div_{feature2}'
+ 
+ - For addition interactions:
+   - Create pairwise sums between selected features
+   - Name new features as '{feature1}_plus_{feature2}'
+ 
+ - For subtraction interactions:
+   - Create pairwise differences between selected features
+   - Name new features as '{feature1}_minus_{feature2}'
+ 
+ - For polynomial features:
+   - Create squared and cubed versions of individual features
+   - Name new features as '{feature}_squared', '{feature}_cubed'
+
+- **Feature Selection and Limitation**
+ - If `max_features` is set:
+   - Prioritize interactions based on correlation with target (if available)
+   - Use variance or other metrics to select most relevant interactions
+   - Limit total number of interaction features created
+
+- **Output Handling**
+ - Add created interaction features to dataframe
+ - If `preserve_features=False`:
+   - Remove original features used in interactions
+ - Return updated DataFrame
+
+- **Error Handling**
+ - Handle division by zero or near-zero values
+ - Manage potential feature explosion with many interaction combinations
+ - Provide warnings about large feature space expansion
+ - Allow cancellation if too many features would be created
+
+- **Reporting**
+ - If `verbose=True`:
+   - Summarize created interaction features
+   - Show examples of original and interaction values
+   - Provide guidance on using interaction features in models
+   - Warn about potential multicollinearity issues
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+ - Creates specified interaction features between selected columns
+ - Applies appropriate naming conventions
+ - Maintains data integrity during feature creation
+ - Handles edge cases (division by zero, etc.)
+ - Returns modified dataframe with new features
+
+- If `verbose=False`:
+ - Shows minimal feature guidance
+ - Displays only essential user prompts
+ - Provides basic confirmation of successful operations
+ - Minimizes explanatory text
+
+- If `verbose=True`:
+ - Explains interaction feature concepts
+ - Shows examples of created features
+ - Provides guidance on feature selection
+ - Warns about potential pitfalls (multicollinearity, feature explosion)
+ - Offers educational content about when interactions are beneficial
+
+- Parameter `preserve_features`:
+ - When `True` (default), keeps original features alongside interactions
+ - When `False`, removes original features after interaction creation
+
+### Method History:
+- Proposed by Don Smith (Current State)
