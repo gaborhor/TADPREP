@@ -858,7 +858,6 @@ capture non-linear relationships and interactions between variables.
 - `preserve_features` (Boolean, default=True) Controls whether original features are preserved alongside interactions.
 - `max_features` (int | None, default=None) Optional maximum number of interaction features to create.
 
-
 ### Returns:
 - Modified dataframe with original features and newly created interaction features.
 
