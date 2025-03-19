@@ -11,7 +11,8 @@ from .transforms import (
     _impute_core,
     _encode_core,
     _scale_core,
-    _prep_df_core
+    _prep_df_core,
+    _transform_core
 )
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     '_impute_core',
     '_encode_core',
     '_scale_core',
-    '_prep_df_core'
+    '_prep_df_core',
+    '_transform_core'
 ]
