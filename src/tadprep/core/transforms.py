@@ -3474,3 +3474,557 @@ def _prep_df_core(
         return df
 
     return df
+
+
+def _transform_core(
+        df: pd.DataFrame,
+        features_to_transform: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = False,
+        skip_warnings: bool = False
+) -> pd.DataFrame:
+    """
+    Core function to transform numerical features in a DataFrame using various mathematical transformations.
+    Supports transformations to improve data distributions for modeling, with a focus on normalization and linearization.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing features to transform.
+        features_to_transform (list[str] | None, default=None): Optional list of features to transform.
+            If None, function will help identify numerical features.
+        verbose (bool, default=True): Whether to display detailed guidance and explanations.
+        preserve_features (bool, default=False): Whether to keep original features in the DataFrame
+            alongside transformed ones.
+        skip_warnings (bool, default=False): Whether to skip distribution and outlier warnings.
+
+    Returns:
+        pd.DataFrame: DataFrame with transformed numerical features.
+
+    Raises:
+        TypeError: If input is not a pandas DataFrame.
+        ValueError: If DataFrame is empty or specified features don't exist.
+    """
+
+    # Helper functions
+    def plot_dist(series: pd.Series, feature_name: str, title_suffix: str = '') -> None:
+        """
+        This helper function creates and displays a distribution plot for a feature.
+
+        Args:
+            series: Series to visualize
+            feature_name: Name of the feature being visualized
+            title_suffix: Optional suffix for the plot title
+        """
+        try:
+            plt.figure(figsize=(12, 8))
+            sns.histplot(data=series.dropna(), kde=True)
+            plt.title(f'Distribution of "{feature_name}"{title_suffix}')
+            plt.xlabel(feature_name)
+            plt.ylabel('Count')
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+        except Exception as exc:
+            print(f'Could not create distribution visualization: {str(exc)}')
+            if plt.get_fignums():
+                plt.close('all')
+
+    def plot_comp(original: pd.Series, transformed: pd.Series, feature_name: str,
+                  transform_name: str) -> None:
+        """
+        This helper function creates and displays a side-by-side comparison of original and transformed distributions.
+
+        Args:
+            original: Original series before transformation
+            transformed: Series after transformation
+            feature_name: Name of the feature being visualized
+            transform_name: Name of the transformation applied
+        """
+        try:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 10))
+
+            # Original distribution
+            sns.histplot(data=original.dropna(), kde=True, ax=ax1)
+            ax1.set_title(f'Original Distribution of "{feature_name}"')
+            ax1.set_xlabel(feature_name)
+
+            # Transformed distribution
+            sns.histplot(data=transformed.dropna(), kde=True, ax=ax2)
+            ax2.set_title(f'After {transform_name} Transform')
+            ax2.set_xlabel(f'{feature_name} (transformed)')
+
+            plt.tight_layout()
+            plt.show()
+            plt.close()
+
+        except Exception as exc:
+            print(f'Could not create distribution comparison: {str(exc)}')
+            if plt.get_fignums():
+                plt.close('all')
+
+    def suggest_transform(series: pd.Series) -> list[str]:
+        """
+        This helper function suggests appropriate transformations based on data characteristics.
+
+        Args:
+            series: Numerical series to analyze
+
+        Returns:
+            list of suggested transformation methods
+        """
+        suggestions = []
+
+        # Skip if too few non-null values
+        if len(series.dropna()) < 10:
+            return ['none']
+
+        # Calculate statistics
+        skewness = series.skew()
+        min_val = series.min()
+        has_zeros = (series == 0).any()
+        has_negatives = (series < 0).any()
+
+        # Based on skewness, suggest transformations
+        if abs(skewness) < 0.5:
+            # Data is already approximately normal
+            suggestions.append('none')
+        else:
+            # For right-skewed data (positive skew)
+            if skewness > 1:
+                # Log transformation works well for right-skewed data
+                if not has_negatives and not has_zeros:
+                    suggestions.append('log')
+                    suggestions.append('sqrt')
+                elif not has_negatives:
+                    suggestions.append('sqrt')
+                    if min_val > 0:
+                        suggestions.append('log1p')  # log(1+x) works with zeros
+
+                # Box-Cox handles zeros but not negatives
+                if not has_negatives:
+                    suggestions.append('boxcox')
+
+                # Yeo-Johnson works with negatives and zeros
+                suggestions.append('yeojohnson')
+
+            # For left-skewed data (negative skew)
+            elif skewness < -1:
+                # Power transformations for left skew
+                suggestions.append('square')
+                suggestions.append('cube')
+
+                # Yeo-Johnson works for all data
+                suggestions.append('yeojohnson')
+
+                # Reciprocal for left skew (if no zeros)
+                if not has_zeros and not has_negatives:
+                    suggestions.append('reciprocal')
+
+            # For moderately skewed data
+            else:
+                suggestions.append('yeojohnson')  # Safe choice for most distributions
+                suggestions.append('minmax')  # Simple scaling
+
+        # If no specific suggestions, include general options
+        if not suggestions:
+            suggestions = ['yeojohnson', 'minmax']
+
+        return suggestions
+
+    def apply_transform(series: pd.Series, method: str) -> tuple[pd.Series, str]:
+        """
+        This helper function applies the requested transformation to a series.
+
+        Args:
+            series: Series to transform
+            method: Transformation method name
+
+        Returns:
+            tuple of (transformed series, description of transformation)
+        """
+        # Create a copy to prevent modifying the original
+        result = series.copy()
+        description = ""
+
+        # Handle each transformation type
+        if method == 'log':
+            # Natural log transform
+            result = np.log(result)
+            description = "Natural logarithm"
+
+        elif method == 'log10':
+            # Base-10 log transform
+            result = np.log10(result)
+            description = "Base-10 logarithm"
+
+        elif method == 'log1p':
+            # Log(1+x) transform (handles zeros)
+            result = np.log1p(result)
+            description = "Natural logarithm of (1+x)"
+
+        elif method == 'sqrt':
+            # Square root transform
+            result = np.sqrt(result)
+            description = "Square root"
+
+        elif method == 'square':
+            # Square transform
+            result = np.square(result)
+            description = "Square (x²)"
+
+        elif method == 'cube':
+            # Cube transform
+            result = np.power(result, 3)
+            description = "Cube (x³)"
+
+        elif method == 'reciprocal':
+            # Reciprocal transform
+            result = 1 / result
+            description = "Reciprocal (1/x)"
+
+        elif method == 'boxcox':
+            # Box-Cox transform (finds optimal lambda parameter)
+            from scipy import stats
+            result, lambda_val = stats.boxcox(result)
+            description = f"Box-Cox (lambda={lambda_val:.4f})"
+
+        elif method == 'yeojohnson':
+            # Yeo-Johnson transform (works with negative values)
+            from scipy import stats
+            result, lambda_val = stats.yeojohnson(result)
+            description = f"Yeo-Johnson (lambda={lambda_val:.4f})"
+
+        elif method == 'minmax':
+            # Min-Max scaling to 0-1 range
+            min_val = result.min()
+            max_val = result.max()
+            result = (result - min_val) / (max_val - min_val)
+            description = f"Min-Max scaling to [0,1]"
+
+        elif method == 'custom_minmax':
+            # Min-Max with custom range
+            min_val = result.min()
+            max_val = result.max()
+            # Get custom range from user
+            try:
+                new_min = float(input("Enter minimum value for new range: "))
+                new_max = float(input("Enter maximum value for new range: "))
+                if new_min >= new_max:
+                    raise ValueError("Maximum must be greater than minimum")
+
+                # Apply custom range scaling
+                result = (result - min_val) / (max_val - min_val) * (new_max - new_min) + new_min
+                description = f"Min-Max scaling to [{new_min},{new_max}]"
+            except ValueError as e:
+                print(f"Error setting custom range: {str(e)}")
+                # Fall back to standard minmax if error occurs
+                result = (result - min_val) / (max_val - min_val)
+                description = f"Min-Max scaling to [0,1] (fallback from custom range error)"
+
+        elif method == 'none':
+            # No transformation
+            description = "No transformation applied"
+
+        return result, description
+
+    # Begin main function execution
+    if verbose:
+        print('-' * 50)
+        print('Beginning feature transformation process.')
+        print('-' * 50)
+
+    # Input validation
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Feature identification
+    if features_to_transform is None:
+        # Identify numerical features
+        numeric_cols = [column for column in df.columns if pd.api.types.is_numeric_dtype(df[column])]
+
+        # Filter out likely categorical numeric features (binary/boolean)
+        filtered_numeric_cols = []
+        for column in numeric_cols:
+            unique_vals = sorted(df[column].dropna().unique())
+            # Skip binary features (0/1 values)
+            if len(unique_vals) <= 2 and all(float(x).is_integer() for x in unique_vals if pd.notna(x)):
+                if verbose:
+                    print(f'Excluding "{column}" from transformation - appears to be binary/categorical.')
+                continue
+            filtered_numeric_cols.append(column)
+
+        if verbose:
+            print(f'Identified {len(filtered_numeric_cols)} potential numerical features for transformation:')
+            print(', '.join(filtered_numeric_cols))
+
+            if not filtered_numeric_cols:
+                print('No suitable numerical features found for transformation.')
+                return df
+
+            # Allow user to select which features to transform
+            print('\nWhich features would you like to transform?')
+            print('1. All identified numerical features')
+            print('2. Select specific features')
+            print('3. Cancel transformation process')
+
+            while True:
+                selection = input('Enter your choice (1, 2, or 3): ').strip()
+
+                if selection == '1':
+                    final_features = filtered_numeric_cols
+                    break
+                elif selection == '2':
+                    # Show features for selection
+                    print('\nAvailable numerical features:')
+                    for idx, col in enumerate(filtered_numeric_cols, 1):
+                        print(f'{idx}. {col}')
+
+                    # Get user selection
+                    user_input = input('\nEnter the feature numbers to transform (comma-separated) or "C" to cancel: ')
+
+                    if user_input.lower() == 'c':
+                        print('Transformation cancelled.')
+                        return df
+
+                    try:
+                        # Parse selected indices
+                        indices = [int(idx.strip()) - 1 for idx in user_input.split(',')]
+
+                        # Validate indices
+                        if not all(0 <= idx < len(filtered_numeric_cols) for idx in indices):
+                            print('Invalid feature number(s). Please try again.')
+                            continue
+
+                        # Get selected feature names
+                        final_features = [filtered_numeric_cols[idx] for idx in indices]
+                        break
+                    except ValueError:
+                        print('Invalid input. Please enter comma-separated numbers.')
+
+                elif selection == '3':
+                    print('Transformation cancelled.')
+                    return df
+
+                else:
+                    print('Invalid choice. Please enter 1, 2, or 3.')
+    else:
+        # Validate provided features
+        missing_cols = [col for col in features_to_transform if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f'Features not found in DataFrame: {missing_cols}')
+
+        # Verify features are numeric
+        non_numeric = [col for col in features_to_transform if not pd.api.types.is_numeric_dtype(df[col])]
+        if non_numeric:
+            raise ValueError(f'The following features are not numeric and cannot be transformed: {non_numeric}')
+
+        final_features = features_to_transform
+
+    if verbose:
+        print(f'\nPreparing to transform {len(final_features)} features:')
+        print(', '.join(final_features))
+
+        # Offer explanation of transformation methods
+        explain = input('\nWould you like to see an explanation of transformation methods? (Y/N): ').lower()
+        if explain == 'y':
+            print('\nTransformation Methods Overview:')
+            print('- Log Transformation: Best for right-skewed data, compresses large values')
+            print('- Square Root: Less aggressive than log, works well for moderately skewed data')
+            print('- Box-Cox: Finds optimal power transformation for normalization (requires positive values)')
+            print('- Yeo-Johnson: Similar to Box-Cox but works with zero and negative values')
+            print('- Square/Cube: For left-skewed data, amplifies differences in larger values')
+            print('- Reciprocal (1/x): Reverses the order of values, transforms very skewed distributions')
+            print('- Min-Max Scaling: Scales values to a specified range, preserves distribution shape')
+            print('\nNOTE: Different transformations are appropriate for different data distributions.')
+            print('Skewness will be analyzed to recommend suitable transformation methods.')
+
+    # Track transformations for summary
+    transform_records = []
+
+    # Process each feature
+    for feature in final_features:
+        if verbose:
+            print('\n' + '-' * 50)
+        print(f'Processing feature: "{feature}"')
+        if verbose:
+            print('-' * 50)
+
+        # Skip constant features
+        if df[feature].nunique() <= 1:
+            print(f'Skipping "{feature}" - this feature has no variance.')
+            continue
+
+        # Data quality checks
+        null_count = df[feature].isnull().sum()
+        if null_count > 0 and not skip_warnings:
+            pct_null = (null_count / len(df) * 100)
+            print(f'Warning: "{feature}" contains {null_count} null values ({pct_null:.2f}%).')
+            print('Transformations will be applied only to non-null values.')
+            if input('Continue with this feature? (Y/N): ').lower() != 'y':
+                continue
+
+        # Feature analysis
+        original_values = df[feature].copy()
+
+        if verbose:
+            # Show current distribution statistics
+            print(f'\nCurrent statistics for "{feature}":')
+            stats = df[feature].describe()
+            print(stats)
+
+            # Show skewness and kurtosis
+            skewness = df[feature].skew()
+            kurtosis = df[feature].kurtosis()
+            print(f'\nSkewness: {skewness:.4f}')
+            print(f'Kurtosis: {kurtosis:.4f}')
+
+            if abs(skewness) > 1:
+                print(f'This feature is{"" if skewness > 0 else " negatively"} skewed.')
+                if not skip_warnings:
+                    print('A transformation may help normalize the distribution.')
+
+            # Show zeros and negatives
+            has_zeros = (df[feature] == 0).any()
+            has_negatives = (df[feature] < 0).any()
+            if has_zeros:
+                print(f'This feature contains zero values. Some transformations (like log) may not be appropriate.')
+            if has_negatives:
+                print(f'This feature contains negative values. Some transformations require positive data only.')
+
+            # Offer to show distribution plot
+            if input('\nWould you like to see the current distribution? (Y/N): ').lower() == 'y':
+                plot_dist(df[feature], feature)
+
+        # Get transformation suggestions based on data characteristics
+        suggestions = suggest_transform(df[feature])
+
+        if verbose:
+            print('\nBased on feature characteristics, the following transformations might be appropriate:')
+            for suggestion in suggestions:
+                print(f'- {suggestion.title()}')
+
+        # Show transformation options
+        print('\nAvailable transformation methods:')
+
+        # Create list of valid methods based on data characteristics
+        has_zeros = (df[feature] == 0).any()
+        has_negatives = (df[feature] < 0).any()
+
+        # Define all possible transformation methods
+        all_methods = []
+
+        # Only offer appropriate methods based on data characteristics
+        if not has_negatives and not has_zeros:
+            all_methods.extend(['log', 'log10', 'sqrt', 'reciprocal'])
+
+        if not has_negatives:
+            all_methods.extend(['log1p', 'boxcox', 'sqrt'])
+
+        # These work with all data including negatives
+        all_methods.extend(['yeojohnson', 'square', 'cube', 'minmax', 'custom_minmax', 'none'])
+
+        # Remove duplicates and sort
+        methods = sorted(list(set(all_methods)))
+
+        # Show options to user
+        for idx, method in enumerate(methods, 1):
+            print(f'{idx}. {method.title()}')
+
+        # Add skip option
+        print(f'{len(methods) + 1}. Skip transformation for this feature')
+
+        # Get user's transformation choice
+        while True:
+            try:
+                choice = input('\nSelect transformation method: ')
+
+                try:
+                    method_idx = int(choice) - 1
+                    if 0 <= method_idx < len(methods):
+                        selected_method = methods[method_idx]
+                        break
+                    elif method_idx == len(methods):
+                        print(f'Skipping transformation for feature "{feature}".')
+                        break
+                    else:
+                        print(f'Please enter a number between 1 and {len(methods) + 1}.')
+                except ValueError:
+                    print('Invalid input. Please enter a number.')
+
+            except Exception:
+                print('Invalid selection. Please try again.')
+
+        # Skip to next feature if user chose to skip
+        if method_idx == len(methods):
+            continue
+
+        # Apply transformation
+        try:
+            # Target column name (either original or new)
+            target_column = feature
+            if preserve_features:
+                target_column = f'{feature}_transformed'
+                # Check if target column already exists
+                counter = 1
+                while target_column in df.columns:
+                    target_column = f'{feature}_transformed_{counter}'
+                    counter += 1
+
+            # Apply the transformation
+            transformed_values, description = apply_transform(df[feature], selected_method)
+
+            # Update the dataframe
+            df[target_column] = transformed_values
+
+            # Track the transformation
+            transform_records.append({
+                'feature': feature,
+                'target': target_column,
+                'method': selected_method,
+                'description': description
+            })
+
+            if verbose:
+                print(f'\nSuccessfully transformed "{feature}" using {description}.')
+
+                # Calculate and show new skewness
+                new_skewness = df[target_column].skew()
+                print(f'New skewness: {new_skewness:.4f} (was {skewness:.4f})')
+
+                # Show before/after comparison
+                if input('\nWould you like to see a comparison of the distributions? (Y/N): ').lower() == 'y':
+                    plot_comp(original_values, df[target_column], feature, selected_method)
+
+        except Exception as exc:
+            print(f'Error transforming feature "{feature}": {exc}')
+            print('Skipping this feature.')
+            continue
+
+    # Print summary if features were transformed
+    if transform_records:
+        if verbose:
+            print('\n' + '-' * 50)
+            print('TRANSFORMATION SUMMARY:')
+            print('-' * 50)
+
+            for record in transform_records:
+                print(f'Feature: {record["feature"]}')
+                print(f'- Method: {record["method"].title()}')
+                print(f'- Description: {record["description"]}')
+                if record["feature"] != record["target"]:
+                    print(f'- New column: {record["target"]}')
+                print('-' * 25)
+
+            if preserve_features:
+                print('\nNOTE: Original features were preserved alongside transformed columns.')
+
+    if verbose:
+        print('-' * 50)
+        print('Transformation complete. Returning modified dataframe.')
+        print('-' * 50)
+
+    # Return the modified dataframe
+    return df
