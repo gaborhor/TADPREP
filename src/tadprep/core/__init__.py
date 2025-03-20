@@ -12,7 +12,8 @@ from .transforms import (
     _encode_core,
     _scale_core,
     _prep_df_core,
-    _transform_core
+    _transform_core,
+    _extract_datetime_core
 )
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     '_encode_core',
     '_scale_core',
     '_prep_df_core',
-    '_transform_core'
+    '_transform_core',
+    '_extract_datetime_core'
 ]
