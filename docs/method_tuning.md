@@ -840,7 +840,7 @@ retained.
  - When `False`, removes original datetime columns after extraction
 
 ### Method History:
-- Proposed by Don Smith (Current State)
+- Alpha build by Don Smith (Current State)
 
 
 # Method: `build_interactions`
@@ -863,10 +863,11 @@ capture non-linear relationships and interactions between variables.
 
 ### Implementation Plan:
 - **Input Validation**
- - Verify input is a Pandas DataFrame
- - Validate existence of specified features if provided
- - Ensure DataFrame is not empty
- - Validate interaction_types if provided
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified features if provided
+  - Ensure DataFrame is not empty
+  - Validate interaction_types if provided
+
 
 - **Feature Identification**
  - If `features_to_combine` is None:
@@ -874,11 +875,13 @@ capture non-linear relationships and interactions between variables.
    - Allow user to select which features to consider for interactions
    - Provide option to include categorical features (after encoding)
 
+
 - **Interaction Type Selection**
  - If `interaction_types` is None:
    - Offer standard interaction types: multiply, divide, add, subtract, polynomial
    - Allow user to select which types to create
    - If `verbose=True`, explain each interaction type's purpose
+
 
 - **Interaction Creation Process**
  - For multiplication interactions:
@@ -902,23 +905,27 @@ capture non-linear relationships and interactions between variables.
    - Create squared and cubed versions of individual features
    - Name new features as '{feature}_squared', '{feature}_cubed'
 
+
 - **Feature Selection and Limitation**
- - If `max_features` is set:
-   - Prioritize interactions based on correlation with target (if available)
-   - Use variance or other metrics to select most relevant interactions
-   - Limit total number of interaction features created
+  - If `max_features` is set:
+    - Prioritize interactions based on correlation with target (if available)
+    - Use variance or other metrics to select most relevant interactions
+    - Limit total number of interaction features created
+
 
 - **Output Handling**
- - Add created interaction features to dataframe
- - If `preserve_features=False`:
-   - Remove original features used in interactions
- - Return updated DataFrame
+  - Add created interaction features to dataframe
+  - If `preserve_features=False`:
+    - Remove original features used in interactions
+  - Return updated DataFrame
+
 
 - **Error Handling**
- - Handle division by zero or near-zero values
- - Manage potential feature explosion with many interaction combinations
- - Provide warnings about large feature space expansion
- - Allow cancellation if too many features would be created
+  - Handle division by zero or near-zero values
+  - Manage potential feature explosion with many interaction combinations
+  - Provide warnings about large feature space expansion
+  - Allow cancellation if too many features would be created
+
 
 - **Reporting**
  - If `verbose=True`:
@@ -929,28 +936,31 @@ capture non-linear relationships and interactions between variables.
 
 ### Expected Behavior:
 - Core Functionality (Always Run):
- - Creates specified interaction features between selected columns
- - Applies appropriate naming conventions
- - Maintains data integrity during feature creation
- - Handles edge cases (division by zero, etc.)
- - Returns modified dataframe with new features
+  - Creates specified interaction features between selected columns
+  - Applies appropriate naming conventions
+  - Maintains data integrity during feature creation
+  - Handles edge cases (division by zero, etc.)
+  - Returns modified dataframe with new features
+
 
 - If `verbose=False`:
- - Shows minimal feature guidance
- - Displays only essential user prompts
- - Provides basic confirmation of successful operations
- - Minimizes explanatory text
+  - Shows minimal feature guidance
+  - Displays only essential user prompts
+  - Provides basic confirmation of successful operations
+  - Minimizes explanatory text
+
 
 - If `verbose=True`:
- - Explains interaction feature concepts
- - Shows examples of created features
- - Provides guidance on feature selection
- - Warns about potential pitfalls (multicollinearity, feature explosion)
- - Offers educational content about when interactions are beneficial
+  - Explains interaction feature concepts
+  - Shows examples of created features
+  - Provides guidance on feature selection
+  - Warns about potential pitfalls (multicollinearity, feature explosion)
+  - Offers educational content about when interactions are beneficial
+
 
 - Parameter `preserve_features`:
- - When `True` (default), keeps original features alongside interactions
- - When `False`, removes original features after interaction creation
+  - When `True` (default), keeps original features alongside interactions
+  - When `False`, removes original features after interaction creation
 
 ### Method History:
 - Proposed by Don Smith (Current State)
