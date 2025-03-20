@@ -13,7 +13,8 @@ from .package import (
     encode,
     scale,
     prep_df,
-    transform
+    transform,
+    extract_datetime
 )
 
 # Define exposure if "from tadprep import *" is called
@@ -29,7 +30,8 @@ __all__ = [
     'encode',
     'scale',
     'prep_df',
-    'transform'
+    'transform',
+    'extract_datetime'
 ]
 
 # Package metadata
