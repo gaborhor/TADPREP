@@ -3552,8 +3552,8 @@ def _transform_core(
 
             # Transformed distribution
             sns.histplot(data=transformed.dropna(), kde=True, ax=ax2)
-            ax2.set_title(f'After {transform_name} Transform')
-            ax2.set_xlabel(f'{feature_name} (transformed)')
+            ax2.set_title(f'{feature_name} after {transform_name} Transform')
+            ax2.set_xlabel(f'{feature_name} (Transformed)')
 
             plt.tight_layout()
             plt.show()
@@ -3574,9 +3574,9 @@ def _transform_core(
         Returns:
             list of suggested transformation methods
         """
-        suggestions = []
+        suggestions = []  # Instantiate an empty list to hold transform suggestions
 
-        # Skip if too few non-null values
+        # Skip if too few non-null values are present
         if len(series.dropna()) < 10:
             return ['none']
 
@@ -3584,7 +3584,7 @@ def _transform_core(
         skewness = series.skew()
         min_val = series.min()
         has_zeros = (series == 0).any()
-        has_negatives = (series < 0).any()
+        has_negs = (series < 0).any()
 
         # Based on skewness, suggest transformations
         if abs(skewness) < 0.5:
@@ -3594,16 +3594,16 @@ def _transform_core(
             # For right-skewed data (positive skew)
             if skewness > 1:
                 # Log transformation works well for right-skewed data
-                if not has_negatives and not has_zeros:
+                if not has_negs and not has_zeros:
                     suggestions.append('log')
                     suggestions.append('sqrt')
-                elif not has_negatives:
+                elif not has_negs:
                     suggestions.append('sqrt')
                     if min_val > 0:
                         suggestions.append('log1p')  # log(1+x) works with zeros
 
                 # Box-Cox handles zeros but not negatives
-                if not has_negatives:
+                if not has_negs:
                     suggestions.append('boxcox')
 
                 # Yeo-Johnson works with negatives and zeros
@@ -3619,7 +3619,7 @@ def _transform_core(
                 suggestions.append('yeojohnson')
 
                 # Reciprocal for left skew (if no zeros)
-                if not has_zeros and not has_negatives:
+                if not has_zeros and not has_negs:
                     suggestions.append('reciprocal')
 
             # For moderately skewed data
@@ -3627,7 +3627,7 @@ def _transform_core(
                 suggestions.append('yeojohnson')  # Safe choice for most distributions
                 suggestions.append('minmax')  # Simple scaling
 
-        # If no specific suggestions, include general options
+        # If no specific suggestions, include generally-applicable options
         if not suggestions:
             suggestions = ['yeojohnson', 'minmax']
 
@@ -3646,60 +3646,68 @@ def _transform_core(
         """
         # Create a copy to prevent modifying the original
         result = series.copy()
-        description = ""
+        desc = ''
 
         # Handle each transformation type
         if method == 'log':
             # Natural log transform
             result = np.log(result)
-            description = "Natural logarithm"
+            desc = 'Natural logarithm'
 
         elif method == 'log10':
             # Base-10 log transform
             result = np.log10(result)
-            description = "Base-10 logarithm"
+            desc = 'Base-10 logarithm'
 
         elif method == 'log1p':
             # Log(1+x) transform (handles zeros)
             result = np.log1p(result)
-            description = "Natural logarithm of (1+x)"
+            desc = 'Natural logarithm of (1+x)'
 
         elif method == 'sqrt':
             # Square root transform
             result = np.sqrt(result)
-            description = "Square root"
+            desc = 'Square root'
 
         elif method == 'square':
             # Square transform
             result = np.square(result)
-            description = "Square (x²)"
+            desc = 'Square (x²)'
 
         elif method == 'cube':
             # Cube transform
             result = np.power(result, 3)
-            description = "Cube (x³)"
+            desc = 'Cube (x³)'
 
         elif method == 'reciprocal':
             # Reciprocal transform
             result = 1 / result
-            description = "Reciprocal (1/x)"
+            desc = 'Reciprocal (1/x)'
 
         elif method == 'boxcox':
             # Box-Cox transform (finds optimal lambda parameter)
-            result, lambda_val = stats.boxcox(result)
-            description = f"Box-Cox (lambda={lambda_val:.4f})"
+            # Convert Series to NumPy array
+            np_array = result.to_numpy()
+            np_transformed, lambda_val = stats.boxcox(np_array)
+            # Convert back to Series
+            result = pd.Series(np_transformed, index=result.index)
+            desc = f'Box-Cox (lambda={lambda_val:.4f})'
 
         elif method == 'yeojohnson':
             # Yeo-Johnson transform (works with negative values)
-            result, lambda_val = stats.yeojohnson(result)
-            description = f"Yeo-Johnson (lambda={lambda_val:.4f})"
+            # Convert Series to NumPy array
+            np_array = result.to_numpy()
+            np_transformed, lambda_val = stats.yeojohnson(np_array)
+            # Convert back to Series
+            result = pd.Series(np_transformed, index=result.index)
+            desc = f'Yeo-Johnson (lambda={lambda_val:.4f})'
 
         elif method == 'minmax':
             # Min-Max scaling to 0-1 range
             min_val = result.min()
             max_val = result.max()
             result = (result - min_val) / (max_val - min_val)
-            description = f"Min-Max scaling to [0,1]"
+            desc = f'Min-Max scaling to [0,1]'
 
         elif method == 'custom_minmax':
             # Min-Max with custom range
@@ -3707,38 +3715,31 @@ def _transform_core(
             max_val = result.max()
             # Get custom range from user
             try:
-                new_min = float(input("Enter minimum value for new range: "))
-                new_max = float(input("Enter maximum value for new range: "))
+                new_min = float(input('Enter minimum value for new range: '))
+                new_max = float(input('Enter maximum value for new range: '))
                 if new_min >= new_max:
-                    raise ValueError("Maximum must be greater than minimum")
+                    raise ValueError('Maximum must be greater than minimum')
 
                 # Apply custom range scaling
                 result = (result - min_val) / (max_val - min_val) * (new_max - new_min) + new_min
-                description = f"Min-Max scaling to [{new_min},{new_max}]"
+                desc = f'Min-Max scaling to [{new_min},{new_max}]'
             except ValueError as e:
-                print(f"Error setting custom range: {str(e)}")
+                print(f'Error setting custom range: {str(e)}')
                 # Fall back to standard minmax if error occurs
                 result = (result - min_val) / (max_val - min_val)
-                description = f"Min-Max scaling to [0,1] (fallback from custom range error)"
+                desc = f'Min-Max scaling to [0,1] (fallback from custom range error)'
 
         elif method == 'none':
             # No transformation
-            description = "No transformation applied"
+            desc = 'No transformation applied'
 
-        return result, description
+        return result, desc
 
     # Begin main function execution
     if verbose:
         print('-' * 50)
         print('Beginning feature transformation process.')
         print('-' * 50)
-
-    # Input validation
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError('Input must be a pandas DataFrame')
-
-    if df.empty:
-        raise ValueError('Input DataFrame is empty')
 
     # Feature identification
     if features_to_transform is None:
@@ -3776,6 +3777,7 @@ def _transform_core(
                 if selection == '1':
                     final_features = filtered_numeric_cols
                     break
+
                 elif selection == '2':
                     # Show features for selection
                     print('\nAvailable numerical features:')
