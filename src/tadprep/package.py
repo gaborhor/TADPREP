@@ -11,7 +11,8 @@ from .core.transforms import (
     _encode_core,
     _scale_core,
     _prep_df_core,
-    _transform_core
+    _transform_core,
+    _extract_datetime_core
 )
 
 
@@ -745,3 +746,122 @@ def transform(
         preserve_features=preserve_features,
         skip_warnings=skip_warnings
     )
+
+
+def extract_datetime(
+        df: pd.DataFrame,
+        datetime_features: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = False,
+        components: list[str] | None = None
+) -> pd.DataFrame:
+    """
+    Extracts useful features from datetime columns in a dataframe, converting temporal
+    information into features that machine learning models can use more effectively.
+
+    This function identifies datetime columns, extracts selected components (year, month, day, etc.),
+    and creates new features. It can also detect time series data and offer additional
+    time-specific components.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing datetime features to extract.
+    datetime_features : list[str] | None, default=None
+        Optional list of datetime features to process. If None, the function will
+        identify datetime features interactively.
+    verbose : bool, default=True
+        Controls whether detailed guidance and explanations are displayed.
+    preserve_features : bool, default=False
+        Controls whether original datetime features are preserved in the DataFrame.
+        When False, original datetime columns are removed after extraction.
+    components : list[str] | None, default=None
+        Optional list of specific datetime components to extract. If None, the function
+        will help identify components interactively.
+
+        Standard components include:
+        - year, month, day, quarter
+        - dayofweek, weekofyear, dayofyear
+        - hour, minute
+
+        For time series data, additional components include:
+        - is_weekend, is_month_start, is_month_end
+        - is_quarter_start, is_quarter_end
+
+    Returns
+    -------
+    pandas.DataFrame
+        Modified dataframe with extracted datetime features. If preserve_features=True,
+        original datetime columns are retained.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import tadprep as tp
+    >>> df = pd.DataFrame({
+    ...     'date': pd.date_range('2021-01-01', periods=5),
+    ...     'value': [10, 20, 30, 40, 50]
+    ... })
+    >>> # Basic usage - let function identify components interactively
+    >>> df_extracted = tp.extract_datetime(df)
+    >>> # Specify datetime columns and components
+    >>> df_extracted = tp.extract_datetime(
+    ...     df,
+    ...     datetime_features=['date'],
+    ...     components=['year', 'month', 'dayofweek']
+    ... )
+    >>> # Keep original datetime columns
+    >>> df_extracted = tp.extract_datetime(df, preserve_features=True)
+    >>> # Minimize output
+    >>> df_extracted = tp.extract_datetime(df, verbose=False)
+    """
+    # Ensure input is a Pandas dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Input must be a pandas DataFrame')
+
+    # Ensure dataframe is not empty
+    if df.empty:
+        raise ValueError('Input DataFrame is empty')
+
+    # Validate datetime_features if provided
+    if datetime_features is not None:
+        if not isinstance(datetime_features, list):
+            raise TypeError('datetime_features must be a list of strings')
+
+        if not all(isinstance(col, str) for col in datetime_features):
+            raise TypeError('All feature names in datetime_features must be strings')
+
+        if not all(col in df.columns for col in datetime_features):
+            missing = [col for col in datetime_features if col not in df.columns]
+            raise ValueError(f'Features not found in DataFrame: {missing}')
+
+    # Validate components if provided
+    valid_components = [
+        'year', 'month', 'day', 'dayofweek', 'hour', 'minute',
+        'second', 'quarter', 'weekofyear', 'dayofyear',
+        'is_weekend', 'is_month_start', 'is_month_end',
+        'is_quarter_start', 'is_quarter_end'
+    ]
+
+    if components is not None:
+        if not isinstance(components, list):
+            raise TypeError('components must be a list of strings')
+
+        if not all(isinstance(comp, str) for comp in components):
+            raise TypeError('All component names must be strings')
+
+        invalid = [comp for comp in components if comp not in valid_components]
+        if invalid:
+            raise ValueError(f'Invalid component names: {invalid}. Valid components are: {valid_components}')
+
+    # Validate preserve_features
+    if not isinstance(preserve_features, bool):
+        raise TypeError('preserve_features must be a boolean')
+
+    # Call core implementation
+    return _extract_datetime_core(
+        df,
+        datetime_features=datetime_features,
+        verbose=verbose,
+        preserve_features=preserve_features,
+        components=components)
