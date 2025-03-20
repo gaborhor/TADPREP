@@ -4067,3 +4067,375 @@ def _transform_core(
 
     # Return the modified dataframe
     return df
+
+
+def _extract_datetime_core(
+        df: pd.DataFrame,
+        datetime_features: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = False,
+        components: list[str] | None = None
+) -> pd.DataFrame:
+    """
+    Core function to extract useful features from datetime columns in a dataframe.
+
+    Args:
+        df: Input DataFrame containing datetime features.
+        datetime_features: Optional list of datetime features to process. If None, function will
+            identify datetime features interactively.
+        verbose: Whether to display detailed guidance and explanations.
+        preserve_features: Whether to keep original datetime features in the DataFrame.
+        components: Optional list of specific datetime components to extract. If None, function
+            will help identify components interactively.
+
+    Returns:
+        DataFrame with extracted datetime features.
+    """
+    # Standard datetime components available for extraction
+    STANDARD_COMPONENTS = [
+        'year', 'month', 'day', 'dayofweek', 'hour', 'minute',
+        'quarter', 'weekofyear', 'dayofyear'
+    ]
+
+    # Time series specific components
+    TS_COMPONENTS = [
+        'is_weekend', 'is_month_start', 'is_month_end',
+        'is_quarter_start', 'is_quarter_end'
+    ]
+
+    # Component mapping between name and pandas datetime accessor method
+    COMPONENT_MAP = {
+        'year': 'year',
+        'month': 'month',
+        'day': 'day',
+        'dayofweek': 'dayofweek',
+        'hour': 'hour',
+        'minute': 'minute',
+        'second': 'second',
+        'quarter': 'quarter',
+        'weekofyear': 'isocalendar().week',
+        'dayofyear': 'dayofyear',
+        'is_weekend': lambda x: x.dayofweek >= 5,
+        'is_month_start': 'is_month_start',
+        'is_month_end': 'is_month_end',
+        'is_quarter_start': 'is_quarter_start',
+        'is_quarter_end': 'is_quarter_end'
+    }
+
+    def parse_datetime_col(df: pd.DataFrame, col: str) -> bool:
+        """This helper function parses a column as datetime if it's not already a datetime dtype."""
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            return True
+
+        try:
+            # Try to convert to datetime
+            df[col] = pd.to_datetime(df[col])
+            return True
+        except (ValueError, TypeError):
+            if verbose:
+                print(f'Could not convert column "{col}" to datetime type.')
+            return False
+
+    def is_timeseries(df: pd.DataFrame, date_col: str) -> bool:
+        """This helper function detects whether a datetime column represents a time series."""
+        # Check if we have at least 10 non-null values
+        if df[date_col].count() < 10:
+            return False
+
+        # Sort values and check if differences are mostly consistent
+        try:
+            sorted_dates = df[date_col].dropna().sort_values()
+            diff = sorted_dates.diff().dropna()
+
+            # Calculate mode of differences (most common interval)
+            most_common_diff = diff.value_counts().index[0]
+
+            # If more than 60% of intervals are the same, likely a time series
+            if (diff == most_common_diff).mean() > 0.6:
+                return True
+
+            return False
+
+        except:
+            return False
+
+    def extract_components(df: pd.DataFrame, col: str, comp_list: list[str], cyclical: bool = False) -> dict:
+        """This helper function extracts datetime components from a single column."""
+        extracted = {}
+
+        for comp in comp_list:
+            try:
+                # Generate column name for the extracted component
+                new_col = f'{col}_{comp}'
+
+                # Extract the component
+                if comp in COMPONENT_MAP:
+                    if callable(COMPONENT_MAP[comp]):
+                        df[new_col] = COMPONENT_MAP[comp](df[col])
+                    else:
+                        # Handle nested property access (like isocalendar().week)
+                        if '.' in COMPONENT_MAP[comp]:
+                            parts = COMPONENT_MAP[comp].split('.')
+                            temp = getattr(df[col].dt, parts[0])
+                            for part in parts[1:]:
+                                if '()' in part:
+                                    method_name = part.split('(')[0]
+                                    temp = getattr(temp, method_name)()
+                                else:
+                                    temp = getattr(temp, part)
+                            df[new_col] = temp
+                        else:
+                            df[new_col] = getattr(df[col].dt, COMPONENT_MAP[comp])
+
+                # Apply cyclical encoding if requested
+                if cyclical and comp in ['month', 'dayofweek', 'day', 'hour']:
+                    if comp == 'month':
+                        max_val = 12
+                    elif comp == 'dayofweek':
+                        max_val = 7
+                    elif comp == 'day':
+                        max_val = 31
+                    elif comp == 'hour':
+                        max_val = 24
+                    else:
+                        continue
+
+                    # Create sin and cos transformations
+                    sin_col = f'{col}_{comp}_sin'
+                    cos_col = f'{col}_{comp}_cos'
+                    df[sin_col] = np.sin(2 * np.pi * df[new_col] / max_val)
+                    df[cos_col] = np.cos(2 * np.pi * df[new_col] / max_val)
+
+                    # Record these new columns
+                    extracted[sin_col] = 'sin'
+                    extracted[cos_col] = 'cos'
+
+                # Record the extracted component
+                extracted[new_col] = comp
+
+            except Exception as e:
+                if verbose:
+                    print(f'Error extracting {comp} from {col}: {str(e)}')
+
+        return extracted
+
+    if verbose:
+        print('-' * 50)
+        print('Beginning datetime feature extraction process.')
+        print('-' * 50)
+
+    # Identify datetime columns if not provided
+    if datetime_features is None:
+        # Look for explicit datetime columns
+        explicit_dt_cols = [col for col in df.columns
+                            if pd.api.types.is_datetime64_any_dtype(df[col])]
+
+        # Look for potential string datetime columns
+        potential_dt_cols = []
+        for col in df.columns:
+            if pd.api.types.is_object_dtype(df[col]):
+                # Try to parse the first non-null value
+                sample = df[col].dropna().iloc[:5] if not df[col].dropna().empty else []
+                try:
+                    for val in sample:
+                        # If any value is parseable as datetime, add to potential list
+                        pd.to_datetime(val)
+                        potential_dt_cols.append(col)
+                        break
+                except:
+                    continue
+
+        if verbose and explicit_dt_cols:
+            print(f'Found {len(explicit_dt_cols)} explicit datetime columns:')
+            for col in explicit_dt_cols:
+                print(f'- {col}')
+
+        if verbose and potential_dt_cols:
+            print(f'Found {len(potential_dt_cols)} potential datetime columns:')
+            for col in potential_dt_cols:
+                print(f'- {col}')
+
+        all_dt_cols = explicit_dt_cols + potential_dt_cols
+
+        if not all_dt_cols:
+            print('No datetime columns found in the DataFrame.')
+            return df
+
+        # Let user select from discovered datetime columns
+        if verbose:
+            print('\nWhich datetime columns would you like to extract features from?')
+            for idx, col in enumerate(all_dt_cols, 1):
+                print(f'{idx}. {col}')
+            print(f'{len(all_dt_cols) + 1}. All columns')
+            print(f'{len(all_dt_cols) + 2}. Cancel extraction')
+
+        while True:
+            try:
+                user_choice = input('Enter your choice: ')
+
+                # Check if user wants to use all columns
+                if user_choice == str(len(all_dt_cols) + 1):
+                    datetime_features = all_dt_cols
+                    break
+
+                # Check if user wants to cancel
+                elif user_choice == str(len(all_dt_cols) + 2):
+                    print('Extraction cancelled. DataFrame was not modified.')
+                    return df
+
+                # Check if user wanted specific columns
+                else:
+                    # Parse comma-separated list of indices
+                    if ',' in user_choice:
+                        indices = [int(idx.strip()) for idx in user_choice.split(',')]
+                    else:
+                        indices = [int(user_choice)]
+
+                    # Validate indices
+                    if not all(1 <= idx <= len(all_dt_cols) for idx in indices):
+                        print(f'Please enter valid numbers between 1 and {len(all_dt_cols)}')
+                        continue
+
+                    # Convert indices to column names
+                    datetime_features = [all_dt_cols[idx - 1] for idx in indices]
+                    break
+
+            except ValueError:
+                print('Invalid input. Please enter a valid number or comma-separated list.')
+
+    # Ensure all specified datetime columns are valid
+    valid_dt_cols = []
+    for col in datetime_features:
+        if col not in df.columns:
+            print(f'Warning: Column "{col}" not found in the DataFrame.')
+            continue
+
+        # Convert to datetime if needed
+        if parse_datetime_col(df, col):
+            valid_dt_cols.append(col)
+
+    if not valid_dt_cols:
+        print('No valid datetime columns to process.')
+        return df
+
+    # Determine which components to extract
+    if components is None:
+        available_components = STANDARD_COMPONENTS.copy()
+
+        # Check if any column is likely a time series
+        is_ts_data = any(is_timeseries(df, col) for col in valid_dt_cols)
+
+        if is_ts_data:
+            available_components.extend(TS_COMPONENTS)
+            if verbose:
+                print('\nTime series data detected. Additional time series components available.')
+
+        if verbose:
+            print('\nSelect components to extract:')
+            for idx, comp in enumerate(available_components, 1):
+                print(f'{idx}. {comp}')
+            print(f'{len(available_components) + 1}. All components')
+            print(f'{len(available_components) + 2}. Cancel extraction')
+
+            # Ask about cyclical encoding
+            cyclical_enc = input(
+                '\nApply cyclical encoding to periodic components (month, day, hour)? (Y/N): ').lower() == 'y'
+        else:
+            cyclical_enc = False
+
+        while True:
+            try:
+                user_choice = input('Enter your choice: ')
+
+                # Check if user wants all components
+                if user_choice == str(len(available_components) + 1):
+                    components = available_components
+                    break
+
+                # Check if user wants to cancel
+                elif user_choice == str(len(available_components) + 2):
+                    print('Extraction cancelled. DataFrame was not modified.')
+                    return df
+
+                # Check if user wanted specific components
+                else:
+                    # Parse comma-separated list of indices
+                    if ',' in user_choice:
+                        indices = [int(idx.strip()) for idx in user_choice.split(',')]
+                    else:
+                        indices = [int(user_choice)]
+
+                    # Validate indices
+                    if not all(1 <= idx <= len(available_components) for idx in indices):
+                        print(f'Please enter valid numbers between 1 and {len(available_components)}')
+                        continue
+
+                    # Convert indices to component names
+                    components = [available_components[idx - 1] for idx in indices]
+                    break
+
+            except ValueError:
+                print('Invalid input. Please enter a valid number or comma-separated list.')
+    else:
+        # With user-provided components, cyclical encoding is off by default
+        cyclical_enc = False
+
+        # Validate user-provided components
+        valid_components = []
+        for comp in components:
+            if comp in COMPONENT_MAP:
+                valid_components.append(comp)
+            else:
+                if verbose:
+                    print(f'Warning: Unknown component "{comp}". Skipping.')
+
+        if not valid_components:
+            print('No valid datetime components to extract.')
+            return df
+
+        components = valid_components
+
+    # Track columns created during extraction
+    extracted_columns = {}
+
+    # Process each datetime column
+    for col in valid_dt_cols:
+        if verbose:
+            print(f'\nExtracting components from "{col}"...')
+
+        # Extract specified components
+        new_cols = extract_components(df, col, components, cyclical_enc)
+        extracted_columns.update(new_cols)
+
+    # Remove original datetime columns if not preserving
+    if not preserve_features:
+        df = df.drop(columns=valid_dt_cols)
+        if verbose:
+            print('\nRemoved original datetime columns.')
+
+    # Print summary if verbose
+    if verbose and extracted_columns:
+        print('\nEXTRACTION SUMMARY:')
+        print('-' * 50)
+        print(f'Created {len(extracted_columns)} new columns:')
+
+        # Group by original datetime column
+        by_source = {}
+        for new_col, comp in extracted_columns.items():
+            source = new_col.split('_')[0]  # This assumes column naming convention
+            if source not in by_source:
+                by_source[source] = []
+            by_source[source].append((new_col, comp))
+
+        # Print grouped summary
+        for source, cols in by_source.items():
+            print(f'\nFrom {source}:')
+            for col, comp in cols:
+                print(f'- {col} ({comp})')
+
+    if verbose:
+        print('-' * 50)
+        print('Datetime feature extraction complete. Returning modified dataframe.')
+        print('-' * 50)
+
+    return df
