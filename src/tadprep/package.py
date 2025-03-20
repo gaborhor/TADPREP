@@ -648,8 +648,14 @@ def transform(
     Interactively transforms numerical features using various mathematical transformations.
 
     Applies transformations to improve data distributions for modeling, with a focus on
-    normalization and linearization. Supports log, square root, Box-Cox, Yeo-Johnson,
-    power transformations, and scaling methods.
+    normalization and linearization. The function analyzes data characteristics and
+    suggests appropriate transformations based on distribution properties.
+
+    Supports various transformations including:
+    - Logarithmic: log, log10, log1p (for handling different data requirements)
+    - Power: sqrt, square, cube, reciprocal
+    - Statistical: Box-Cox, Yeo-Johnson (for distribution normalization)
+    - Scaling: MinMax to [0,1] or custom range
 
     Parameters
     ----------
@@ -657,9 +663,10 @@ def transform(
         The DataFrame containing features to transform.
     features_to_transform : list[str] | None, default=None
         Optional list of features to transform. If None, method will help identify
-        numerical features.
+        numerical features and exclude likely categorical ones.
     verbose : bool, default=True
-        Controls whether detailed guidance and explanations are displayed.
+        Controls whether detailed guidance, explanations, and visualizations are displayed.
+        When True, offers distribution plots and transformation explanations.
     preserve_features : bool, default=False
         Controls whether original features are preserved when transforming. When True,
         creates new columns with the naming pattern '{original_column}_transformed'.
@@ -667,13 +674,24 @@ def transform(
         '{original_column}_transformed_1'.
     skip_warnings : bool, default=False
         Controls whether all best-practice-related warnings about distributions and
-        nulls are skipped.
+        nulls are skipped. Setting to True streamlines the process for experienced users.
 
     Returns
     -------
     pandas.DataFrame
         The DataFrame with transformed features. If preserve_features=True, original
         features are retained and new columns are added with transformed values.
+
+    Notes
+    -----
+    Some transformations have specific data requirements:
+    - Log and Box-Cox require strictly positive values (no zeros or negatives)
+    - Log1p and sqrt require non-negative values (no negatives)
+    - Reciprocal cannot handle zero values
+    - MinMax scaling is inappropriate for constant features (no variance)
+
+    The function automatically identifies which transformations are valid for each feature
+    based on its characteristics (presence of zeros, negative values, etc.).
 
     Examples
     --------
