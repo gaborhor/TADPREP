@@ -235,9 +235,8 @@ def _reshape_core(
             df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by column-missingness.
         """
         
-        
         ## This build assumes that input arg 'features_to_reshape' will be the way user provides
-        ## what features they wish to analyze and drop by
+        ## what features they wish to analyze and drop by.
         ## It is also the way this func determines relevant missingness
         
         # Create dict of missings-by-feature
@@ -270,6 +269,16 @@ def _reshape_core(
         
         ## This theoretically could be just a pandas wrapper.
         ## Check with Don about how it might integrate with UX ideas.
+
+        # Drop columns in 'features_to_reshape'
+        input = input(f'Drop columns {features_to_reshape}? (Y/N): ')
+        if input.lower() == 'y':
+            print('Dropping columns\n')
+            df.drop(columns=features_to_reshape, inplace=True)
+        elif input.lower() == 'n':
+            print('Aborting column drop operation\n')
+        else:
+            print('Invalid input, please enter "Y" or "N.\n')
         
         return df
     
@@ -299,44 +308,11 @@ class PlotHandler:
         #             'data': [pd.Series] (pd.Series will contain indexing info)
         #         }
         #     }
-        # }
-    
-    def plot_data(self, df: pd.DataFrame, col_name: str):
-        """
-        Generates and stores a Seaborn plot for a specified pandas DataFrame column with dtype and "plot type" determined by .det_plot_type().
-
-        Args:
-            df (pd.DataFrame): User DataFrame to source data for plotting
-            col_name (str): Specified DataFrame column to plot
-
-        Raises:
-            ValueError: _description_
-        """
-
-        # Use that .dtype to determine "best" plot type
-        col_info = self.det_plot_type(df, col_name)
-        
-        # self.plot_ methods apply plt.show() in all cases
-        if col_info[1] == 'hist':
-            self.plot_hist(df[col_name], col_name)
-            
-        elif col_info[1] == 'box':
-            self.plot_box(df[col_name], col_name)
-            
-        elif col_info[1] == 'line':
-            self.plot_line(df[col_name], col_name)
-            
-        elif col_info[1] == 'scatter':
-            self.plot_scatter(df[col_name], col_name)
-            
-        else:
-            print(f'Unsupported data type: {col_info[0]}')
-            return
-        
+        # } 
         
     def det_plot_type(self, data: pd.DataFrame | pd.Series, col_name: str) -> tuple:
         """
-        Determines an appropriate plot type for a set of data (pd.Series)
+        Determines an "appropriate" plot type for a set of data (pd.Series)
         based on the pandas dtype of the user's DataFrame column.
 
         Args:
@@ -350,8 +326,8 @@ class PlotHandler:
         """
 
         #####################################
-        # This may not be necessary, but is currently a placeholder method in the case
-        # we decide to add more user-controlled plot-type determination.
+        # This method may not be necessary, but is currently a placeholder method in the case
+        # we decide to separate plot-type determination from method-arg-input.
         #####################################
         
         # Determine if input is pd.DataFrame or pd.Series
@@ -377,23 +353,26 @@ class PlotHandler:
         
         return (dtype, plot_type)
     
-    def plot_hist(self, data, col_name: str):
+    def plot(self, df: pd.DataFrame, col_name: str, plot_type: str):
         """
-        Create a Seaborn histogram for numeric-type data and copy current data state to PlotHandler class instance self.plot_storage.
+        Create a specified Seaborn plot for a specified pandas DataFrame column.
+        Copies current data state to PlotHandler class instance self.plot_storage.
 
         Args:
-            data (_type_): Data to plot.
-            col_name (str): Name of DataFrame column for labeling.
+            data (pd.DataFrame): DataFrame to reference.
+            col_name (str): Name of DataFrame column for plotting and archiving.
+            plot_type (str): Type of plot to create (hist, box, line, scatter).
 
         Raises:
             ValueError: _description_
-
-        Returns:
-            plot (_type_): Seaborn histogram plot...
         """
-        # Check dtype of pd.Series for indexing in self.plot_storage
-        plot_type = self.det_plot_type(data, col_name)[1]
 
+        data = df[col_name]
+
+        ### LIKELY UNNECESSARY if giving user control over method arg
+        # # Check dtype of pd.Series for indexing in self.plot_storage
+        # plot_type = self.det_plot_type(data, col_name)[1]
+        
         # Create 'plot_num' list with first value 1 if not already present
         if not self.plot_storage[col_name][plot_type]['plot_num']:
             self.plot_storage[col_name][plot_type]['plot_num'].append(1)
@@ -405,113 +384,38 @@ class PlotHandler:
 
         self.plot_storage[col_name][plot_type]['data'].append(data)
 
-        plot = sns.histplot(data=data, kde=True)
-        plot.set_title(f"Histogram for '{col_name}'")
-        plt.show()  # Assume viz is desired on creation for now
+
+        if plot_type == 'hist':
+            plot = sns.histplot(data=data, kde=True)
+            plot.set_title(f"Histogram for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
         
-        return
-    
-    def plot_box(self, data, col_name: str):
-        """
-        Create a Seaborn boxplot for categorical-type data.
+            return
         
-        Args:
-            data (_type_): Data to plot.
-            col_name (str): Name of DataFrame column for labeling.
-
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            plot (_type_): Seaborn boxplot...
-        """
-        # Check dtype of pd.Series for indexing in self.plot_storage
-        plot_type = self.det_plot_type(data, col_name)[1]
-
-        # Create 'plot_num' list with first value 1 if not already present
-        if not self.plot_storage[col_name][plot_type]['plot_num']:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
-        # Otherwise, append the next number in the sequence
+        elif plot_type == 'box':
+            plot = sns.boxplot(data=data)
+            plot.set_title(f"Box Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+        
+            return
+        
+        elif plot_type == 'line':
+            plot = sns.lineplot(data=data)
+            plot.set_title(f"Line Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+        
+            return
+        
+        elif plot_type == 'scatter':
+            plot = sns.scatterplot(data=data)
+            plot.set_title(f"Scatter Plot for '{col_name}'")
+            plt.show()  # Assume viz is desired on creation for now
+            
+            return
+        
         else:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(
-                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
-            )
-
-        self.plot_storage[col_name][plot_type]['data'].append(data)
-
-        plot = sns.boxplot(data=data)
-        plot.set_title(f"Box Plot for '{col_name}'")
-        plt.show()  # Assume viz is desired on creation for now
-        
-        return
-    
-    def plot_line(self, data, col_name: str):
-        """
-        Create a Seaborn lineplot for TimeSeries-type data.
-        
-        Args:
-            data (_type_): Data to plot.
-            col_name (str): Name of DataFrame column for labeling.
-
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            plot (_type_): Seaborn lineplot...
-        """
-        # Check dtype of pd.Series for indexing in self.plot_storage
-        plot_type = self.det_plot_type(data, col_name)[1]
-
-        # Create 'plot_num' list with first value 1 if not already present
-        if not self.plot_storage[col_name][plot_type]['plot_num']:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
-        # Otherwise, append the next number in the sequence
-        else:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(
-                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
-            )
-
-        self.plot_storage[col_name][plot_type]['data'].append(data)
-
-        plot = sns.lineplot(data=data)
-        plot.set_title(f"Line Plot for '{col_name}'")
-        plt.show()  # Assume viz is desired on creation for now
-        
-        return
-    
-    def plot_scatter(self, data, col_name: str):
-        """
-        Create a Seaborn scatterplot for mixed-type data.
-        
-        Args:
-            data (_type_): Data to plot.
-            col_name (str): Name of DataFrame column for labeling.
-
-        Raises:
-            ValueError: _description_
-
-        Returns:
-            plot (_type_): Seaborn scatterplot...
-        """
-        # Check dtype of pd.Series for indexing in self.plot_storage
-        plot_type = self.det_plot_type(data, col_name)[1]
-
-        # Create 'plot_num' list with first value 1 if not already present
-        if not self.plot_storage[col_name][plot_type]['plot_num']:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(1)
-        # Otherwise, append the next number in the sequence
-        else:
-            self.plot_storage[col_name][plot_type]['plot_num'].append(
-                self.plot_storage[col_name][plot_type]['plot_num'][-1] + 1
-            )
-
-        self.plot_storage[col_name][plot_type]['data'].append(data)
-
-        plot = sns.scatterplot(data=data)
-        plot.set_title(f"Scatter Plot for '{col_name}'")
-        plt.show()  # Assume viz is desired on creation for now
-        
-        return
+            print(f'Unsupported plot type: {plot_type}')
+            return
     
     def recall_plot(self, col_name: str, plot_type: str):
         """
@@ -524,8 +428,7 @@ class PlotHandler:
         Raises:
             ValueError: _description_
         """
-
-        # Currently, always fetches most recently created plot for a given dtype
+        # Could be implemented to fetch by plot number, but currently fetches most recent plot
         if not self.plot_storage[col_name][plot_type]:
             print(f"No plot found for '{col_name}' with dtype '{plot_type}'")
         else:
@@ -562,113 +465,147 @@ class PlotHandler:
             ValueError: _description_
         """
 
-        max_plots_check = set()
+        types_list = ['hist', 'box', 'line', 'scatter']
 
-        if self.plot_storage[col_name]['hist']['plot_num']:
-            max_plots_check.add(max(self.plot_storage[col_name]['hist']['plot_num']))
-        if self.plot_storage[col_name]['box']['plot_num']:
-            max_plots_check.add(max(self.plot_storage[col_name]['box']['plot_num']))
-        if self.plot_storage[col_name]['line']['plot_num']:
-            max_plots_check.add(max(self.plot_storage[col_name]['line']['plot_num']))
-        if self.plot_storage[col_name]['scatter']['plot_num']:
-            max_plots_check.add(max(self.plot_storage[col_name]['scatter']['plot_num']))
-
-        # subplots() dimensions check:
-        subplots_nrows = max(max_plots_check)   # Max number of plots across all plot types for a given column
+        # Determine the number of rows and columns for subplots
+        subplots_nrows = max(len(self.plot_storage[col_name][plot_type]['data']) for plot_type in types_list)
         
-        subplots_ncols = 0                      # Number of plot types with actual data stored
-        for plot_type in ['hist', 'box', 'line', 'scatter']:
-            if self.plot_storage[col_name][plot_type]['data']:
-                subplots_ncols += 1
+        subplots_ncols = sum(1 for plot_type in types_list if self.plot_storage[col_name][plot_type]['data'])
 
-        ##debug
-        print(f"\ncol_name: {col_name}")
+        # debug
         print(f"nrows: {subplots_nrows}, ncols: {subplots_ncols}")
 
-        ### SPACE FOR ALL PLOT TYPES HAS ALREADY BEEN RESERVED
-        ### This means that conditional check for data needs to check specifically if data is present
-
-        # Create subplots basis for all stored plots for the column
+        # Create subplots
         fig, ax = plt.subplots(nrows=subplots_nrows,
                                ncols=subplots_ncols,
                                sharex=True
                                )
 
-        if subplots_nrows == 0:
-            print(f"No plots have been created for '{col_name}'")
-            return
-        if subplots_ncols == 0:
-            print(f"No plots have been created for '{col_name}'")
-            return
-        
-        ## There is some argument to be made that comparing between an "old" and "new" plot type
-        ## for the same Feature could be useful. However, this is not currently implemented.
-        ## As such, if subplots_nrows == 1, we will exit the method early to catch errors from this case.
+        # Ensure ax is always a 2D array for consistent indexing
         if subplots_nrows == 1:
-            print(f"A maximum of one plot per type has been created for '{col_name}'")
-            print(f"Comparison between plot types not currently supported.")
-            return
-
-        ##debug
-        print([i for i in range(subplots_nrows)])
-        print([i for i in range(subplots_ncols)])
-        
-        ## Check for dimentionality of suplots()
-        # If 1D, then we just iterate over rows
+            ax = [ax]  # Convert to a list for 1D case
         if subplots_ncols == 1:
-            # for col in range(subplots_ncols):
-            for row in range(subplots_nrows):
-                if self.plot_storage[col_name]['hist']['data']:
-                    print(f"Writing Histplot to row {row}")
-                    sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], kde=True, ax=ax[row])
-                    if row == 0:
-                        ax[row].set_title("Histograms")
+            ax = [[a] for a in ax]  # Convert to a nested list for 2D case
 
-                elif self.plot_storage[col_name]['box']['data']:
-                    print(f"Writing Boxplot to row {row}")
-                    sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row])
-                    if row == 0:
-                        ax[row].set_title("Boxplots")
-                
-                elif self.plot_storage[col_name]['line']['data']:
-                    print(f"Writing Lineplot to row {row}")
-                    sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row])
-                    if row == 0:
-                        ax[row].set_title("Lineplots")
-                
-                elif elf.plot_storage[col_name]['scatter']['data']:
-                    print(f"Writing Scatterplot to row {row}")
-                    sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row])
-                    if row == 0:
-                        ax[row].set_title("Scatterplots")
+        # Iterate over columns (plot types)
+        for col, curr_plot_type in enumerate(types_list):
+            if curr_plot_type in self.plot_storage[col_name]:
+                # Iterate over rows (individual plots)
+                for row, data in enumerate(self.plot_storage[col_name][curr_plot_type]['data']):
+                    # Validate data presence
+                    if data.dropna().empty:
+                        print(f"No valid data available for {curr_plot_type} at position: {row, col}")
+                        continue
+                    
+                    ### BUG HERE: sns.histplot does not populate for 1st column in 2D .subplots() case
+                    print(f"Plotting {curr_plot_type} at position: {row, col}")
+                    if curr_plot_type == 'hist':
+                        sns.histplot(data=data, kde=True, ax=ax[row][col])
+                    elif curr_plot_type == 'box':
+                        sns.boxplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'line':
+                        sns.lineplot(data=data, ax=ax[row][col])
+                    elif curr_plot_type == 'scatter':
+                        sns.scatterplot(data=data, ax=ax[row][col])
 
-        # If 2D, we iterate over columns, then rows 
-        else:
-            for col in range(subplots_ncols):
-                for row in range(subplots_nrows):
-                    if self.plot_storage[col_name]['hist']['data']:
-                        print(f"row: {row, col}")
-                        sns.histplot(data=self.plot_storage[col_name]['hist']['data'][row], ax=ax[row, col])
-                    elif self.plot_storage[col_name]['box']['data']:
-                        print(f"row: {row, col}")
-                        sns.boxplot(data=self.plot_storage[col_name]['box']['data'][row], ax=ax[row, col])
-                    elif self.plot_storage[col_name]['line']['data']:
-                        print(f"row: {row, col}")
-                        sns.lineplot(data=self.plot_storage[col_name]['line']['data'][row], ax=ax[row, col])
-                    elif elf.plot_storage[col_name]['scatter']['data']:
-                        print(f"row: {row, col}")
-                        sns.scatterplot(data=self.plot_storage[col_name]['scatter']['data'][row], ax=ax[row, col])
-            # Additionally, we return to the first row of each col to label the sets by plot type
-            for i, plot_type in enumerate(['hist', 'box', 'line', 'scatter']):
-                if self.plot_storage[col_name][plot_type]['data']:
-                    ax[0, i].set_title(f"{plot_type}")
-
+                    ax[row][col].set_title(f"{curr_plot_type.capitalize()} Plot {row+1}")
 
         fig.suptitle(f"Comparison of all plots for '{col_name}'")
         plt.tight_layout()
         plt.show()
 
         return
+    
+def build_interactions(
+        df: pd.DataFrame,
+        features: list[str] | None = None,
+        interact_types: list[str] | None = None,
+        verbose: bool = True,
+        preserve_features: bool = True,
+        max_features: int | None, default = None
+) -> pd.DataFrame:
+    """
+    Core function to build interaction terms between specified features in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to reshape.
+        features (list[str]): List of features to interact.
+        interact_types (list[str]): List of interaction types to apply.
+        verbose (bool): Whether to print detailed information about operations. Defaults to True.
+        preserve_features (bool): Whether to retain original features in the DataFrame. Defaults to True.
+
+    Returns:
+        pd.DataFrame: DataFrame with interaction terms appended.
+
+    Raises:
+        ValueError: If invalid interaction types are provided.
+    """
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Beginning interaction term creation process.')
+        print('-' * 50)  # Visual separator
+
+    #TODO: Implement data validation checks
+
+    # Check for valid interaction types
+    valid_types = ['*', '/', '+', '-']
+    for type in interact_types:
+        if type not in valid_types:
+            raise ValueError(f'Invalid interaction type: {interact}')
+
+    # # Create a copy of the DataFrame to avoid modifying the original
+    # df_copy = df.copy()
+
+    # Currently, this method walks through the list of features, meaning that order of division is deterministic
+    # Should implement user choice as to which feature is the numerator/denominator
+
+    # Additionally, this is a simple application of pandas column-to-column operations
+    # Could certainly look for more detailed approach or complex interactions
+
+    #TODO: Implement user choice for division order
+    #TODO: Implement more complex interactions (polynomial, etc.)
+    #TODO: Implement verbosity conditions
+
+    # Perform interaction term creation
+    for feature in features:
+        for interact in interact_types:
+            for other_feature in features:
+                # Ensure we don't interact a feature with itself
+                if feature == other_feature:
+                    continue
+                
+                # Pairwise interaction terms
+                if interact == '*':     # Product
+                    new_feature = f'{feature}_x_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature]
+
+                elif interact == '/':   # Quotient
+                    new_feature = f'{feature}_div_{other_feature}'
+                    df[new_feature] = df[feature] / df[other_feature]
+                    
+                    # Replace infinite values with NaN
+                    df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
+                    
+                    if verbose:
+                        print('Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.')
+
+
+                elif interact == '+':   # Sum
+                    new_feature = f'{feature}_plus_{other_feature}'
+                    df[new_feature] = df[feature] + df[other_feature]
+
+                elif interact == '-':   # Difference
+                    new_feature = f'{feature}_minus_{other_feature}'
+                    df[new_feature] = df[feature] - df[other_feature]
+
+                if verbose:
+                    print(f'Created new feature: {new_feature} ({interact} interaction)')
+
+    # Drop original features if user specifies
+    if not preserve_features:
+        df.drop(columns=features, inplace=True)
+
+    return df            
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     """
