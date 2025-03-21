@@ -546,6 +546,7 @@ def build_interactions(
         print('-' * 50)  # Visual separator
 
     #TODO: Implement data validation checks
+    #TODO: Implement feature selection checks, including max_features
 
     # Check for valid interaction types
     valid_types = ['*', '/', '+', '-']
@@ -565,6 +566,7 @@ def build_interactions(
     #TODO: Implement user choice for division order
     #TODO: Implement more complex interactions (polynomial, etc.)
     #TODO: Implement verbosity conditions
+    #TODO: Implement warnings about large feature space and allow for cancellation
 
     # Perform interaction term creation
     for feature in features:
