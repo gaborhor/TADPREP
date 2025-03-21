@@ -93,18 +93,14 @@ Perform row- or column-dependent instance (row) removals, as well as feature (co
 Produce, store, and compare relevant, straightforward visualizations on a per-feature basis as guided by user.
 
 ### Methods:
-- `.plot_data(self, df, col_name):`
-  -  Generates and stores a Seaborn plot for a specified pandas DataFrame column with dtype and "plot type" determined by .det_plot_type().
+- `.plot(self, df, col_name, plot_type):`
+  -  Generates and stores a Seaborn plot for a specified pandas DataFrame column with plot type determined by user input.
 - `.det_plot_type(self, df, col_name):`
   - Determines an appropriate plot type for a set of data (pd.Series) based on the pandas dtype of the user's DataFrame column.
-- `.plot_hist(self, data, col_name):`
-  - Draws a Seaborn histogram for numeric-type data and stores a snapshot of the data used to draw it.
-- `.plot_box(self, data, col_name):`
-  - Draws a Seaborn histogram for categorical-type data and stores a snapshot of the data used to draw it.
-- `.plot_line(self, data, col_name):`
-  - Draws a Seaborn histogram for timeseries-type data and stores a snapshot of the data used to draw it.
-- `.plot_scatter(self, data, col_name):`
-  - Draws a Seaborn histogram for mixed-type data and stores a snapshot of the data used to draw it.
+- `.recall_plot(self, col_name, plot_type):`
+  - Fetches data for most recently-created plot of provided type and redraws plot with it.
+- `compare_plots(self, col_name):`
+  - Creates a plt.subplots() figure of appropriate dimension to display all plots of all types for a specified DataFrame column
 
 ### Returns:
 - None - is Class
@@ -115,7 +111,6 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
 - Data "snapshot" storage system implemented
   - Relies on storing a pd.Series of the data used for a given viz when that viz is created
   - Plot "recall/redraw" and basic comparative viz functionality implemented for histplots
-    - `plot_data`, `det_plot_type`, `plot_hist`, `recall_plot`, and `compare_plots` all adjusted
     - plt.subplots() implementation with control-flow for proper axes object positioning and labeling
 
 ### Observed Bugs/Problems:
@@ -124,20 +119,56 @@ Produce, store, and compare relevant, straightforward visualizations on a per-fe
     - 'from tadprep.core.tansforms import PlotHandler'
     - Unsure if this is expected behavior or if is issue with file structure
 
-- `compare_plots` method shows a blank plt.subplots() figure in an unidentified case where 'subplots_nrows' == 1
+- `compare_plots` method failing to populate first column (histograms) in 2D case
 
 
 ### Ideas for Development:
 - Testing will help indicate whether we should refactor `.det_plot_type()` and `_rename_and_tag_core` for more effective plot type determination.
 
 - As color-blind friendly as we are capable of!
-- Static viz only
-- Should this be for in-package viz only or produce files for export?
-  - File specifications could get tricky
+- Static viz only, stores and recalls "snapshots" of data for plotting
 
 ### Method History:
 - Alpha build by Gabor Horvath
 
+## Method: `build_interactions`
+### Core Purpose:
+Creates new features by combining existing ones through mathematical operations, enabling linear models to capture non-linear relationships between variables.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_combine` (list[str] | None, default=None) Optional list of features to consider for interactions.
+- `interaction_types` (list[str] | None, default=None) Optional list of interaction types to create 
+(e.g., 'multiply', 'divide', 'add', 'subtract', 'polynomial').
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=True) Controls whether original features are preserved alongside interactions.
+- `max_features` (int | None, default=None) Optional maximum number of interaction features to create.
+
+### Returns:
+- Modified dataframe containing newly-created interaction features and (possibly not) original features-to-interact.
+
+### Current State:
+- Basic mathematical operations implemented
+- "Complex" mathematical operations implemented
+- Data validation not implemented
+- User-directed division order not implemented
+- In-method feature selection functionality not implemented
+- Verbosity not implemented
+- Warnings for feature explosion and cancellation not implemented
+
+### Observed Bugs/Problems:
+- To-be-tested
+
+### Ideas for development:
+- Determine possibilities for additional interaction types beyond "polynomial"
+- Possible "two paradigms" for how this method could be applied
+  1. Broad-stroke "exploratory" interaction creation
+    - Meant to create larger number of interactions for attempting novel data analysis
+  2. Low-count "targeted" interaction creation
+    - Meant for creation of specific interaction terms based on domain foreknowledge
+
+### Method History:
+- Pre-alpha build by Gabor Horvath
 
 ## Method: `subset`
 ### Core Purpose:
