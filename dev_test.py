@@ -29,25 +29,31 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_spar
 # print(df_reshape)
 
 ## Testing PlotHandler class
-plot_handler = PlotHandler()
-age_tuple = plot_handler.det_plot_type(df_raw, 'age')
-race_tuple = plot_handler.det_plot_type(df_raw, 'race')
+ph = PlotHandler()
+age_tuple = ph.det_plot_type(df_raw, 'age')
+race_tuple = ph.det_plot_type(df_raw, 'race')
 print(age_tuple)
 print(race_tuple)
 
-plot_handler.plot_data(df_raw, 'age')
-plot_handler.plot_data(df_raw, 'race')
-plot_handler.recall_plot('age', age_tuple[1])
-plot_handler.recall_plot('race', race_tuple[1])
-plot_handler.compare_plots('age')
-plot_handler.compare_plots('race')
+ph.plot(df_raw, 'age', 'hist')
+# ph.plot(df_raw, 'race', 'hist')
+ph.recall_plot('age', 'hist')
+# ph.recall_plot('race', 'hist')
+ph.compare_plots('age')
+# ph.compare_plots('race')
 
-plot_handler.plot_data(df_raw, 'age')
-plot_handler.plot_data(df_raw, 'race')
-plot_handler.recall_plot('age', age_tuple[1])
-plot_handler.recall_plot('race', race_tuple[1])
-plot_handler.compare_plots('age')
-plot_handler.compare_plots('race')
+ph.plot(df_raw, 'age', 'hist')
+# ph.plot(df_raw, 'race', 'hist')
+# ph.recall_plot('age', 'hist')
+# ph.recall_plot('race', 'hist')
+ph.compare_plots('age')
+# ph.compare_plots('race')
+
+ph.plot(df_raw, 'age', 'box')
+ph.plot(df_raw, 'age', 'box')
+ph.recall_plot('age', 'hist')
+ph.recall_plot('age', 'box')
+ph.compare_plots('age')
 
 
 # Testing rename_and_tag method
