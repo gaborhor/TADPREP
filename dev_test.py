@@ -535,3 +535,25 @@ Need to test for:
 # # corr_dict = tp.find_corrs(corr_df, method='pearson', threshold=0.9, verbose=False)
 # # Display results dictionary
 # print(corr_dict)
+
+'''
+Testing new transform method
+Need to test for:
+- Verbose and non-verbose operation
+- Auto-detected features and list of features
+- Feature preservation
+- Warning messages operating correctly
+'''
+# Create test dataframe
+transform_df = pd.DataFrame({'name': ['John', 'Joe', 'Jack', 'Jill', 'Jeff'],
+                             'sex': ['M', 'M', 'M', 'F', 'M'],
+                             'age': [35, 39, 27, 32, 28],
+                             'int_10': [10, 20, 30, 40, 50],
+                             'binary': [0, 1, 1, 0, 1],
+                             'zeros': [1, 0, 3, 0, 5],
+                             'nulls': [np.nan, 5, 10, np.nan, 15]})
+# Create list of features to be transformed
+transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
+transform_results = tp.transform(transform_df, features_to_transform=None, verbose=True,
+                                 preserve_features=True, skip_warnings=False)
+print(transform_results)
