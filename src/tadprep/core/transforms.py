@@ -3520,7 +3520,7 @@ def _transform_core(
             title_suffix: Optional suffix for the plot title
         """
         try:
-            plt.figure(figsize=(12, 8))
+            plt.figure(figsize=(16, 10))
             sns.histplot(data=series.dropna(), kde=True)
             plt.title(f'Distribution of "{feature_name}"{title_suffix}')
             plt.xlabel(feature_name)
@@ -3592,7 +3592,7 @@ def _transform_core(
         # Based on skewness, suggest transformations
         if abs(skew) < NORMAL_SKEW:
             # Data is already approximately normal
-            suggestions.append('none')
+            suggestions.append('boxcox' if not has_negs and not has_zeros else 'yeojohnson')
         else:
             # For right-skewed data (positive skew)
             if skew > HIGH_SKEW:
@@ -3720,47 +3720,6 @@ def _transform_core(
             result = pd.Series(np_transformed, index=result.index)
             desc = f'Yeo-Johnson (lambda={lambda_val:.4f})'
 
-        elif method == 'minmax':
-            # Min-Max scaling to 0-1 range
-            min_val = result.min()
-            max_val = result.max()
-            # Check for constant features
-            if min_val == max_val:
-                raise ValueError('Cannot apply MinMax scaling to constant features')
-            result = (result - min_val) / (max_val - min_val)
-            desc = f'Min-Max scaling to [0,1]'
-
-        elif method == 'custom_minmax':
-            # Min-Max with custom range
-            min_val = result.min()
-            max_val = result.max()
-            # Check for constant features
-            if min_val == max_val:
-                raise ValueError('Cannot apply MinMax scaling to constant features')
-
-            # Get custom range from user
-            try:
-                new_min = float(input('Enter minimum value for new range: '))
-                new_max = float(input('Enter maximum value for new range: '))
-                if new_min >= new_max:
-                    raise ValueError('Maximum must be greater than minimum')
-
-                # Apply custom range scaling
-                result = (result - min_val) / (max_val - min_val) * (new_max - new_min) + new_min
-                desc = f'Min-Max scaling to [{new_min},{new_max}]'
-            except ValueError as e:
-                print(f'Error setting custom range: {str(e)}')
-                if input('Fall back to standard MinMax scaling (0-1)? (Y/N): ').lower() == 'y':
-                    # Apply standard MinMax as fallback
-                    result = (result - min_val) / (max_val - min_val)
-                    desc = f'Min-Max scaling to [0,1] (fallback from custom range error)'
-                else:
-                    raise ValueError('Custom range transformation cancelled')
-
-        elif method == 'none':
-            # No transformation
-            desc = 'No transformation applied'
-
         else:
             raise ValueError(f'Unknown transformation method: {method}')
 
@@ -3806,12 +3765,13 @@ def _transform_core(
             print('2. Select specific features')
             print('3. Cancel transformation process')
 
-            while True:
+            final_features = None
+            while final_features is None:  # Keep looping until we have valid features
                 selection = input('Enter your choice (1, 2, or 3): ').strip()
 
                 if selection == '1':
                     final_features = filtered_cols
-                    break
+                    # No break needed - loop will exit since final_features is no longer None
 
                 elif selection == '2':
                     # Show features for selection
@@ -3819,27 +3779,31 @@ def _transform_core(
                     for idx, col in enumerate(filtered_cols, 1):
                         print(f'{idx}. {col}')
 
-                    # Get user selection
-                    user_input = input('\nEnter the feature numbers to transform (comma-separated) or "C" to cancel: ')
+                    while True:  # Loop for feature selection
+                        # Get user selection
+                        user_input = input(
+                            '\nEnter the feature numbers to transform (comma-separated) or "C" to cancel: ')
 
-                    if user_input.lower() == 'c':
-                        print('Transformation cancelled.')
-                        return df
+                        if user_input.lower() == 'c':
+                            print('Feature selection cancelled.')
+                            break  # Break out of inner loop, return to main menu
 
-                    try:
-                        # Parse selected indices
-                        indices = [int(idx.strip()) - 1 for idx in user_input.split(',')]
+                        try:
+                            # Parse selected indices
+                            indices = [int(idx.strip()) - 1 for idx in user_input.split(',')]
 
-                        # Validate indices
-                        if not all(0 <= idx < len(filtered_cols) for idx in indices):
-                            print('Invalid feature number(s). Please try again.')
-                            continue
+                            # Validate indices
+                            if not all(0 <= idx < len(filtered_cols) for idx in indices):
+                                print('Invalid feature number(s). Please try again.')
+                                continue  # Try feature selection again
 
-                        # Get selected feature names
-                        final_features = [filtered_cols[idx] for idx in indices]
-                        break
-                    except ValueError:
-                        print('Invalid input. Please enter comma-separated numbers.')
+                            # Get selected feature names
+                            final_features = [filtered_cols[idx] for idx in indices]
+                            break  # Successfully got features, break inner loop
+
+                        except ValueError:
+                            print('Invalid input. Please enter comma-separated numbers.')
+                            continue  # Try feature selection again
 
                 elif selection == '3':
                     print('Transformation cancelled.')
@@ -3874,7 +3838,6 @@ def _transform_core(
             print('- Yeo-Johnson: Similar to Box-Cox but works with zero and negative values')
             print('- Square/Cube: For left-skewed data, amplifies differences in larger values')
             print('- Reciprocal (1/x): Reverses the order of values, transforms very skewed distributions')
-            print('- Min-Max Scaling: Scales values to a specified range, preserves distribution shape')
             print('\nNOTE: Different transformations are appropriate for different data distributions.')
             print('Skewness will be analyzed to recommend suitable transformation methods.')
 
@@ -3960,7 +3923,7 @@ def _transform_core(
             methods_set.update(['log1p', 'sqrt'])
 
         # These work with all data including negatives
-        methods_set.update(['yeojohnson', 'square', 'cube', 'minmax', 'custom_minmax', 'none'])
+        methods_set.update(['yeojohnson', 'square', 'cube'])
 
         # Convert to sorted list for presentation
         methods = sorted(methods_set)
