@@ -656,7 +656,6 @@ def transform(
     - Logarithmic: log, log10, log1p (for handling different data requirements)
     - Power: sqrt, square, cube, reciprocal
     - Statistical: Box-Cox, Yeo-Johnson (for distribution normalization)
-    - Scaling: MinMax to [0,1] or custom range
 
     Parameters
     ----------
@@ -689,7 +688,6 @@ def transform(
     - Log and Box-Cox require strictly positive values (no zeros or negatives)
     - Log1p and sqrt require non-negative values (no negatives)
     - Reciprocal cannot handle zero values
-    - MinMax scaling is inappropriate for constant features (no variance)
 
     The function automatically identifies which transformations are valid for each feature
     based on its characteristics (presence of zeros, negative values, etc.).
