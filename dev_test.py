@@ -554,6 +554,10 @@ transform_df = pd.DataFrame({'name': ['John', 'Joe', 'Jack', 'Jill', 'Jeff'],
                              'nulls': [np.nan, 5, 10, np.nan, 15]})
 # Create list of features to be transformed
 transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
-transform_results = tp.transform(transform_df, features_to_transform=None, verbose=True,
+# Testing auto-detect
+# transform_results = tp.transform(transform_df, features_to_transform=None, verbose=True,
+#                                  preserve_features=True, skip_warnings=False)
+# Pre-passed list of features
+transform_results = tp.transform(transform_df, features_to_transform=transform_list, verbose=True,
                                  preserve_features=True, skip_warnings=False)
 print(transform_results)
