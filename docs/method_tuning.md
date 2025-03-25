@@ -683,7 +683,6 @@ focus on normalization and linearization.
     - Yeo-Johnson transformation
     - Power transformations (squared, cubed)
     - Reciprocal transformation
-    - Min-max scaling with custom range
 
 - **Transformation Process**
   - For each selected feature:
