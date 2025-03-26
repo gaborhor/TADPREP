@@ -3581,7 +3581,7 @@ def _transform_core(
 
         # Skip if too few non-null values are present
         if len(series.dropna()) < MIN_SAMPLES:
-            return ['none']
+            return ['WARNING: Too few samples present. Do not transform this feature.']
 
         # Calculate statistics
         skew = series.skew()
@@ -3751,13 +3751,15 @@ def _transform_core(
                 continue
             filtered_cols.append(column)
 
+        if not filtered_cols:
+            if verbose:
+                print('No suitable numerical features found for transformation.')
+            return df
+
+        # In verbose mode, allow user to select features interactively
         if verbose:
             print(f'Identified {len(filtered_cols)} potential numerical features for transformation:')
             print(', '.join(filtered_cols))
-
-            if not filtered_cols:
-                print('No suitable numerical features found for transformation.')
-                return df
 
             # Allow user to select which features to transform
             print('\nWhich features would you like to transform?')
@@ -3811,6 +3813,9 @@ def _transform_core(
 
                 else:
                     print('Invalid choice. Please enter 1, 2, or 3.')
+        else:
+            # In non-verbose mode, automatically use all identified numerical features
+            final_features = filtered_cols
     else:
         # Validate provided features
         missing_cols = [col for col in features_to_transform if col not in df.columns]
@@ -3847,14 +3852,19 @@ def _transform_core(
     # Process each feature
     for feature in final_features:
         if verbose:
-            print('\n' + '-' * 50)
+            print('-' * 50)  # Visual separator
         print(f'Processing feature: "{feature}"')
         if verbose:
-            print('-' * 50)
+            print('-' * 50)  # Visual separator
 
         # Skip constant features
         if df[feature].nunique() <= 1:
             print(f'Skipping "{feature}" - this feature has no variance.')
+            continue
+
+        # Check for minimum sample size requirement
+        if len(df[feature].dropna()) < MIN_SAMPLES:
+            print(f'Skipping "{feature}" - insufficient samples (minimum required: {MIN_SAMPLES}).')
             continue
 
         # Data quality checks
@@ -3863,15 +3873,20 @@ def _transform_core(
             pct_null = (null_count / len(df) * 100)
             print(f'Warning: "{feature}" contains {null_count} null values ({pct_null:.2f}%).')
             print('Transformations will be applied only to non-null values.')
-            if input('Continue with this feature? (Y/N): ').lower() != 'y':
-                continue
+            if verbose:
+                if input('Continue with this feature? (Y/N): ').lower() != 'y':
+                    continue
+            # In non-verbose mode, ask for confirmation on high-nullity features
+            elif pct_null > 30:  # If more than 30% of values are null
+                if input('Continue with this feature? (Y/N): ').lower() != 'y':
+                    continue
 
         # Feature analysis
         original_values = df[feature].copy()
 
         if verbose:
             # Show current distribution statistics
-            print(f'\nCurrent statistics for "{feature}":')
+            print(f'Current statistics for "{feature}":')
             desc_stats = df[feature].describe()
             print(desc_stats)
 
@@ -3890,7 +3905,7 @@ def _transform_core(
             has_zeros = (df[feature] == 0).any()
             has_negs = (df[feature] < 0).any()
             if has_zeros:
-                print(f'This feature contains zero values. Some transformations (like log) may not be appropriate.')
+                print(f'This feature contains zeros. Some transformations (like log) may not be appropriate.')
             if has_negs:
                 print(f'This feature contains negative values. Some transformations require positive data only.')
 
@@ -3901,10 +3916,19 @@ def _transform_core(
         # Get transformation suggestions based on data characteristics
         suggestions = suggest_transform(df[feature])
 
+        # Check if there's a warning about sample size
+        if any(s.startswith('WARNING:') for s in suggestions):
+            if verbose:
+                print(f"\n{suggestions[0]}")
+                print(f'Skipping transformation for feature "{feature}".')
+            else:
+                print(f'Skipping "{feature}" - insufficient samples (minimum required: {MIN_SAMPLES}).')
+            continue
+
         if verbose:
             print('\nBased on feature characteristics, the following transformations might be appropriate:')
             for suggestion in suggestions:
-                print(f'- {suggestion.title()}')
+                print(f'- {suggestion}')
 
         # Show transformation options
         print('\nAvailable transformation methods:')
@@ -3936,32 +3960,44 @@ def _transform_core(
         print(f'{len(methods) + 1}. Skip transformation for this feature')
 
         # Get user's transformation choice
-        method_idx = None
-        while True:
-            try:
-                choice = input('\nSelect transformation method: ')
+        if verbose:
+            method_idx = None
+            while True:
                 try:
-                    idx = int(choice) - 1
-                    if 0 <= idx < len(methods):
-                        method_idx = idx
-                        selected_method = methods[idx]
-                        break
-                    elif idx == len(methods):
-                        # User chose to skip
-                        method_idx = idx
-                        break
-                    else:
-                        print(f'Please enter a number between 1 and {len(methods) + 1}.')
-                except ValueError:
-                    print('Invalid input. Please enter a number.')
-            except Exception as e:
-                print(f'Error in selection: {str(e)}')
-                print('Please try again.')
+                    choice = input('\nSelect transformation method: ')
+                    try:
+                        idx = int(choice) - 1
+                        if 0 <= idx < len(methods):
+                            method_idx = idx
+                            selected_method = methods[idx]
+                            break
+                        elif idx == len(methods):
+                            # User chose to skip
+                            method_idx = idx
+                            break
+                        else:
+                            print(f'Please enter a number between 1 and {len(methods) + 1}.')
+                    except ValueError:
+                        print('Invalid input. Please enter a number.')
+                except Exception as e:
+                    print(f'Error in selection: {str(e)}')
+                    print('Please try again.')
 
-        # Skip to next feature if user chose to skip
-        if method_idx is None or method_idx == len(methods):
-            print(f'Skipping transformation for feature "{feature}".')
-            continue
+            # Skip to next feature if user chose to skip
+            if method_idx is None or method_idx == len(methods):
+                print(f'Skipping transformation for feature "{feature}".')
+                continue
+
+            selected_method = methods[method_idx]
+        else:
+            # In non-verbose mode, select the first recommended transformation that's valid
+            valid_suggestions = [s for s in suggestions if s in methods]
+            if valid_suggestions:
+                selected_method = valid_suggestions[0]
+                # Skip features with no valid transformations
+            else:
+                print(f'Skipping "{feature}" - no appropriate transformation available.')
+                continue
 
         # Apply transformation
         try:
@@ -3999,6 +4035,8 @@ def _transform_core(
                 # Show before/after comparison
                 if input('\nWould you like to see a comparison of the distributions? (Y/N): ').lower() == 'y':
                     plot_comp(original_values, df[target_column], feature, selected_method)
+            else:
+                print(f'Transformed "{feature}" using {desc}.')
 
         except Exception as exc:
             print(f'Error transforming feature "{feature}": {exc}')
@@ -4021,7 +4059,7 @@ def _transform_core(
                 print('-' * 25)
 
             if preserve_features:
-                print('\nNOTE: Original features were preserved alongside transformed columns.')
+                print('NOTE: Original features were preserved alongside transformed columns.')
 
     if verbose:
         print('-' * 50)
