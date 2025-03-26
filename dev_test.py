@@ -69,6 +69,7 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_spar
 # df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['+', '-', '*', '/'])
 # df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['^2', '^3', '^1/2', '^1/3', 'e^x'])
 # df_interact = _build_interactions_core(df_raw, features_list=['age'], interact_types=['magnitude', 'magdiff'])
+# df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'], interact_types=[])
 # df_interact = _build_interactions_core(df_raw, features_list=['age', 'salary'])
 # df_interact = _build_interactions_core(df_raw, features_list=['age'])
 ## "Focused" paradigm

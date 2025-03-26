@@ -213,7 +213,7 @@ def _reshape_core(
                 df.dropna(thresh=final_thresh, inplace=True)
                 
             elif proceed.lower() == 'n':
-                print('Aborting drop operation\n')
+                print('Aborting drop operation. Input DataFrame not modified.\n')
                 break
                 
             else:
@@ -255,7 +255,7 @@ def _reshape_core(
                 df.dropna(subset=features_to_reshape, inplace=True)
                 
             elif proceed.lower() == 'n':
-                print('Aborting drop operation\n')
+                print('Aborting drop operation. Input DataFrame not modified.\n')
                 break
                 
             else:
@@ -276,7 +276,7 @@ def _reshape_core(
             print('Dropping columns\n')
             df.drop(columns=features_to_reshape, inplace=True)
         elif input.lower() == 'n':
-            print('Aborting column drop operation\n')
+            print('Aborting column drop operation. Input DataFrame not modified.\n')
         else:
             print('Invalid input, please enter "Y" or "N.\n')
         
@@ -530,7 +530,7 @@ def _build_interactions_core(
     Core function to build interaction terms between specified features in a DataFrame.
 
     Args:
-        df (pd.DataFrame): Input DataFrame to reshape.
+        df (pd.DataFrame): Input DataFrame to build interactions from.
         f1 (str): Feature 1 to interact in "focused" paradigm.
         f2 (str): Feature 2 to interact in "focused" paradigm.
         features_list (list[str]): List of features to interact in "exploratory" paradigm.
@@ -545,6 +545,9 @@ def _build_interactions_core(
     Raises:
         ValueError: If invalid interaction types are provided.
     """
+    #TODO: Data Validation steps to be moved to package.py
+    #TODO: Implement feature selection checks, including max_features
+
     # Check for existence of input DataFrame
     if df.empty:
         print('DataFrame is empty. No interactions can be created.')
@@ -552,31 +555,76 @@ def _build_interactions_core(
 
     if verbose:
         print('-' * 50)  # Visual separator
-        print('Beginning interaction term creation process.')
+        print('Beginning feature interaction process.')
         print('-' * 50)  # Visual separator
 
+    # Remove dupes from 'interact_types' if they exists
+    # Replace "categorical calls" if included
+    # and preserve order:
+    def clean_interact_types(interact_types: list[str]):
+        # Replace "categorical calls" if included, including dupes
+        if 'arithmetic' in interact_types:
+            interact_types = [x for x in interact_types if x != 'arithmetic']
+            interact_types = ['+', '-', '*', '/'] + interact_types
+        if 'exponential' in interact_types:
+            interact_types = [x for x in interact_types if x != 'exponential']
+            interact_types = ['^2', '^3', '^1/2', '^1/3', 'e^x'] + interact_types
+        if 'distance' in interact_types:
+            interact_types = [x for x in interact_types if x != 'distance']
+            interact_types = ['magnitude','magsum', 'magdiff'] + interact_types
+        if 'polynomial' in interact_types:
+            interact_types = [x for x in interact_types if x != 'polynomial']
+            interact_types = ['poly', 'prod^1/2', 'prod^1/3'] + interact_types
+        if 'logexp' in interact_types:
+            interact_types = [x for x in interact_types if x != 'logexp']
+            interact_types = ['log_inter', 'exp_inter'] + interact_types
+        if 'stat' in interact_types:
+            interact_types = [x for x in interact_types if x != 'stat']
+            interact_types = ['mean_diff', 'mean_ratio'] + interact_types
 
-    # Check for valid interaction types
-    valid_types = ['+', '-', '*', '/',                  # Algebraic
+        # Remove dupes from 'interact_types' if they exists
+        seen = set()
+        result_list = []
+        for type in interact_types:
+            if type in seen:
+                if verbose:
+                    print(f"Duplicate interaction type '{type}' detected. Removing...")
+            if type not in seen:
+                result_list.append(type)
+                seen.add(type)
+        interact_types = result_list
+
+        return interact_types
+
+    if interact_types:
+        interact_types = clean_interact_types(interact_types)
+
+
+    # Check for valid interaction categories or types
+    valid_types = ['arithmetic',                        # Categorical interaction calls
+                   'exponential',                       #
+                   'distance',                          #
+                   'polynomial',                        #
+                   'logexp',                            #
+                   'stat',                              #
+                   '+', '-', '*', '/',                  # Arithmetic
                    '^2', '^3', '^1/2', '^1/3', 'e^x',   # Exponential
-                   'magnitude', 'magdiff',              # Distance
+                   'magnitude','magsum', 'magdiff',     # Distance
                    'poly', 'prod^1/2', 'prod^1/3',      # Polynomial and other roots
                    'log_inter', 'exp_inter',            # Logarithmic and exponential interactions
                    'mean_diff', 'mean_ratio']           # Statistical interactions
 
-
     manual_abort = 0
-    if interact_types is None:
+    if (interact_types is None) or (not interact_types):
         print(f"""
-                No interaction types specified.\n
-                Available interaction types are:\n
-                Algebraic    ->  '+', '-', '*', '/'\n
-                Exponential  ->  '^2', '^3', '^1/2', '^1/3', 'e^x'\n
-                Distance     ->  'magnitude', 'magdiff'\n
-                Polynomial   ->  'poly', 'prod^1/2', 'prod^1/3'\n
-                Logarithmic  ->  'log_inter', 'exp_inter'\n
-                Statistical  ->  'mean_diff', 'mean_ratio'\n
-                \n
+                No interaction types specified.
+                Available interaction types are:
+                Arithmetic    ->  '+', '-', '*', '/'
+                Exponential  ->  '^2', '^3', '^1/2', '^1/3', 'e^x'
+                Distance     ->  'magnitude', 'magsum', 'magdiff'
+                Polynomial   ->  'poly', 'prod^1/2', 'prod^1/3'
+                Logarithmic  ->  'log_inter', 'exp_inter'
+                Statistical  ->  'mean_diff', 'mean_ratio'
                 """)
         input0 = input("Would you like further detail on the available interaction types? (Y/N): ")
         if input0.lower() == 'y':
@@ -591,6 +639,7 @@ def _build_interactions_core(
                     '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
                     'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
                     'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+                    'magsum'   : Column-wise absolute diff       ->  np.abs(df[f1] + df[f2])
                     'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
                     'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
                     'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
@@ -609,13 +658,12 @@ def _build_interactions_core(
         while True:
             if iter_input == 0:
                 input1 = input(f"""
-                                Interaction types must be specified for .build_interactions() operation.\n
-                                Please select one of the following:\n
-                                1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])\n
-                                2. Apply some common "default" interactions     (Algebraic interactions [+,-,*,/])\n
-                                3. Exit method\n
-                                -> 
-                                """)
+                                Interaction types must be specified for .build_interactions() operation.
+                                Please select one of the following:
+                                1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])
+                                2. Apply some common "default" interactions     (Arithmetic interactions [+,-,*,/])
+                                3. Exit method
+                                -> """)
             elif iter_input > 0:
                 input1 = input("-> ")
 
@@ -625,12 +673,12 @@ def _build_interactions_core(
                 print(f"\nContinuing with new interact_types: {interact_types}")
                 break
             elif input1.lower() == '2':
-                print("Defaulting to ALL Algebraic interactions (+, -, *, /).")
+                print("Defaulting to ALL Arithmetic interactions (+, -, *, /).")
                 interact_types = ['+', '-', '*', '/']
                 break
 
             elif input1.lower() == '3':
-                print("Aborting .build_interactions() operation.")
+                print("Aborting .build_interactions() operation. Input DataFrame not modified")
                 manual_abort = 1
                 break
             else:
@@ -639,17 +687,21 @@ def _build_interactions_core(
                 continue
 
     if manual_abort == 1:
-        return
+        return df
 
     for type in interact_types:
         if type not in valid_types:
             raise ValueError(f'Invalid interaction type: {type}')
+        
+    # Clean up runtime user inputs
+    interact_types = clean_interact_types(interact_types)
 
     if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
-        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method.")
+        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method. Input DataFrame not modified.")
         return df
     
-    #TODO: Implement feature selection checks, including max_features
+    # Record of actions for 'verbose' state
+    action_summary = []
 
     ## Handle error from incorrect 'f1', 'f2' arg input
     if f2 and not f1:
@@ -660,14 +712,14 @@ def _build_interactions_core(
     ### i.e. specific interactions between two specifically-provided features
     if f1:
         if not f2:
-            print("'f2' feature not provided for multi-column interaction. Aborting method.")
+            print("'f2' feature not provided for multi-column interaction. Aborting method. Input DataFrame not modified.")
             return df
         if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
             print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
         # Perform interaction term creation
         for interact in interact_types:
             
-            ## Algebraic interactions
+            ## Arithmetic interactions
             if interact == '+':                     # Sum
                 new_feature = f'{f1}_+_{f2}'
                 df[new_feature] = df[f1] + df[f2]
@@ -707,6 +759,9 @@ def _build_interactions_core(
             elif interact == 'magnitude':           # Magnitude
                 new_feature = f'magnitude_{f1}_{f2}'
                 df[new_feature] = np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+            elif interact == 'magsum':              # Magnitude sum
+                new_feature = f'magsum_{f1}_{f2}'
+                df[new_feature] = np.abs(df[f1] + df[f2])
             elif interact == 'magdiff':             # Magnitude difference
                 new_feature = f'magdiff_{f1}_{f2}'
                 df[new_feature] = np.abs(df[f1] - df[f2])
@@ -739,16 +794,19 @@ def _build_interactions_core(
                 df[new_feature] = df[f1] / df[[f1, f2]].mean(axis=1)
 
             if verbose:
-                print(f'Created new feature: {new_feature} ({interact} interaction)')
+                summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                action_summary.append(summary_str)
+                print(summary_str)
 
         if not preserve_features:
             if verbose:
-                print(f'Dropping original features {f1} and {f2} from DataFrame.')
+                drop_str = f'Dropping original features {f1} and {f2} from DataFrame.'
+                action_summary.append(drop_str)
+                print(drop_str)
             df.drop(columns=[f1,f2], inplace=True)
 
     ### "exploratory" interaction creation paradigm
     ### i.e. all possible interactions between all features in provided list
-    ###NOTE: This could do with optimization to avoid repeat calculations for single-feature interactions
     if features_list:
         # Perform interaction term creation with itertools.combinations
         if len(features_list) == 1:
@@ -766,13 +824,8 @@ def _build_interactions_core(
             
         for feature, other_feature in feature_combinations:
             for interact in interact_types:
-                # for other_feature in features_list:
-                #     # Ensure we don't interact a feature with itself
-                #     # while allowing single-feature interactions to be built
-                #     if (feature == other_feature):
-                #         continue
                 
-                # Algebraic interactions
+                # Arithmetic interactions
                 if interact == '+':           # Sum
                     new_feature = f'{feature}_+_{other_feature}'
                     df[new_feature] = df[feature] + df[other_feature]
@@ -832,6 +885,9 @@ def _build_interactions_core(
                 elif interact == 'magnitude':   # Magnitude
                     new_feature = f'magnitude_{feature}_{other_feature}'
                     df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
+                elif interact == 'magsum':      # Magnitude sum
+                    new_feature = f'magsum_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] + df[other_feature])
                 elif interact == 'magdiff':     # Magnitude difference
                     new_feature = f'magdiff_{feature}_{other_feature}'
                     df[new_feature] = np.abs(df[feature] - df[other_feature])
@@ -864,13 +920,45 @@ def _build_interactions_core(
                     df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
 
                 if verbose:
-                    print(f'Created new feature: {new_feature} ({interact} interaction)')
+                    summary_str = f'Created new feature: {new_feature} ({interact} interaction)'
+                    action_summary.append(summary_str)
+                    print(summary_str)
                     if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
-                        print(f'Created new feature: {new_feature_2} ({interact} interaction)')
+                        summary_str_2 = f'Created new feature: {new_feature_2} ({interact} interaction)'
+                        action_summary.append(summary_str_2)
+                        print(summary_str_2)
 
         # Drop original features if user specifies
         if not preserve_features:
+            if verbose:
+                drop_str = f'Dropping original features from DataFrame:\n{features_list}'
+                action_summary.append(drop_str)
+                print(drop_str)
             df.drop(columns=features_list, inplace=True)
+
+    # Closing verbosity
+    if verbose:
+        iter_input = 0
+        while True:
+            if iter_input == 0:
+                input2 = input("\nOperations complete. Would you like an action summary? (Y/N): ")
+            elif iter_input > 0:
+                input2 = input("-> ")
+
+            if input2.lower() == 'y':
+                print("\nThe following actions were performed by build_interactions():")
+                for action in action_summary:
+                    print(action)
+                break
+            elif input2.lower() == 'n':
+                break
+            else:
+                print("Invlid input. Please enter either 'Y' or 'N'.")
+                iter_input += 1
+    if verbose:
+        print('-' * 50)  # Visual separator
+        print('Feature interaction complete. Returning modified dataframe.')
+        print('-' * 50)  # Visual separator
 
     #TODO: Implement verbosity conditions
     #TODO: Implement warnings about large feature space and allow for cancellation
