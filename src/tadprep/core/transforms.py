@@ -2,7 +2,6 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib
-
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -3593,24 +3592,24 @@ def _transform_core(
         if abs(skew) < NORMAL_SKEW:
             # Data is already approximately normal
             suggestions.append('boxcox' if not has_negs and not has_zeros else 'yeojohnson')
+
         else:
             # For right-skewed data (positive skew)
             if skew > HIGH_SKEW:
-                # Log transformation works well for right-skewed data
-                if not has_negs and not has_zeros:
-                    suggestions.append('log')
-                    suggestions.append('sqrt')
-                elif not has_negs:
-                    suggestions.append('sqrt')
-                    if min_val >= 0:
-                        suggestions.append('log1p')  # log(1+x) works with zeros
+                # Group transformations by data requirements
 
-                # Box-Cox handles positive values only
+                # Transformations for strictly positive data (no zeros, no negatives)
                 if not has_negs and not has_zeros:
-                    suggestions.append('boxcox')
+                    suggestions.append('log')  # Natural log
+                    suggestions.append('boxcox')  # Box-Cox transformation
 
-                # Yeo-Johnson works with negatives and zeros
-                suggestions.append('yeojohnson')
+                # Transformations for non-negative data (allows zeros)
+                if not has_negs:  # Note: this includes the previous case
+                    suggestions.append('sqrt')  # Square root
+                    suggestions.append('log1p')  # log(1+x) handles zeros
+
+                # Transformations for any data (including negatives and zeros)
+                suggestions.append('yeojohnson')  # Yeo-Johnson works with all values
 
             # For left-skewed data (negative skew)
             elif skew < -HIGH_SKEW:
@@ -3628,11 +3627,10 @@ def _transform_core(
             # For moderately skewed data
             else:
                 suggestions.append('yeojohnson')  # Safe choice for most distributions
-                suggestions.append('minmax')  # Simple scaling
 
         # If no specific suggestions, include generally-applicable options
         if not suggestions:
-            suggestions = ['yeojohnson', 'minmax']
+            suggestions = ['yeojohnson']
 
         return suggestions
 
