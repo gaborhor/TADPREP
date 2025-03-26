@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib
-import pickle
 from collections import defaultdict
+from itertools import combinations
 
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
@@ -516,15 +516,15 @@ class PlotHandler:
 
         return
     
-def build_interactions(
+def _build_interactions_core(
         df: pd.DataFrame,
         f1: str | None = None,
         f2: str | None = None,
         features_list: list[str] | None = None,
         interact_types: list[str] | None = None,
         verbose: bool = True,
-        preserve_features: bool = True,
-        max_features: int | None = None
+        preserve_features: bool = True
+        # max_features: int | None = None
 ) -> pd.DataFrame:
     """
     Core function to build interaction terms between specified features in a DataFrame.
@@ -545,15 +545,16 @@ def build_interactions(
     Raises:
         ValueError: If invalid interaction types are provided.
     """
+    # Check for existence of input DataFrame
+    if df.empty:
+        print('DataFrame is empty. No interactions can be created.')
+        return df
+
     if verbose:
         print('-' * 50)  # Visual separator
         print('Beginning interaction term creation process.')
         print('-' * 50)  # Visual separator
 
-    # Check for existence of input DataFrame
-    if df.empty:
-        print('DataFrame is empty. No interactions can be created.')
-        return df
 
     # Check for valid interaction types
     valid_types = ['+', '-', '*', '/',                  # Algebraic
@@ -577,38 +578,37 @@ def build_interactions(
                 Statistical  ->  'mean_diff', 'mean_ratio'\n
                 \n
                 """)
-        if verbose:
-            input0 = print("Would you like further detail on the available interaction types? (Y/N): ")
-            if input0.lower() == 'y':
-                print(f"""
-                        '+' : Column-wise sum of features            ->  df[f1] + df[f2]
-                        '-' : Column-wise difference of features     ->  df[f1] - df[f2]
-                        '*' : Column-wise product of features        ->  df[f1] * df[f2]
-                        '/' : Column-wise quotient of features       ->  df[f1] / df[f2]
-                        '^2'   : Single-column square of feature     ->  df[f1] ** 2
-                        '^3'   : Single-column cube of feature       ->  df[f1] ** 3
-                        '^1/2' : Single-column sqrt of feature       ->  np.sqrt(df[f1])
-                        '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
-                        'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
-                        'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
-                        'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
-                        'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
-                        'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
-                        'prod^1/3' : Column-wise cbrt of product     ->  np.cbrt(df[f1] * df[f2])
-                        'log_inter' : Product of offset logarithms   ->  np.log(df[f1] + 1) * np.log(df[f2] + 1)
-                        'exp_inter' : Product of feature exponents   ->  np.exp(df[f1]) * np.exp(df[f2])
-                        'mean_diff'  : f1 difference from f1,f2 mean ->  df[f1] - df[[f1, f2]].mean(axis=1)
-                        'mean_ratio' : Ratio of f1 to f1,f2 mean     ->  df[f1] / df[[f1, f2]].mean(axis=1)
-                    """)
-            elif input0.lower() == 'n':
-                pass
-            else:
-                print("Invalid input. Select 'Y' or 'N'.")
+        input0 = input("Would you like further detail on the available interaction types? (Y/N): ")
+        if input0.lower() == 'y':
+            print(f"""
+                    '+' : Column-wise sum of features            ->  df[f1] + df[f2]
+                    '-' : Column-wise difference of features     ->  df[f1] - df[f2]
+                    '*' : Column-wise product of features        ->  df[f1] * df[f2]
+                    '/' : Column-wise quotient of features       ->  df[f1] / df[f2]
+                    '^2'   : Single-column square of feature     ->  df[f1] ** 2
+                    '^3'   : Single-column cube of feature       ->  df[f1] ** 3
+                    '^1/2' : Single-column sqrt of feature       ->  np.sqrt(df[f1])
+                    '^1/3' : Single-column cbrt of feature       ->  np.cbrt(df[f1])
+                    'e^x'  : Single-column exponent of feature   ->  np.exp(df[f1])
+                    'magnitude' : Column-wise sqrt of squares    ->  np.sqrt(df[f1] ** 2 + df[f2] ** 2)
+                    'magdiff'   : Column-wise absolute diff      ->  np.abs(df[f1] - df[f2])
+                    'poly'     : Column-wise binomial square     ->  df[f1] * df[f2] + df[f1] ** 2 + df[f2] ** 2
+                    'prod^1/2' : Column-wise sqrt of product     ->  np.sqrt(np.abs(df[f1] * df[f2]))
+                    'prod^1/3' : Column-wise cbrt of product     ->  np.cbrt(df[f1] * df[f2])
+                    'log_inter' : Product of offset logarithms   ->  np.log(df[f1] + 1) * np.log(df[f2] + 1)
+                    'exp_inter' : Product of feature exponents   ->  np.exp(df[f1]) * np.exp(df[f2])
+                    'mean_diff'  : f1 difference from f1,f2 mean ->  df[f1] - df[[f1, f2]].mean(axis=1)
+                    'mean_ratio' : Ratio of f1 to f1,f2 mean     ->  df[f1] / df[[f1, f2]].mean(axis=1)
+                """)
+        elif input0.lower() == 'n':
+            pass
+        else:
+            print("Invalid input. Select 'Y' or 'N'.")
 
         iter_input = 0
         while True:
             if iter_input == 0:
-                input1 = print(f"""
+                input1 = input(f"""
                                 Interaction types must be specified for .build_interactions() operation.\n
                                 Please select one of the following:\n
                                 1. Provide a list of custom interaction types   (comma-separated format. i.e. [+,^2,magnitude,...])\n
@@ -617,14 +617,15 @@ def build_interactions(
                                 -> 
                                 """)
             elif iter_input > 0:
-                input1 = print("-> ")
+                input1 = input("-> ")
 
             if input1.lower() == '1':
-                input10 = print("Interaction types: ")
-                interact_types = [input10.lower().split(",")]
+                input10 = input("Interaction types: ")
+                interact_types = input10.lower().split(",")
+                print(f"\nContinuing with new interact_types: {interact_types}")
                 break
             elif input1.lower() == '2':
-                print("Defaulting to ALL Algebraic types (+, -, *, /).")
+                print("Defaulting to ALL Algebraic interactions (+, -, *, /).")
                 interact_types = ['+', '-', '*', '/']
                 break
 
@@ -642,14 +643,27 @@ def build_interactions(
 
     for type in interact_types:
         if type not in valid_types:
-            raise ValueError(f'Invalid interaction type: {interact}')
+            raise ValueError(f'Invalid interaction type: {type}')
 
+    if features_list and len(features_list) == 1 and not set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+        print("Only 1 feature provided and multi-feature interaction types specified. INVALID OPERATION SET. Aborting method.")
+        return df
+    
     #TODO: Implement feature selection checks, including max_features
 
+    ## Handle error from incorrect 'f1', 'f2' arg input
+    if f2 and not f1:
+        print("Only 'f2' feature provided for TADPREP 'Focused' _build_interactions method. Please provide only 'f1' if single-column interactions desired.")
+        return df
 
     ### "focused" interaction creation paradigm
     ### i.e. specific interactions between two specifically-provided features
-    if f1 and f2:
+    if f1:
+        if not f2:
+            print("'f2' feature not provided for multi-column interaction. Aborting method.")
+            return df
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            print("WARNING: All provided interact_types are single-column interactions. Only f1-argument-sourced interactions will be created in 'Focused' paradigm.")
         # Perform interaction term creation
         for interact in interact_types:
             
@@ -670,7 +684,7 @@ def build_interactions(
                 df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
 
                 if verbose:
-                    print('Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.')
+                    print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
 
             ## Exponential interactions
             elif interact == '^2':                  # Square
@@ -734,88 +748,125 @@ def build_interactions(
 
     ### "exploratory" interaction creation paradigm
     ### i.e. all possible interactions between all features in provided list
+    ###NOTE: This could do with optimization to avoid repeat calculations for single-feature interactions
     if features_list:
-        # Perform interaction term creation
-        for feature in features_list:
+        # Perform interaction term creation with itertools.combinations
+        if len(features_list) == 1:
+            feature_combinations = [(features_list[0], None)]
+        else:
+            feature_combinations = list(combinations(set(features_list), 2))
+        if verbose:
+            print("All combinations of submitted 'features_list' elements:")
+            print(feature_combinations)
+        # Create flag for "only single-feature interactions present"
+        single_feat_interactions_only = 0
+        # Adjust if necessary
+        if set(interact_types).issubset(set(['^2', '^3', '^1/2', '^1/3', 'e^x'])):
+            single_feat_interactions_only = 1
+            
+        for feature, other_feature in feature_combinations:
             for interact in interact_types:
-                for other_feature in features_list:
-                    # Ensure we don't interact a feature with itself
-                    if feature == other_feature:
-                        continue
+                # for other_feature in features_list:
+                #     # Ensure we don't interact a feature with itself
+                #     # while allowing single-feature interactions to be built
+                #     if (feature == other_feature):
+                #         continue
+                
+                # Algebraic interactions
+                if interact == '+':           # Sum
+                    new_feature = f'{feature}_+_{other_feature}'
+                    df[new_feature] = df[feature] + df[other_feature]
+                elif interact == '-':           # Difference
+                    new_feature = f'{feature}_-_{other_feature}'
+                    df[new_feature] = df[feature] - df[other_feature]
+                elif interact == '*':             # Product
+                    new_feature = f'{feature}_*_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature]
+                elif interact == '/':           # Quotient
+                    new_feature = f'{feature}_/_{other_feature}'
+                    df[new_feature] = df[feature] / df[other_feature]
+                    # Replace infinite values with NaN
+                    df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
                     
-                    # Algebraic interactions
-                    elif interact == '+':           # Sum
-                        new_feature = f'{feature}_+_{other_feature}'
-                        df[new_feature] = df[feature] + df[other_feature]
-                    elif interact == '-':           # Difference
-                        new_feature = f'{feature}_-_{other_feature}'
-                        df[new_feature] = df[feature] - df[other_feature]
-                    if interact == '*':             # Product
-                        new_feature = f'{feature}_*_{other_feature}'
-                        df[new_feature] = df[feature] * df[other_feature]
-                    elif interact == '/':           # Quotient
-                        new_feature = f'{feature}_/_{other_feature}'
-                        df[new_feature] = df[feature] / df[other_feature]
-                        # Replace infinite values with NaN
-                        df[new_feature] = df[new_feature].replace([np.inf, -np.inf], np.nan)
-                        
-                        if verbose:
-                            print('Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.')
-
-                    # Exponential interactions
-                    elif interact == '^2':          # Square
-                        new_feature = f'{feature}^2'
-                        df[new_feature] = df[feature] ** 2
-                    elif interact == '^3':          # Cube
-                        new_feature = f'{feature}^3'
-                        df[new_feature] = df[feature] ** 3
-                    elif interact == '^1/2':        # Square root
-                        new_feature = f'{feature}^1/2'
-                        df[new_feature] = np.sqrt(df[feature])
-                    elif interact == '^1/3':        # Cube root
-                        new_feature = f'{feature}^1/3'
-                        df[new_feature] = np.cbrt(df[feature])
-                    elif interact == 'e^x':         # Exponential
-                        new_feature = f'e^{feature}'
-                        df[new_feature] = np.exp(df[feature])
-
-                    # Distance interactions
-                    elif interact == 'magnitude':   # Magnitude
-                        new_feature = f'magnitude_{feature}_{other_feature}'
-                        df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
-                    elif interact == 'magdiff':     # Magnitude difference
-                        new_feature = f'magdiff_{feature}_{other_feature}'
-                        df[new_feature] = np.abs(df[feature] - df[other_feature])
-
-                    # Polynomial and other roots
-                    elif interact == 'poly':        # Polynomial
-                        new_feature = f'poly_{feature}_{other_feature}'
-                        df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
-                    elif interact == 'prod^1/2':    # Product square root
-                        new_feature = f'prod^1/2_{feature}_{other_feature}'
-                        df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
-                    elif interact == 'prod^1/3':    # Product cube root
-                        new_feature = f'prod^1/3_{feature}_{other_feature}'
-                        df[new_feature] = np.cbrt(df[feature] * df[other_feature])
-
-                    # Logarithmic and exponential interactions
-                    elif interact == 'log_inter':   # Logarithmic interaction
-                        new_feature = f'log_inter_{feature}_{other_feature}'
-                        df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
-                    elif interact == 'exp_inter':   # Exponential interaction
-                        new_feature = f'exp_inter_{feature}_{other_feature}'
-                        df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
-
-                    # Statistical interactions
-                    elif interact == 'mean_diff':   # Mean difference
-                        new_feature = f'mean_diff_{feature}_{other_feature}'
-                        df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
-                    elif interact == 'mean_ratio':  # Mean ratio
-                        new_feature = f'mean_ratio_{feature}_{other_feature}'
-                        df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
-
                     if verbose:
-                        print(f'Created new feature: {new_feature} ({interact} interaction)')
+                        print('***Div-by-zero errors are replaced with NaN. Take care to handle these and propagated-NaNs in your analysis.***')
+
+                # Exponential interactions
+                elif interact == '^2':          # Square
+                    new_feature = f'{feature}^2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 2
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^2'
+                        df[new_feature_2] = df[other_feature] ** 2
+                elif interact == '^3':          # Cube
+                    new_feature = f'{feature}^3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = df[feature] ** 3
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^3'
+                        df[new_feature_2] = df[other_feature] ** 3
+                elif interact == '^1/2':        # Square root
+                    new_feature = f'{feature}^1/2'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.sqrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/2'
+                        df[new_feature_2] = np.sqrt(df[other_feature])
+                elif interact == '^1/3':        # Cube root
+                    new_feature = f'{feature}^1/3'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.cbrt(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'{other_feature}^1/3'
+                        df[new_feature_2] = np.cbrt(df[other_feature])
+                elif interact == 'e^x':         # Exponential
+                    new_feature = f'e^{feature}'
+                    if new_feature not in df.columns:
+                        df[new_feature] = np.exp(df[feature])
+                    if (len(feature_combinations) == 1) and (feature_combinations[0][1] != None):
+                        new_feature_2 = f'e^{other_feature}'
+                        df[new_feature_2] = np.exp(df[other_feature])
+
+                # Distance interactions
+                elif interact == 'magnitude':   # Magnitude
+                    new_feature = f'magnitude_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(df[feature] ** 2 + df[other_feature] ** 2)
+                elif interact == 'magdiff':     # Magnitude difference
+                    new_feature = f'magdiff_{feature}_{other_feature}'
+                    df[new_feature] = np.abs(df[feature] - df[other_feature])
+
+                # Polynomial and other roots
+                elif interact == 'poly':        # Polynomial
+                    new_feature = f'poly_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] * df[other_feature] + df[feature] ** 2 + df[other_feature] ** 2
+                elif interact == 'prod^1/2':    # Product square root
+                    new_feature = f'prod^1/2_{feature}_{other_feature}'
+                    df[new_feature] = np.sqrt(np.abs(df[feature] * df[other_feature]))
+                elif interact == 'prod^1/3':    # Product cube root
+                    new_feature = f'prod^1/3_{feature}_{other_feature}'
+                    df[new_feature] = np.cbrt(df[feature] * df[other_feature])
+
+                # Logarithmic and exponential interactions
+                elif interact == 'log_inter':   # Logarithmic interaction
+                    new_feature = f'log_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.log(df[feature] + 1) * np.log(df[other_feature] + 1)
+                elif interact == 'exp_inter':   # Exponential interaction
+                    new_feature = f'exp_inter_{feature}_{other_feature}'
+                    df[new_feature] = np.exp(df[feature]) * np.exp(df[other_feature])
+
+                # Statistical interactions
+                elif interact == 'mean_diff':   # Mean difference
+                    new_feature = f'mean_diff_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] - df[[feature, other_feature]].mean(axis=1)
+                elif interact == 'mean_ratio':  # Mean ratio
+                    new_feature = f'mean_ratio_{feature}_{other_feature}'
+                    df[new_feature] = df[feature] / df[[feature, other_feature]].mean(axis=1)
+
+                if verbose:
+                    print(f'Created new feature: {new_feature} ({interact} interaction)')
+                    if (single_feat_interactions_only == 1) and (feature_combinations[0][1] != None):
+                        print(f'Created new feature: {new_feature_2} ({interact} interaction)')
 
         # Drop original features if user specifies
         if not preserve_features:
