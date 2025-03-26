@@ -57,6 +57,7 @@ using a file browser window.
 - The script is not readily "customizable," and is intended for use in ordinary data processing tasks. 
 - Users who wish to segment or extend the core data mutation steps should import the package into an IDE and use the 
 supplied methods to augment their own task-specific data-processing code.
+- The script now includes a rollback capability, allowing users to revert to previous stages in the pipeline if needed.
 
 ### Using the Library Methods
 The TADPREP library contains a series of callable methods, each of which represent specific subsets/segments of the full
@@ -140,9 +141,10 @@ data preparation process:
 
 #### Core Pipeline Method
 
-`prep_df(df)`
+`prep_df(df, features_to_encode=None, features_to_scale=None)`
 - Runs the complete TADPREP pipeline on an existing DataFrame
 - Guides users through all preparation steps interactively
+- Takes optional parameters for specifying features to encode and scale
 - Returns the fully prepared DataFrame
 - Ideal for users who want to prepare their data in a single cohesive workflow
 - This method (in essence) runs the full interactive script without the file I/O process
@@ -156,8 +158,32 @@ data preparation process:
   - Near-constant features (>95% single value)
   - Features containing infinite values
   - Features containing empty strings (i.e. distinct from NULL/NaN values)
+  - Potentially-duplicated features
 - Provides memory usage information when verbose=True
 - Set `verbose=False` for condensed output focusing on basic statistics
+
+`find_outliers(df, method='iqr', threshold=None, verbose=True)`
+- Detects outliers in numerical features using statistical methods
+- Supports multiple detection approaches:
+  - *IQR-based* detection (default, using 1.5 × IQR)
+  - *Z-score* method (using standard deviations from mean)
+  - *Modified Z-score* method (robust to skewed distributions)
+- Automatically handles method-specific threshold defaults
+- Returns comprehensive dictionary with outlier information
+- Provides feature-level and dataset-level outlier statistics
+- Set `verbose=False` for minimal process output
+- Set custom `threshold` values appropriate for your data
+
+`find_corrs(df, method='pearson', threshold=0.8, verbose=True)`
+- Identifies highly-correlated numerical feature pairs in a dataset
+- Supports multiple correlation methods: Pearson (default), Spearman, and Kendall
+- Automatically analyzes all numerical features in the DataFrame
+- Returns a comprehensive dictionary with correlation information and summary statistics
+- Set custom `threshold` parameter to adjust sensitivity (higher values = fewer correlations)
+- Use `method='spearman'` for non-linear relationships or data with outliers
+- Use `method='kendall'` for small sample sizes or when handling many tied ranks
+- Set `verbose=False` for minimal output when running in scripts or notebooks
+- Provides counts of correlations per feature to identify the most redundant variables
 
 `reshape(df, verbose=True)`
 - Handles missing value deletion and feature deletion
@@ -165,12 +191,14 @@ data preparation process:
 - Set `verbose=False` for minimal process output
 
 `subset(df, verbose=True)`
-- Facilitates subsetting of instances in a dataset
-- Supported subset methods include:
-  - *Unseeded* random deletion of user-specified proportion of instances (True random subset)
-  - *Seeded* random deletion of user-specified proportion of instances (Reproducible random subset)
-  - Stratified random sampling (Representative subset)
-  - Date-based subsetting for timeseries data
+- Facilitates advanced subsetting of instances in a dataset
+- Supports multiple subsetting methods:
+  - *Unseeded* random sampling (for true randomness)
+  - *Seeded* random sampling (for reproducibility)
+  - Stratified random sampling (maintains category proportions)
+  - Time-based subsetting for timeseries data
+- Automatically detects datetime columns and indices
+- Returns subset DataFrame
 - Set `verbose=False` for minimal process output
 
 `rename_and_tag(df, verbose=True, tag_features=False)`
@@ -185,10 +213,16 @@ data preparation process:
 - Set `verbose=False` for streamlined interaction without warnings and confirmation checks
 
 `feature_stats(df, verbose=True, summary_stats=False)`
-- Analyzes features by type (categorical, numerical)
-- Displays missingness information and appropriate descriptive statistics
-- Set `summary_stats=True` to include aggregate statistics by feature type
-- Set `verbose=False` for key statistics only
+- Analyzes features by type (boolean, datetime, categorical, numerical)
+- Calculates and displays key statistics for each feature type
+  - For categorical features: shows unique values, mode, entropy
+  - For numerical features: shows distribution statistics, skewness, kurtosis
+  - For datetime features: shows date range and time granularity
+  - For boolean features: shows true/false counts and percentages
+- Set `verbose=False` for minimized output
+
+`plot_features(df, some_parameters=value)`
+- Gabor will be authoring this method, which provides appropriate plots for dataset features
 
 `impute(df, verbose=True, skip_warnings=False)`
 - Handles missing value imputation using various methods:
@@ -207,19 +241,71 @@ data preparation process:
 - Set `skip_warnings=True` to bypass data quality warnings
 - Set `verbose=False` for streamlined interaction
 
-`encode(df, features_to_encode=None, verbose=True, skip_warnings=False)`
+`encode(df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)`
 - Encodes categorical features using One-Hot or Dummy encoding
 - Can be passed a list of specific features to encode via the `features_to_encode` parameter
 - Auto-detects categorical features if `features_to_encode` is None
 - Returns DataFrame with encoded features
 - Set `skip_warnings=True` to bypass cardinality and null value warnings
+- Set `preserve_features=True` to create new columns with encoded values instead of replacing original features
+- Properly sanitizes column names with special characters or spaces
+- Allows customization of column prefixes in verbose mode
 
-`scale(df, features_to_scale=None, verbose=True, skip_warnings=False)`
+`scale(df, features_to_scale=None, verbose=True, skip_warnings=False, preserve_features=False)`
 - Scales numerical features using Standard, Robust, or MinMax scaling
 - Can be passed a list of specific features to scale via the `features_to_scale` parameter
 - Auto-detects numerical features if `features_to_scale` is None
 - Returns DataFrame with scaled features
 - Set `skip_warnings=True` to bypass distribution and outlier warnings
+- Set `preserve_features=True` to create new columns with scaled values instead of replacing original features
+- Supports custom range definition for MinMax scaling
+- Provides interactive handling of infinite values with multiple replacement strategies
+- Offers visualization comparisons of pre- and post-scaling distributions
+
+`transform(df, features_to_transform=None, verbose=True, preserve_features=False, skip_warnings=False)`
+- Applies mathematical transformations to numerical features to improve their distributions
+- Supports multiple transformation methods:
+  - Log transformation (natural log, log10)
+  - Square root transformation
+  - Box-Cox transformation
+  - Yeo-Johnson transformation
+  - Power transformations (squared, cubed)
+  - Reciprocal transformation
+- Automatically suggests transformations based on feature distribution characteristics
+- Handles special cases like zeros and negative values appropriately
+- Set `features_to_transform` to specify which features to transform
+- Set `preserve_features=True` to keep original features alongside transformed versions
+- Set `verbose=False` for minimal process output
+- Set `skip_warnings=True` to bypass distribution anomaly warnings
+
+`extract_datetime(df, datetime_features=None, verbose=True, preserve_features=False, components=None)`
+- Extracts useful features from datetime columns to enable ML algorithms to capture temporal patterns
+- Creates new features representing various datetime components:
+  - Year, month, day, day of week, hour, minute
+  - Quarter, week of year, day of year
+  - Is weekend, is month start/end, is quarter start/end
+- Supports cyclical encoding of periodic features using sin/cos transformations
+- Automatically detects datetime columns or attempts to parse string columns as dates
+- Set `datetime_features` to specify which columns to process
+- Set `components` to select specific datetime components to extract
+- Set `preserve_features=True` to keep original datetime columns
+- Set `verbose=False` for minimal process output
+
+`build_interactions(df, features_to_combine=None, interaction_types=None, verbose=True, preserve_features=True, 
+max_features=None)`
+- Creates new features by combining existing features through mathematical operations
+- Enables linear models to capture non-linear relationships and feature interactions
+- Supports multiple interaction types:
+  - Multiplication (pairwise products)
+  - Division (with safeguards against division by zero)
+  - Addition and subtraction
+  - Polynomial transformations (squared, cubed features)
+- Intelligently names new features based on source features and operations
+- Set `features_to_combine` to specify which features to consider for interactions
+- Set `interaction_types` to control which types of interactions to create
+- Set `max_features` to limit the number of interaction features generated
+- Set `verbose=False` for minimal process output
+- Set `preserve_features=False` to remove original features after interaction creation
 
 #### Notes on Method Usage
 
@@ -308,8 +394,13 @@ df_imputed = pd.DataFrame(imputer.fit_transform(df_initial),
 - matplotlib *(For basic plotting)*
 - seaborn *(For generating feature distribution plots)*
 
-### Future Development
-Any thoughts about future development
+### Future Development Ideas/Questions
+- Are we sure the "tagging" feature in `rename_and_tag` is actually useful?
+- Should we build some kind of assumption-testing method, like whether linear models are appropriate, etc.?
+- Are there core capabilities missing from the library? Are we failing to notice a process-need in tabular data prep?
+- What procedural shape and UX should the `prep_df` method have?
+- How are we going to re-conceptualize/reconfigure the CLI pipeline?
+- Testing structure - what's the best programmatic way to test the methods?
 
 ### Acknowledgments
 - Dr. Sean Connin at the Ritchie School of Engineering for his general encouragement and package design advice.

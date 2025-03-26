@@ -39,6 +39,121 @@ Prints summary, top-level information about a dataframe to the console.
  - Beta build by Don Smith (Current State)
 
 
+## Method: `find_outliers`
+
+### Core Purpose:
+Provides functionality for detecting outliers in numerical features using various statistical detection methods, 
+with comprehensive information about outliers at both the feature and dataset level.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `method` (String, default = 'iqr') which specifies the outlier detection method to use.
+- `threshold` (Float, default = None) which controls the sensitivity of outlier detection, with method-specific 
+defaults.
+- `verbose` (Boolean, default = True) which controls level of detail in output.
+
+### Returns:
+- Dictionary containing detailed outlier information, including summary statistics and feature-specific results.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Identifies all numerical features for outlier analysis
+  - Supports three detection methods:
+    - IQR-based detection (default)
+    - Z-score (standard deviations from mean)
+    - Modified Z-score (robust to non-normal distributions)
+  - Uses appropriate method-specific default thresholds
+  - Handles edge cases such as:
+    - Features with no variance
+    - Features with all null values
+    - Features with zero standard deviation or MAD
+  - Tracks outliers on both feature and instance level
+  - Calculates comprehensive statistics including:
+    - Total outlier count
+    - Affected rows count and percentage
+    - Features with outliers
+    - Feature-specific outlier metrics
+  - Provides thresholds used for detection
+
+
+- If `verbose=False`:
+  - Performs outlier detection silently
+  - Returns results dictionary without printing
+  - No progress information or statistics displayed
+
+
+- If `verbose=True`, the method **also** provides:
+  - Information about the detection method used
+  - Threshold values and their meaning
+  - Feature-by-feature outlier analysis
+  - Warnings about skipped features and why
+  - Examples of extreme outlier values (both high and low)
+  - Detailed summary statistics
+  - Percentage of rows affected by outliers
+  - Feature-specific outlier counts and percentages
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Possible additional functionality:
+  - Option to return a DataFrame with outliers masked or flagged
+  - Support for automated outlier removal or replacement
+  - Visual representations of outliers (boxplots, histograms)
+  - Multivariate outlier detection methods
+  - Local Outlier Factor (LOF) method support
+
+### Method History:
+- Alpha build by Don Smith (Current State)
+
+## Method: `find_corrs`
+### Core Purpose:
+Identifies and returns information about highly-correlated feature pairs in a dataframe.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `method` (String, default = 'pearson') Correlation method to use. Options: 'pearson', 'spearman', 'kendall'.
+- `threshold` (Float, default = 0.8) Correlation coefficient threshold (absolute value) above which features are 
+considered highly correlated.
+- `verbose` (Boolean, default = True) Controls whether detailed correlation information is printed to console.
+
+### Returns:
+- Dictionary containing correlation information with the following structure:
+  - `summary`: Dictionary with correlation statistics
+    - `method`: Correlation method used
+    - `num_correlated_pairs`: Total count of highly correlated pairs
+    - `max_correlation`: Maximum correlation coefficient found
+    - `avg_correlation`: Average correlation among high pairs
+    - `features_involved`: List of features involved in high correlations
+  - `correlation_pairs`: List of dictionaries, each containing:
+    - `feature1`: Name of first feature in pair
+    - `feature2`: Name of second feature in pair
+    - `correlation`: Actual correlation coefficient (can be negative)
+    - `abs_correlation`: Absolute value of correlation coefficient
+
+### Current State:
+- Automatically identifies numerical features in the provided dataframe
+- Calculates correlations between all numerical feature pairs using specified method
+- Identifies feature pairs with correlation coefficients exceeding the threshold
+- Returns comprehensive dictionary with correlation information
+- When `verbose=True`:
+  - Prints analysis information including feature count and threshold used
+  - Prints each highly-correlated feature pair with its correlation sign and value
+  - Displays maximum and average correlation values found
+  - Lists all features involved in high correlations and their occurrence count
+  - Uses visual separators for readability
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- Add visualization option to generate a filtered correlation heatmap
+- Add capability to analyze relationship types (linear vs. non-linear)
+
+### Method History
+- Alpha build by Don Smith (Current State)
+
+
 ## Method: `reshape`
 ### Core Purpose:
 Perform row- or column-dependent instance (row) removals, as well as feature (column) removals.
@@ -327,7 +442,6 @@ and providing appropriate descriptive statistics based on feature type.
 ### Parameters:
 - `df` Input Pandas dataframe.
 - `verbose` (Boolean, default = True) which controls level of detail in output.
-- `summary_stats` (Boolean, default = False) which controls whether summary statistics tables grouped by feature type are displayed.
 
 ### Returns:
 - None. This is a void method that prints information to the console.
@@ -335,10 +449,16 @@ and providing appropriate descriptive statistics based on feature type.
 ### Current State:
 - Core Functionality (Always Run):
   - Separates features into categories by type:
+    - Boolean features (logical values or 0/1 integers)
+    - Datetime features
     - Categorical features
     - Numerical features
   - For all features:
     - Shows missingness information (count and percentage)
+  - For boolean features:
+    - Shows true/false value counts and percentages
+  - For datetime features:
+    - Shows date range information
   - For categorical features:
     - Shows unique value counts
     - Shows mode values
@@ -347,8 +467,10 @@ and providing appropriate descriptive statistics based on feature type.
     - Shows mean
     - Shows range (min/max)
     - Shows basic descriptive statistics
-  - Validates all features before processing
-  - Ensures data type appropriate statistics
+  - Performs data quality checks:
+    - Zero-variance features
+    - Near-constant features (>95% single value)
+    - Potential duplicate features
 
 
 - If `verbose=False`:
@@ -359,57 +481,31 @@ and providing appropriate descriptive statistics based on feature type.
 
 
 - If `verbose=True`, the method **also** provides:
-  - Detailed feature type categorization
-  - Full descriptive statistics
+  - Detailed feature type categorization and distribution
+  - Data quality alerts for potential issues
+  - Extended statistics:
+    - For categorical: entropy values, top frequency ratios, distribution patterns
+    - For numerical: quartile information, skewness, kurtosis, coefficient of variation
   - Formatted output with visual separators
-  - For categorical features:
-    - Complete value distribution information
-  - For numerical features:
-    - Extended descriptive statistics including median and standard deviation
-    
-
-- If `summary_stats=True`, the method **also** provides:
-  - Summary tables grouped by feature type
-  - Aggregate statistics for each feature class
+  - Contextual interpretation of statistical measures
 
 ### Observed Bugs/Problems:
 - None as of current state
 
 ### Ideas for Development:
-- Enhanced Feature Detection:
-  - Add identification of boolean features
-  - Add identification of datetime features
-  - Separate display of statistics by four types (boolean, datetime, categorical, numerical)
-
-- Enhanced Statistical Information:
-  - For Numerical Features:
-    - Add skewness measurement
-    - Add kurtosis measurement
-    - Add quartile information
-    - Add coefficient of variation
-    - Add explanations of these statistics in verbose mode only
-  - For Categorical Features:
-    - Add entropy/information content
-    - Add frequency ratios
-    - Add explanations of these metrics in verbose mode only
-  - For Datetime Features:
-    - Add temporal range statistics
-    
-- Data Quality Indicators:
-  - Add detection of zero-variance features
-  - Add detection of near-constant features (>95% single value)
-  - Add detection of suspicious patterns
-  - Add detection of duplicate features
-
-- Format Improvements:
-  - Improve formatting of large numbers
-  - Add percentage calculations where relevant
-  - Improve floating point number rounding
-  - Add clearer section separators
+- None as of current state
 
 ### Method History:
-- Alpha build by Don Smith (Current State)
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current State)
 
+
+## Method: `plot_features`
+
+### Core Purpose:
+Displays feature-level plots of appropriate types/formats.
+
+Gabor is writing the Alpha for this. He has some neat OOP-related ideas on how to do it.
 
 ## Method: `impute`
 ### Core Purpose:
@@ -482,3 +578,502 @@ Works interactively with user to impute missing values in features using common 
 ### Method History:
 - Alpha build by Don Smith
 - Beta build by Don Smith (Current State)
+
+
+## Method: `encode`
+### Core Purpose:
+Works interactively with user to encode categorical features using standard encoding methods.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_encode` (list[str] | None, default=None) Optional list of features to encode.
+- `verbose` (Boolean, default = True) Controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) Controls whether to skip data quality warnings.
+- `preserve_features` (Boolean, default = False) Controls whether original features are kept alongside encoded ones.
+
+### Returns:
+- Modified dataframe with encoded categorical features as specified by user.
+
+### Current State:
+- Core Functionality (Always Run):
+ - Validates input parameters and feature existence
+ - Identifies categorical features when none specified
+ - Detects numeric features that might be categorical (e.g., 1/0 values)
+ - Supports two encoding methods:
+   - One-Hot Encoding (creates column for each category)
+   - Dummy Encoding (creates n-1 columns)
+ - Sanitizes column names to ensure valid Python identifiers
+ - Properly handles special characters in feature names
+ - Concatenates all encoded features into the dataframe
+ - Tracks encoding operations for summary reporting
+ - Allows preserving original features alongside encoded ones
+
+
+- If `verbose=False`:
+ - Shows minimal feature guidance
+ - Displays only essential user prompts
+ - Presents basic encoding choices
+ - Shows only critical warnings
+ - Provides basic confirmation of successful operations
+
+
+- If `verbose=True`, additionally provides:
+ - Comprehensive feature category information
+ - Detailed explanations of encoding methods
+ - Value distributions for categorical features
+ - Visual distribution plots for features
+ - Custom prefix options for encoded columns
+ - Step-by-step guidance through encoding decisions
+ - Comprehensive encoding summary including:
+   - Feature names
+   - Encoding methods applied
+
+
+- If `skip_warnings=False`, additionally checks and warns about:
+ - Features containing null values
+ - Features with high cardinality (>20 unique values)
+ - Features with low-frequency categories (<10 instances)
+ - Provides detailed guidance on handling problematic features
+ - Allows user to 'proceed with caution' after each warning
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- None as of current state
+
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current state)
+
+
+## Method: `scale`
+### Core Purpose:
+Provides interactive functionality for scaling numerical features in a dataset using standard statistical methods, 
+enabling proper normalization of data for machine learning algorithms that are sensitive to feature magnitudes.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_scale` (List[str] | None, default = None) Optional specific features to scale. If None, method 
+identifies numerical features interactively.
+- `verbose` (Boolean, default = True) Controls level of detail/guidance in output.
+- `skip_warnings` (Boolean, default = False) Controls whether data quality warnings (null values, outliers, skewness) 
+are displayed.
+- `preserve_features` (Boolean, default = False) Controls whether original features are preserved. When True, creates 
+new columns with scaled values instead of replacing originals.
+
+### Returns:
+- Modified dataframe with scaled numerical features. If `preserve_features=True`, original features are retained and 
+new columns with scaled values are added.
+
+### Current State:
+- Core Functionality (Always Run):
+  - Identifies numerical features that are appropriate for scaling
+  - Validates all selected features exist in the dataframe
+  - Distinguishes between true numerical features and categorical features encoded as numbers
+  - Prevents scaling of constant features (no variance)
+  - Offers three scaling methods appropriate for different data characteristics:
+    - Standard Scaler (Z-score normalization)
+    - Robust Scaler (based on median and IQR)
+    - MinMax Scaler (supports custom range specification)
+  - Handles infinite values with multiple replacement strategies
+  - Provides feature-by-feature scaling selection
+  - Maintains data integrity during scaling operations
+  - Supports individual feature skipping within the process flow
+  - Tracks all scaling operations for final reporting
+  - Returns modified dataframe with scaled features
+  - Offers side-by-side visualization of pre- and post-scaling distributions
+  - Supports preserving original features by creating new scaled columns
+
+
+- Parameter `features_to_scale` Controls Feature Selection:
+  - When `features_to_scale=None` (Default):
+    - Automatically identifies numerical features in the dataset
+    - Checks for potentially miscategorized numerical features (e.g., numeric encoding of categories)
+    - Interactively determines which features to include in scaling
+    - Allows users to exclude pseudo-categorical features
+
+  - When `features_to_scale=[list of features]`:
+    - Scales only the specific features in the provided list
+    - Validates all requested features exist in the dataframe
+    - Skip automatic feature type detection
+
+
+- Parameter `preserve_features` Controls Output Columns:
+  - When `preserve_features=False` (Default):
+    - Replaces original feature values with scaled values
+    - Original data is not retained in the returned dataframe
+
+  - When `preserve_features=True`:
+    - Creates new columns with naming pattern '{original_column}_scaled' 
+    - If column name conflicts exist, adds numeric suffixes (e.g., '{original_column}_scaled_1')
+    - Preserves original data while adding scaled versions
+    - Both original and scaled versions available in returned dataframe
+
+
+- If `skip_warnings=False` (Default):
+  - Checks for null values in features before scaling
+  - Identifies infinite values that may disrupt scaling
+  - Detects extreme skewness that might require transformation before scaling
+  - Requires user confirmation to proceed when issues are found
+
+
+- If `skip_warnings=True`:
+  - Bypasses data quality checks for nulls, infinites, and skewness
+  - Proceeds directly with scaling operations without warnings
+  - May be preferred for experienced users confident in their data quality
+
+
+- If `verbose=False`:
+  - Shows only basic feature list
+  - Displays minimal progress information
+  - Presents only essential user prompts
+  - Shows basic confirmation of successful operations
+
+
+- If `verbose=True` (Default), the method **also** provides:
+  - Clear stage demarcation with visual separators
+  - Process initiation notifications
+  - Detailed explanations of scaling methods and their appropriate use cases
+  - Displays pre-scaling statistics and distributions for each feature
+  - Offers visualization of feature distributions
+  - Educational content about scaling methods and when each is appropriate
+  - Reminders about not scaling target features
+  - Comprehensive final summary of all scaling operations performed
+  - Groups scaled features by scaling method used
+
+### Observed Bugs/Problems:
+- None as of current state
+
+### Ideas for Development:
+- None as of current state
+
+### Method History:
+- Alpha build by Don Smith
+- Beta build by Don Smith (Current state)
+
+
+# Method: `transform`
+
+### Core Purpose:
+Applies mathematical transformations to numerical features to improve their distributions for modeling, with a 
+focus on normalization and linearization.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_transform` (list[str] | None, default=None) Optional list of features to transform.
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=False) Controls whether original features are preserved.
+- `skip_warnings` (Boolean, default=False) Controls whether to skip distribution and outlier warnings.
+
+### Returns:
+- Modified dataframe with transformed features. If `preserve_features=True`, original features are retained.
+
+### Implementation Plan:
+- **Input Validation**
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified features if provided
+  - Ensure DataFrame is not empty
+
+- **Feature Identification**
+  - If `features_to_transform` is None:
+    - Identify numerical features in DataFrame
+    - Filter out Boolean/binary features (0/1 values)
+    - Allow user to select which features to transform
+
+- **Feature Analysis**
+  - For each feature to transform:
+    - Calculate descriptive statistics (mean, median, min, max)
+    - Measure skewness and kurtosis
+    - Check for infinities and nulls
+    - If `verbose=True`, show distribution plots
+    - Suggest appropriate transformations based on statistics
+
+- **Transformation Options**
+  - Implement the following transformations:
+    - Log transformation (natural log, log10)
+    - Square root transformation
+    - Box-Cox transformation
+    - Yeo-Johnson transformation
+    - Power transformations (squared, cubed)
+    - Reciprocal transformation
+
+- **Transformation Process**
+  - For each selected feature:
+    - Present transformation options based on data characteristics
+    - Handle special cases (zeros for log transforms, negative values)
+    - Apply selected transformation
+    - If `verbose=True`, show before/after plots
+    - Track transformation details for reporting
+
+- **Output Handling**
+  - If `preserve_features=True`:
+    - Create new columns with naming pattern '{feature}_transformed'
+  - If `preserve_features=False`:
+    - Replace original features with transformed versions
+  - Return updated DataFrame
+
+- **Error Handling**
+  - Handle invalid transformations (e.g., log of negative values)
+  - Provide informative error messages
+  - Offer fallback options when primary transformation fails
+  - Allow skipping problematic features
+
+- **Reporting**
+  - If `verbose=True`:
+    - Summarize transformations applied
+    - Report improvement in normality metrics
+    - Show before/after summary statistics
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+  - Analyzes numerical features for distribution characteristics
+  - Provides appropriate transformation options based on data properties
+  - Supports multiple transformation methods for different distribution types
+  - Handles edge cases like zeros and negative values
+  - Properly names and organizes transformed features
+  - Maintains data integrity during transformation
+
+- If `verbose=False`:
+  - Shows minimal feature guidance
+  - Displays only essential user prompts
+  - Presents basic transformation choices
+  - Shows only critical warnings
+  - Provides basic confirmation of successful operations
+
+- If `verbose=True`:
+  - Shows detailed feature distribution analysis
+  - Provides visualization of before/after distributions
+  - Explains reasoning behind suggested transformations
+  - Displays comprehensive normality metrics
+  - Offers educational content about transformation methods
+
+- If `skip_warnings=False`:
+  - Provides warnings about skewed distributions
+  - Alerts about potential issues with transformations
+  - Suggests alternative approaches for problematic features
+
+### Method History:
+- Alpha build by Don Smith (Current State)
+
+
+# Method: `extract_datetime`
+
+### Core Purpose:
+Extracts useful features from datetime columns in a dataframe, converting temporal information into features that 
+machine learning models can use more effectively.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `datetime_features` (list[str] | None, default=None) Optional list of datetime features to process.
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=False) Controls whether original datetime features are preserved.
+- `components` (list[str] | None, default=None) Optional list of specific datetime components to extract.
+
+### Returns:
+- Modified dataframe with extracted datetime features. If `preserve_features=True`, original datetime columns are 
+retained.
+
+### Implementation Plan:
+- **Input Validation**
+ - Verify input is a Pandas DataFrame
+ - Validate existence of specified datetime features if provided
+ - Ensure DataFrame is not empty
+
+- **Feature Identification**
+ - If `datetime_features` is None:
+   - Identify columns with datetime dtype
+   - Attempt to parse string columns as datetime
+   - Allow user to select which columns to process
+
+- **Component Identification**
+ - If `components` is None:
+   - Offer standard components: year, month, day, dayofweek, hour, minute, quarter, weekofyear, dayofyear
+   - For time series data, offer additional components: is_weekend, is_month_start, is_month_end, is_quarter_start, 
+ is_quarter_end
+   - Allow user to select which components to extract
+
+- **DateTime Extraction Process**
+ - For each selected datetime feature:
+   - Ensure column is in datetime format (convert if needed)
+   - Extract selected components into new columns
+   - Handle timezone information if present
+   - Apply appropriate naming conventions for new columns
+   - Encode cyclical features (like month, day of week) using sin/cos transformation if requested
+
+- **Output Handling**
+ - Create new columns with naming pattern '{original_column}_{component}'
+ - If `preserve_features=False`:
+   - Remove original datetime columns
+ - Return updated DataFrame
+
+- **Time Series Detection**
+ - Detect if data appears to be time series based on:
+   - Regular intervals between datetime values
+   - Sorted datetime values
+   - If identified as time series, suggest additional useful features
+   - Offer lagged features or rolling statistics if appropriate
+
+- **Error Handling**
+ - Handle invalid datetime formats
+ - Provide informative error messages
+ - Offer parsing options for ambiguous formats (MM/DD vs DD/MM)
+ - Allow skipping problematic features
+
+- **Reporting**
+ - If `verbose=True`:
+   - Summarize extracted components
+   - Show examples of original and extracted values
+   - Provide guidance on using extracted features in models
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+ - Identifies datetime columns (explicit datetime types and string-based dates)
+ - Extracts selected components into separate columns
+ - Maintains data integrity during extraction
+ - Applies appropriate naming conventions
+ - Creates all specified datetime-derived features
+ - Returns modified dataframe with new features
+
+- If `verbose=False`:
+ - Shows minimal feature guidance
+ - Displays only essential user prompts
+ - Provides basic confirmation of successful operations
+ - Minimizes explanatory text
+
+- If `verbose=True`:
+ - Explains datetime feature extraction concepts
+ - Provides component selection guidance
+ - Shows examples of extracted values
+ - Offers visualization of time-based patterns if appropriate
+ - Explains cyclical encoding concepts for periodic features
+
+- Parameter `preserve_features`:
+ - When `True`, keeps original datetime columns alongside extracted features
+ - When `False`, removes original datetime columns after extraction
+
+### Method History:
+- Alpha build by Don Smith (Current State)
+
+
+# Method: `build_interactions`
+
+### Core Purpose:
+Creates new features by combining existing features through mathematical operations, enabling linear models to 
+capture non-linear relationships and interactions between variables.
+
+### Parameters:
+- `df` Input Pandas dataframe.
+- `features_to_combine` (list[str] | None, default=None) Optional list of features to consider for interactions.
+- `interaction_types` (list[str] | None, default=None) Optional list of interaction types to create 
+(e.g., 'multiply', 'divide', 'add', 'subtract', 'polynomial').
+- `verbose` (Boolean, default=True) Controls level of detail/guidance in output.
+- `preserve_features` (Boolean, default=True) Controls whether original features are preserved alongside interactions.
+- `max_features` (int | None, default=None) Optional maximum number of interaction features to create.
+
+### Returns:
+- Modified dataframe with original features and newly created interaction features.
+
+### Implementation Plan:
+- **Input Validation**
+  - Verify input is a Pandas DataFrame
+  - Validate existence of specified features if provided
+  - Ensure DataFrame is not empty
+  - Validate interaction_types if provided
+
+
+- **Feature Identification**
+ - If `features_to_combine` is None:
+   - Identify numerical features in DataFrame
+   - Allow user to select which features to consider for interactions
+   - Provide option to include categorical features (after encoding)
+
+
+- **Interaction Type Selection**
+ - If `interaction_types` is None:
+   - Offer standard interaction types: multiply, divide, add, subtract, polynomial
+   - Allow user to select which types to create
+   - If `verbose=True`, explain each interaction type's purpose
+
+
+- **Interaction Creation Process**
+ - For multiplication interactions:
+   - Create pairwise products between selected features
+   - Name new features as '{feature1}_x_{feature2}'
+ 
+ - For division interactions (with safeguards):
+   - Create pairwise divisions between selected features
+   - Handle division by zero with appropriate methods
+   - Name new features as '{feature1}_div_{feature2}'
+ 
+ - For addition interactions:
+   - Create pairwise sums between selected features
+   - Name new features as '{feature1}_plus_{feature2}'
+ 
+ - For subtraction interactions:
+   - Create pairwise differences between selected features
+   - Name new features as '{feature1}_minus_{feature2}'
+ 
+ - For polynomial features:
+   - Create squared and cubed versions of individual features
+   - Name new features as '{feature}_squared', '{feature}_cubed'
+
+
+- **Feature Selection and Limitation**
+  - If `max_features` is set:
+    - Prioritize interactions based on correlation with target (if available)
+    - Use variance or other metrics to select most relevant interactions
+    - Limit total number of interaction features created
+
+
+- **Output Handling**
+  - Add created interaction features to dataframe
+  - If `preserve_features=False`:
+    - Remove original features used in interactions
+  - Return updated DataFrame
+
+
+- **Error Handling**
+  - Handle division by zero or near-zero values
+  - Manage potential feature explosion with many interaction combinations
+  - Provide warnings about large feature space expansion
+  - Allow cancellation if too many features would be created
+
+
+- **Reporting**
+ - If `verbose=True`:
+   - Summarize created interaction features
+   - Show examples of original and interaction values
+   - Provide guidance on using interaction features in models
+   - Warn about potential multicollinearity issues
+
+### Expected Behavior:
+- Core Functionality (Always Run):
+  - Creates specified interaction features between selected columns
+  - Applies appropriate naming conventions
+  - Maintains data integrity during feature creation
+  - Handles edge cases (division by zero, etc.)
+  - Returns modified dataframe with new features
+
+
+- If `verbose=False`:
+  - Shows minimal feature guidance
+  - Displays only essential user prompts
+  - Provides basic confirmation of successful operations
+  - Minimizes explanatory text
+
+
+- If `verbose=True`:
+  - Explains interaction feature concepts
+  - Shows examples of created features
+  - Provides guidance on feature selection
+  - Warns about potential pitfalls (multicollinearity, feature explosion)
+  - Offers educational content about when interactions are beneficial
+
+
+- Parameter `preserve_features`:
+  - When `True` (default), keeps original features alongside interactions
+  - When `False`, removes original features after interaction creation
+
+### Method History:
+- Proposed by Don Smith (Current State)

@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import tadprep as tp  # Testing package-level import - I want TADPREP to mirror Pandas in its common practice
+# We don't want to truncate our dataframes in our print checks
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', None)
 
 from tadprep.core.transforms import PlotHandler, _build_interactions_core
 
@@ -331,3 +335,298 @@ Need to test for:
 # print(df_ts_imputed)
 
 
+'''
+Testing augmented feature_stats method
+Need to test for:
+- Fixed distribution pattern calculation for categorical features (verifying top N value coverage percentages)
+- Empty datetime feature handling (when all values are null or can't be converted)
+- Consistent numeric formatting across all statistics
+  - Large integers (should show commas)
+  - Decimal values (should display 4 decimal places)
+  - Integer-like floats (should display as integers without decimals)
+- Skewness metric testing:
+  - Approximately symmetric distributions (|skew| < 0.5)
+  - Moderately skewed distributions (0.5 ≤ |skew| < 1)
+  - Highly skewed distributions (|skew| ≥ 1)
+- Kurtosis metric testing:
+  - Platykurtic distributions (kurt < -0.5)
+  - Mesokurtic distributions (-0.5 ≤ kurt ≤ 0.5)
+  - Leptokurtic distributions (kurt > 0.5)
+- Edge cases:
+  - Features with NaN values
+  - Single-value features
+  - Features with extremely large/small values
+- Different numerical distributions:
+  - Symmetric vs. skewed distributions
+  - Features with zero mean (for coefficient of variation)
+'''
+# Create a test dataframe
+# df_feature_stats = pd.DataFrame({
+#     # Boolean features - both formats
+#     'bool_true_false': [True, True, False, True, False, True, True, False, True, False, True, False, True, True, None,
+#                         True, False, True, False, True],
+#     'bool_binary': [1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+#
+#     # Datetime feature - explicit datetime
+#     'date_explicit': [
+#         datetime(2023, 1, 1),
+#         datetime(2023, 1, 2),
+#         datetime(2023, 1, 3),
+#         datetime(2023, 1, 4),
+#         datetime(2023, 1, 5),
+#         datetime(2023, 1, 6),
+#         None,
+#         datetime(2023, 1, 8),
+#         datetime(2023, 1, 9),
+#         datetime(2023, 1, 10),
+#         datetime(2023, 1, 11),
+#         datetime(2023, 1, 12),
+#         datetime(2023, 1, 13),
+#         datetime(2023, 1, 14),
+#         datetime(2023, 1, 15),
+#         datetime(2023, 1, 16),
+#         datetime(2023, 1, 17),
+#         datetime(2023, 1, 18),
+#         datetime(2023, 1, 19),
+#         datetime(2023, 1, 20)
+#     ],
+#
+#     # Datetime as strings - to test detection logic
+#     'date_strings': ['01-01-2023', '02-01-2023', '03-01-2023', '04-01-2023', '05-01-2023', '06-01-2023', None, None,
+#                      '10-01-2023', '11-01-2023', None, '01-01-2024', '02-01-2024', '03-01-2024', '04-01-2024', None,
+#                      '06-01-2024', '07-01-2024', '08-01-2024', '09-01-2024'],
+#
+#     # Categorical features
+#     'cat_normal': ['A', 'B', 'C', 'A', 'B', 'D', 'A', 'E', 'B', 'A', 'C', 'D', 'E', 'B', None, 'A', 'C', 'B', 'A', 'D'],
+#     'cat_empty': ['A', 'B', 'C', '', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', '', 'N', 'O', 'P', 'Q', 'R'],
+#
+#     # Zero-variance feature - to test detection
+#     'zero_variance': ['Same'] * 20,
+#
+#     # Near-constant feature (exactly 95% single value)
+#     'near_constant': ['Frequent'] * 19 + ['Rare'],  # 19/20 = 95%
+#
+#     # Duplicated feature - to test potential duplicate detection
+#     'cat_normal_dup': ['A', 'B', 'C', 'A', 'B', 'D', 'A', 'E', 'B', 'A', 'C', 'D', 'E', 'B', None, 'A', 'C', 'B',
+#                        'A', 'D'],
+#
+#     # Numerical features
+#     # Large integers - for formatting with commas
+#     'num_large': [1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000, 11000000,
+#                   12000000, 13000000, 14000000, 15000000, 16000000, 17000000, 18000000, 19000000, 20000000],
+#
+#     # Decimal values - for 4 decimal place formatting
+#     'num_decimal': [10.1234, 11.5678, 9.7531, 10.5, 12.6789, 8.25, 11.125, 9.5, 10.375, None, 13.4567, 7.8901, 12.3456,
+#                     9.9999, 11.1111, 14.7890, 8.6543, 10.0001, 12.5000, 9.8765],
+#
+#     # Integer-like floats - should display as integers
+#     'num_int_floats': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0,
+#                        18.0, 19.0, 20.0],
+#
+#     # Skewness test cases
+#     # Approximately symmetric (|skew| < 0.5)
+#     'num_symmetric': [50, 45, 55, 48, 52, 47, 53, 49, 51, 50, 46, 54, 48, 52, 50, 47, 53, 49, 51, 50],
+#
+#     # Moderately skewed (0.5 ≤ |skew| < 1)
+#     'num_mod_skewed': [10, 12, 11, 13, 14, 18, 12, 11, 10, 15, 13, 12, 14, 16, 11, 17, 13, 12, 14, 11],
+#
+#     # Highly skewed (|skew| ≥ 1)
+#     'num_highly_skewed': [1, 2, 1, 3, 1, 2, 1, 10, 200, 500, 1, 2, 3, 1, 2, 1, 2, 3, 1, 100],
+#
+#     # Kurtosis test cases
+#     # Platykurtic (kurt < -0.5)
+#     'num_platykurtic': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 15, 25, 35, 45, 55, 65, 75, 85, 95, 5],
+#
+#     # Mesokurtic (-0.5 ≤ kurt ≤ 0.5)
+#     'num_mesokurtic': [100, 95, 105, 98, 102, 97, 103, 99, 101, 100, 96, 104, 98, 102, 100, 97, 103, 99, 101, 100],
+#
+#     # Leptokurtic (kurt > 0.5)
+#     'num_leptokurtic': [50, 50, 50, 50, 50, 51, 49, 10, 90, 50, 50, 50, 50, 49, 51, 50, 50, 50, 50, 50],
+#
+#     # Zero mean - for coefficient of variation handling
+#     'num_zero_mean': [-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+#
+#     # Feature with nulls
+#     'num_with_nulls': [1, 2, None, 4, 5, None, 7, 8, 9, 10, None, 12, 13, 14, 15, None, 17, 18, 19, 20]})
+#
+# # tp.feature_stats(df_feature_stats, verbose=True)  # Testing full output
+# tp.feature_stats(df_feature_stats, verbose=False)  # Testing minimal output
+
+'''
+Testing augmented scale method
+Need to test for:
+- Operation with and without features_to_scale list
+- Preservation of original features
+- Detection of false-numeric features (e.g. 0/1 'Yes'/'No' format)
+- Detection of null values, infinite values, high skewness
+- Before/after visualization
+- Custom minmax scaler ranges
+'''
+# Build test dataframe
+# df_scale = pd.DataFrame({'Name': ['John', 'Joe', 'Jack', 'Jake', 'Jeff', 'Jim'],
+#                          'Weight': [165, 186, 199, 207, 153, 223],
+#                          'Citizen': [1, 0, 0, 1, 1, 1],
+#                          'Score': [78, 89, np.inf, np.nan, np.nan, 92],
+#                          'Happiness': [81, 84, 76, 91, 65, 79],
+#                          'Zero_var': [55, 55, 55, 55, 55, np.nan]})
+# Build list of features to scale
+# scale_feats = ['Weight', 'Happiness']
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=True, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=scale_feats, verbose=True, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=False, preserve_features=True)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=False, preserve_features=False)
+# df_scaled = tp.scale(df_scale, features_to_scale=None, verbose=False, skip_warnings=True, preserve_features=False)
+# print(df_scaled)
+
+'''
+Testing refactored encode method
+Need to test for:
+- Operation with and without features_to_encode list
+- Clean column name generation for encoded features
+- Preservation of original features (preserve_features=True)
+- Handling of all-NaN columns (should be skipped)
+- Proper reindexing when using missing_strat='drop' with non-continuous indices
+- Missing Value Handling:
+   - 'ignore' strategy (default) - leaves NaNs in encoded columns
+   - 'category' strategy - creates separate indicator column for NaNs
+   - 'drop' strategy - processes only non-null values
+- Detection of false-numeric features (e.g., 0/1 'Yes'/'No' format)
+- Handling of high-cardinality features
+- Handling columns with single value (should be skipped)
+- Handling columns with rare categories
+- Safely handling values that can't be converted to float
+- Custom reference category selection for dummy encoding
+- Custom prefix selection for encoded columns
+- Before/after distribution visualizations
+'''
+# # Create sample test dataset
+# encode_df = pd.DataFrame({
+#     # Binary categorical feature with missing values (20%)
+#     'bin_cat': ['Yes', 'No', 'Yes', np.nan, 'Yes', 'No', 'Yes', 'No', 'Yes', np.nan],
+#     # False-numeric feature (0/1 representation of Yes/No)
+#     'false_num': [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+#     # Feature with special characters in name - should create clean column names
+#     'special chars & symbols!': ['X', 'Y', 'Z', 'X', 'Y', 'Z', 'X', 'Y', 'Z', 'X'],
+#     # Feature with a single value (should be skipped)
+#     'single_val': ['Constant'] * 10,
+#     # Feature with values that can't be converted to float
+#     'non_num_vals': ['Value_A', 'Value_B', 'Value_C', 'Value_A', 'Value_B', 'Value_C', 'Value_A', 'Value_B',
+#                      'Value_C', 'Value_A'],
+#     # True numerical feature (should not be encoding candidate)
+#     'true_num': [45.2, 67.8, 32.1, 58.9, 71.3, 49.5, 62.7, 38.4, 53.6, 44.9],
+#     # Ordinal feature
+#     'ordinal': ['Low', 'Medium', 'High', 'Low', 'Medium', 'High', 'Low', 'Medium', 'High', 'Medium'],
+#     # Column with all NaN values (should be skipped)
+#     'all_nan': [np.nan] * 10,
+#     # Unicode characters to test handling of special encoding situations - the special characters should persist
+#     'unicode_chars': ['café', 'résumé', 'piñata', 'café', 'résumé', 'piñata', 'café', 'résumé', 'piñata', 'café']})
+
+# # Build list of features to encode
+# encode_feats = ['bin_cat', 'ordinal']
+
+# df_encoded = tp.encode(encode_df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=True)
+# df_encoded = tp.encode(encode_df, features_to_encode=None, verbose=True, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=True, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=False, preserve_features=False)
+# df_encoded = tp.encode(encode_df, features_to_encode=encode_feats, verbose=False, skip_warnings=True, preserve_features=False)
+# print(df_encoded)
+
+'''
+Testing new find_outliers method
+Need to test for:
+- Verbose and non-verbose operation
+- All three outlier detection methods
+- Custom and default thresholds
+- Structure of returned dictionary output
+'''
+# outlier_df = pd.DataFrame({'high_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, 8000],
+#                            'low_outlier': [5, 10, 10, 15, 15, 20, 20, 25, 25, -8000],
+#                            'one_outlier': [1, 1, 1, 2, 2, 2, 3, 3, 4, 20],
+#                            'two_outliers': [1, 1, 2, 2, 2, 3, 3, 3, 45, 65]})
+
+# outlier_dict = tp.find_outliers(outlier_df, method='iqr', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='zscore', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='zscore', threshold=1, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='modified_zscore', threshold=None, verbose=True)
+# outlier_dict = tp.find_outliers(outlier_df, method='modified_zscore', threshold=None, verbose=False)
+# print(outlier_dict)
+
+'''
+Testing new find_corrs method
+Need to test for:
+- Verbose and non-verbose operation
+- All three correlation detection methods
+- Custom and default correlation thresholds
+- Structure of returned dictionary output
+'''
+# # Base feature - simple linear sequence
+# base = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+
+# # Create features with controlled correlation levels
+# corr_df = pd.DataFrame({
+#     'base_feature': base,
+#     # Perfect positive correlation
+#     'perfect_pos': base,
+#     # Perfect negative correlation
+#     'perfect_neg': -base + 16,
+#     # Strong positive correlation
+#     'strong_pos': base + np.random.normal(0, 3, len(base)),
+#     # Strong negative correlation
+#     'strong_neg': -base + 16 + np.random.normal(0, 3, len(base)),
+#     # Moderate positive correlation
+#     'mod_pos': base + np.random.normal(0, 6, len(base)),
+#     # Moderate negative correlation
+#     'mod_neg': -base + 16 + np.random.normal(0, 6, len(base)),
+#     # Weak positive correlation
+#     'weak_pos': base + np.random.normal(0, 12, len(base)),
+#     # Weak negative correlation
+#     'weak_neg': -base + 16 + np.random.normal(0, 12, len(base)),
+#     # Uncorrelated
+#     'uncorr': np.random.normal(8, 4, len(base)),
+#     # Object-type feature which should be ignored
+#     'object': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O']
+# })
+
+# # Add a column with missing values (based on perfect_pos)
+# corr_df['missing_vals'] = corr_df['perfect_pos'].copy()
+# # Set ~20% of values to NaN
+# mask = np.random.choice([True, False], size=len(base), p=[0.2, 0.8])
+# corr_df.loc[mask, 'missing_vals'] = None
+
+# # Build results dictionary
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='spearman', verbose=True)
+# corr_dict = tp.find_corrs(corr_df, method='kendall', verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', threshold=0.5, verbose=True)
+# # corr_dict = tp.find_corrs(corr_df, method='pearson', threshold=0.9, verbose=False)
+# # Display results dictionary
+# print(corr_dict)
+
+'''
+Testing new transform method
+Need to test for:
+- Verbose and non-verbose operation
+- Auto-detected features and list of features
+- Feature preservation
+- Warning messages operating correctly
+'''
+# Create test dataframe
+transform_df = pd.DataFrame({'name': ['John', 'Joe', 'Jack', 'Jill', 'Jeff'],
+                             'sex': ['M', 'M', 'M', 'F', 'M'],
+                             'age': [35, 39, 27, 32, 28],
+                             'int_10': [10, 20, 30, 40, 50],
+                             'binary': [0, 1, 1, 0, 1],
+                             'zeros': [1, 0, 3, 0, 5],
+                             'nulls': [np.nan, 5, 10, np.nan, 15]})
+# Create list of features to be transformed
+transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
+# Testing auto-detect
+# transform_results = tp.transform(transform_df, features_to_transform=None, verbose=True,
+#                                  preserve_features=True, skip_warnings=False)
+# Pre-passed list of features
+# transform_results = tp.transform(transform_df, features_to_transform=transform_list, verbose=True,
+#                                  preserve_features=True, skip_warnings=False)
+# # Non-verbose operation
+# transform_results = tp.transform(transform_df, features_to_transform=None, verbose=False,
+#                                  preserve_features=True, skip_warnings=False)
+# print(transform_results)
