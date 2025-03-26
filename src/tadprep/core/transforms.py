@@ -3874,11 +3874,11 @@ def _transform_core(
             print(f'Warning: "{feature}" contains {null_count} null values ({pct_null:.2f}%).')
             print('Transformations will be applied only to non-null values.')
             if verbose:
-                if input('Continue with this feature? (Y/N): ').lower() != 'y':
+                if input('Continue with transforming this feature? (Y/N): ').lower() != 'y':
                     continue
             # In non-verbose mode, ask for confirmation on high-nullity features
             elif pct_null > 30:  # If more than 30% of values are null
-                if input('Continue with this feature? (Y/N): ').lower() != 'y':
+                if input('Continue with transforming this feature? (Y/N): ').lower() != 'y':
                     continue
 
         # Feature analysis
@@ -3917,12 +3917,12 @@ def _transform_core(
         suggestions = suggest_transform(df[feature])
 
         # Check if there's a warning about sample size
-        if any(s.startswith('WARNING:') for s in suggestions):
+        if any(sugg.startswith('WARNING:') for sugg in suggestions):
             if verbose:
                 print(f"\n{suggestions[0]}")
                 print(f'Skipping transformation for feature "{feature}".')
             else:
-                print(f'Skipping "{feature}" - insufficient samples (minimum required: {MIN_SAMPLES}).')
+                print(f'Skipping "{feature}" - insufficient data (Minimum instances required: {MIN_SAMPLES}).')
             continue
 
         if verbose:
