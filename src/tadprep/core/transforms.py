@@ -3979,8 +3979,8 @@ def _transform_core(
                             print(f'Please enter a number between 1 and {len(methods) + 1}.')
                     except ValueError:
                         print('Invalid input. Please enter a number.')
-                except Exception as e:
-                    print(f'Error in selection: {str(e)}')
+                except Exception as exc:
+                    print(f'Error in selection: {str(exc)}')
                     print('Please try again.')
 
             # Skip to next feature if user chose to skip
@@ -3991,9 +3991,9 @@ def _transform_core(
             selected_method = methods[method_idx]
         else:
             # In non-verbose mode, select the first recommended transformation that's valid
-            valid_suggestions = [s for s in suggestions if s in methods]
-            if valid_suggestions:
-                selected_method = valid_suggestions[0]
+            valid_suggs = [sugg for sugg in suggestions if sugg in methods]
+            if valid_suggs:
+                selected_method = valid_suggs[0]
                 # Skip features with no valid transformations
             else:
                 print(f'Skipping "{feature}" - no appropriate transformation available.')
@@ -4056,7 +4056,7 @@ def _transform_core(
                 print(f'- Description: {record["desc"]}')
                 if record["feature"] != record["target"]:
                     print(f'- New column: {record["target"]}')
-                print('-' * 25)
+                print('-' * 50)
 
             if preserve_features:
                 print('NOTE: Original features were preserved alongside transformed columns.')
