@@ -2,6 +2,8 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib
+from collections import defaultdict
+from itertools import combinations
 
 matplotlib.use('TkAgg')  # Set the backend before importing pyplot
 import matplotlib.pyplot as plt
@@ -84,117 +86,6 @@ def _df_info_core(df: pd.DataFrame, verbose: bool = True) -> None:
         print('-' * 50)  # Visual separator
         print(df.info(verbose=True, memory_usage=True, show_counts=True))
         print('-' * 50)  # Visual separator
-
-
-def _reshape_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
-    """
-    Core function for reshaping a DataFrame by handling missing values, dropping features, and subsetting data.
-
-    Args:
-        df (pd.DataFrame): Input DataFrame to reshape
-        verbose (bool): Whether to print detailed information about operations. Defaults to True.
-
-    Returns:
-        pd.DataFrame: Reshaped DataFrame
-
-    Raises:
-        ValueError: If invalid indices are provided for column dropping
-        ValueError: If an invalid subsetting proportion is provided
-    """
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Beginning data reshape process.')
-        print('-' * 50)  # Visual separator
-
-    row_missing_cnt = df.isnull().any(axis=1).sum()  # Compute count
-    # Ask if the user wants to delete *all* instances with any missing values, if any exist
-    if row_missing_cnt > 0:
-        user_drop_na = input('Do you want to drop all instances with *any* missing values? (Y/N): ')
-        if user_drop_na.lower() == 'y':
-            df = df.dropna()
-            if verbose:
-                print(f'After deletion of {row_missing_cnt} instances with missing values, {len(df)} instances remain.')
-
-    # Ask if the user wants to drop any of the columns/features in the dataset
-    user_drop_cols = input('\nDo you want to drop any of the features in the dataset? (Y/N): ')
-    if user_drop_cols.lower() == 'y':
-        print('The full set of features in the dataset is:')
-        for col_idx, column in enumerate(df.columns, 1):  # Create enumerated list of features starting at 1
-            print(f'{col_idx}. {column}')
-
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                drop_cols_input = input('\nEnter the index integers of the features you wish to drop '
-                                        '(comma-separated) or enter "C" to cancel: ')
-
-                # Check for user cancellation
-                if drop_cols_input.lower() == 'c':
-                    if verbose:
-                        print('Feature deletion cancelled.')
-                    break
-
-                # Create list of column indices to drop
-                drop_cols_idx = [int(idx.strip()) for idx in drop_cols_input.split(',')]  # Splitting on comma
-
-                # Verify that all index numbers of columns to be dropped are valid/in range
-                if not all(1 <= idx <= len(df.columns) for idx in drop_cols_idx):  # Using a generator
-                    raise ValueError('Some feature index integers entered are out of range/invalid.')
-
-                # Convert specified column numbers to actual column names
-                drop_cols_names = [df.columns[idx - 1] for idx in drop_cols_idx]  # Subtracting 1 from indices
-
-                # Drop the columns
-                df = df.drop(columns=drop_cols_names)
-                if verbose:
-                    print('-' * 50)  # Visual separator
-                    print(f'Dropped features: {",".join(drop_cols_names)}')  # Note dropped columns
-                    print('-' * 50)  # Visual separator
-                break
-
-            # Catch invalid user input
-            except ValueError:
-                print('Invalid input. Please enter valid feature index integers separated by commas.')
-                continue  # Restart the loop
-
-    # Ask if the user wants to sub-set the data
-    user_subset = input('Do you want to sub-set the data by randomly deleting a specified proportion of '
-                        'instances? (Y/N): ')
-    if user_subset.lower() == 'y':
-        while True:  # We can justify 'while True' because we have a cancel-out input option
-            try:
-                subset_input = input('Enter the proportion of instances to DROP (0.0-1.0) or '
-                                     'enter "C" to cancel: ')
-
-                # Check for user cancellation
-                if subset_input.lower() == 'c':
-                    if verbose:
-                        print('Random sub-setting cancelled.')
-                    break
-
-                subset_rate = float(subset_input)  # Convert string input to float
-                if 0 < subset_rate < 1:  # If the float is valid (i.e. between 0 and 1)
-                    retain_rate = 1 - subset_rate  # Compute retention rate
-                    retain_row_cnt = int(len(df) * retain_rate)  # Select count of rows to keep in subset
-
-                    df = df.sample(n=retain_row_cnt)  # No random state set b/c we want true randomness
-                    if verbose:
-                        print(f'Randomly dropped {subset_rate}% of instances. {retain_row_cnt} instances remain.')
-                    break
-
-                # Catch user input error for invalid/out-of-range float
-                else:
-                    print('Enter a value between 0.0 and 1.0.')
-
-            # Catch outer-level user input errors
-            except ValueError:
-                print('Invalid input. Enter a float value between 0.0 and 1.0 or enter "C" to cancel.')
-                continue  # Restart the loop
-    if verbose:
-        print('-' * 50)  # Visual separator
-        print('Data reshape complete. Returning modified dataframe.')
-        print('-' * 50)  # Visual separator
-
-    return df  # Return the trimmed dataframe
 
 
 def _subset_core(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
