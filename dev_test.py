@@ -558,6 +558,9 @@ transform_list = ['age', 'int_10', 'binary', 'zeros', 'nulls']
 # transform_results = tp.transform(transform_df, features_to_transform=None, verbose=True,
 #                                  preserve_features=True, skip_warnings=False)
 # Pre-passed list of features
-transform_results = tp.transform(transform_df, features_to_transform=transform_list, verbose=True,
-                                 preserve_features=True, skip_warnings=False)
-print(transform_results)
+# transform_results = tp.transform(transform_df, features_to_transform=transform_list, verbose=True,
+#                                  preserve_features=True, skip_warnings=False)
+# # Non-verbose operation
+# transform_results = tp.transform(transform_df, features_to_transform=None, verbose=False,
+#                                  preserve_features=True, skip_warnings=False)
+# print(transform_results)
