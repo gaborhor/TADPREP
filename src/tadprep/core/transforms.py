@@ -2766,7 +2766,7 @@ def _reshape_core(
     # Default threshold is 25% "real" values
     def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
         """
-        Helper function to determine missingness of data by row for a given percentage threshold.
+        Helper function to determine count of rows missing data by a given percentage threshold.
 
         Args:
             df (pd.Dataframe): Input DataFrame in process of 'reshape'.
@@ -2788,30 +2788,32 @@ def _reshape_core(
         
         return row_missing_cnt
 
-    def recommend_thresholds(df: pd.DataFrame) -> list:
-        """
-        Helper function generates recommended degree-of-population thresholds based on size of user data.
+    ### This may be unnecessary given user knowledge of dataset
+    # def recommend_thresholds(df: pd.DataFrame) -> list:
+    #     """
+    #     Helper function generates recommended degree-of-population thresholds based on size of user data.
 
-        Args:
-            df (pd.DataFrame): Input DataFrame in process of 'reshape'.
+    #     Args:
+    #         df (pd.DataFrame): Input DataFrame in process of 'reshape'.
 
-        Returns:
-            list: Array of recommended degree-of-population thresholds.
-        """
-        print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
-        print('Consider custom thresholds based on your understanding of data requirements.')
+    #     Returns:
+    #         list: Array of recommended degree-of-population thresholds.
+    #     """
+    #     print('Degree-of-population thresholds adjust based on # of Features in DataFrame.')
+    #     print('Consider custom thresholds based on your understanding of data requirements.')
         
-        feature_cnt = df.shape[1]
+    #     feature_cnt = df.shape[1]
         
-        if feature_cnt <= 5:
-            print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
+    #     if feature_cnt <= 5:
+    #         print(f'\nFeature space is {feature_cnt}: Evaluated as "very small".')
             
-            print(f'Recommend very high thresholds\n{[]}')
+    #         print(f'Recommend very high thresholds\n{[]}')
             
-        ##  if feature_cnt  
+    #     ##  if feature_cnt  
 
 
     ## Helper func to identify rows with pre-defined column values missing
+    ##NOTE: This may be redundant with implementation in _feature_stats_core or _impute_core
     def rows_missing_by_feature(df: pd.DataFrame, features_to_reshape: list[str]) -> dict:
         """
         Helper function generates counts of missingness by features in 'features_to_reshape'
@@ -2836,7 +2838,7 @@ def _reshape_core(
         return missing_cnt_by_feature
         
     ## Core Operation 1
-    def row_based_row_remove(df: pd.DataFrame, threshold: float | None) -> pd.DataFrame:
+    def row_based_row_remove(df: pd.DataFrame, threshold: float | None, verbose: bool = True) -> pd.DataFrame:
         """
         Function to perform row-based row removal from input DataFrame.
 
@@ -2847,13 +2849,41 @@ def _reshape_core(
         Returns:
             df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
         """
+        #TODO: Logic for user selection of .1. Default thresh .2. Custom thresh .3. Abort
+        if not threshold:
+            iter_input = 0
+            while True:
+                
+                if iter_input == 0:
+                    threshold = input("No degree-of-population threshold provided.\nProvide a decimal-percent value or 'Q' to abort: ")
+                elif iter_input > 0:
+                    threshold = input()
+
+                if threshold.lower() == 'q':
+                    print('Aborting row-based row removal operation. Input DataFrame not modified.')
+                    manual_abort = 1
+                    break
+                try:
+                    threshold = float(threshold)
+                    if threshold >= 1:
+                        print("WARNING: Provided threshold value too large (greater than or equal to 100%) and therefore invalid.")
+                        iter_input += 1
+                        continue
+
+                except ValueError:
+                    print("Invalid input. Provide a decimal-percent value to continue or 'Q' to abort.")
+                    iter_input += 1
         
+        if manual_abort == 1:
+            return df
+
         # Here we rework the threshold by rounding for communication and df.dropna(thresh=)
         final_thresh = int(round(df.shape[1] * threshold))
         
-        # rows_missing_by_thresh defaults to 25%
-        print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
-        print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
+        if verbose:
+            # rows_missing_by_thresh defaults to 25% if not 
+            print(f'Identified {rows_missing_by_thresh(df, threshold)} instances with {(threshold * 100):.2f}% or less populated data.')
+            print(f'Rounding {(threshold * 100):.2f}% threshold to {final_thresh} features out of {df.shape[1]}.')
         
         # User confirmation to drop instances with fewer than 'final_tresh' populated features
         while True:
@@ -2864,7 +2894,7 @@ def _reshape_core(
                 df.dropna(thresh=final_thresh, inplace=True)
                 
             elif proceed.lower() == 'n':
-                print('Aborting drop operation. Input DataFrame not modified.\n')
+                print('Aborting row-based row removal operation. Input DataFrame not modified.\n')
                 break
                 
             else:
