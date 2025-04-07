@@ -2825,6 +2825,10 @@ def _reshape_core(
         Returns:
             missing_cnt_by_feature (dict): Keyed by feature, Val count of missing per-key
         """
+        if not features_to_reshape:
+            print('No features provided for missingness analysis. Defaulting to all features.')
+            features_to_reshape = df.columns.tolist()
+        
         # Straighforward dict comprehension to store 'features_to_reshape' and corresponding
         # missingness counts as key:val pairs
         missing_cnt_by_feature = {feature: df[feature].isna().sum() for feature in features_to_reshape}
@@ -2849,7 +2853,8 @@ def _reshape_core(
         Returns:
             df (pd.DataFrame): DataFrame in process of 'reshape' with rows removed by degree-of-population threshold.
         """
-        #TODO: Logic for user selection of .1. Default thresh .2. Custom thresh .3. Abort
+        #Logic for user selection of .1. Default thresh .2. Custom thresh .3. Abort
+        #TODO: Test
         if not threshold:
             iter_input = 0
             while True:
@@ -2877,6 +2882,10 @@ def _reshape_core(
                                   "For example, if DataFrame has 10 Features and 'threshold' is set to 0.40 (40%), data Instances with\n"
                                   "4 or less Features populated will be selected for removal. 'Threshold' value is multiplied by\n"
                                   "pandas' df.shape[1] to achieve integer Feature-space calculations.")
+                        elif info.lower() == 'n':
+                            print("Proceeding with threshold value input.")
+                        else:
+                            print("Invalid input. Proceeding with threshold value input.")
                     # prompt user for 'threshold' value
                     threshold = input("Provide a decimal-percent threshold by which to remove DataFrame rows: ")
 
@@ -2941,7 +2950,7 @@ def _reshape_core(
                 break
                 
             else:
-                print('Invalid input, please enter "Y" or "N.\n')
+                print('Invalid input, please enter "Y" or "N".\n')
                 continue
         
         return df
@@ -2970,17 +2979,45 @@ def _reshape_core(
         for pair in sorted(missing_cnt_by_feature.items()):
             print(pair)
 
+        #TODO: Testing
         # User confirmation to drop instances missingness in 'features_to_reshape'
         while True:
-            proceed = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
+            proceed1 = input(f'Drop all instances with missing values in {features_to_reshape} ? (Y/N): ')
         
-            if proceed.lower() == 'y':
+            if proceed1.lower() == 'y':
                 print('Dropping\n')
                 df.dropna(subset=features_to_reshape, inplace=True)
-                
-            elif proceed.lower() == 'n':
-                print('Aborting drop operation. Input DataFrame not modified.\n')
                 break
+                
+            elif proceed1.lower() == 'n':
+                while True:
+                    proceed2 = input(f'Drop all instances with missing values in subset of provided features ? (Y/N): ')
+                    if proceed2.lower() == 'y':
+                        while True:
+
+                            subset = input('Provide a comma-separated list of extant features to drop by, or "Q" to abort: ')
+                            if subset.lower() == 'q':
+                                print('Aborting drop operation. Input DataFrame not modified.\n')
+                                break
+
+                            subset = [feature.strip() for feature in subset.split(',')]
+                            # Check if all features are in the DataFrame
+                            subset_exists = all(feature in df.columns for feature in subset)
+                            if subset_exists:
+                                df.dropna(subset=subset, inplace=True)
+                                print(f'Dropped instances with missing values in {subset}.')
+                                break
+                            else:
+                                print('One or more features not found in DataFrame. Please try again.')
+                                continue
+                        break
+
+                    elif proceed2.lower() == 'n':
+                        print('Aborting drop operation. Input DataFrame not modified.\n')
+                        break
+                    else:
+                        print('Invalid input, please enter "Y" or "N.\n')
+                        continue
                 
             else:
                 print('Invalid input, please enter "Y" or "N.\n')
