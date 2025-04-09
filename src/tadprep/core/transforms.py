@@ -2942,6 +2942,7 @@ def _reshape_core(
                 df.dropna(thresh=final_thresh, inplace=True)
                 if verbose:
                     print(f"Drop complete. Removed {row_drop_cnt} rows from DataFrame.")
+                print(f'DataFrame dimensions after drop: {df.shape[0]} instances x {df.shape[1]} features.\n')
                 
             elif proceed.lower() == 'n':
                 print('Aborting row-based row removal operation. Input DataFrame not modified.\n')
@@ -2987,6 +2988,7 @@ def _reshape_core(
             if proceed1.lower() == 'y':
                 print('Dropping\n')
                 df.dropna(subset=features_to_reshape, inplace=True)
+                print(f'DataFrame dimensions after drop: {df.shape[0]} instances x {df.shape[1]} features.\n')
                 break
                 
             elif proceed1.lower() == 'n':
@@ -3006,6 +3008,7 @@ def _reshape_core(
                             if subset_exists:
                                 df.dropna(subset=subset, inplace=True)
                                 print(f'Dropped instances with missing values in {subset}.')
+                                print(f'DataFrame dimensions after drop: {df.shape[0]} instances x {df.shape[1]} features.\n')
                                 break
                             else:
                                 print('One or more features not found in DataFrame. Please try again.')
@@ -3035,6 +3038,7 @@ def _reshape_core(
         if input.lower() == 'y':
             print('Dropping columns\n')
             df.drop(columns=features_to_reshape, inplace=True)
+            print(f'DataFrame dimensions after drop: {df.shape[0]} instances x {df.shape[1]} features.\n')
         elif input.lower() == 'n':
             print('Aborting column drop operation. Input DataFrame not modified.\n')
         else:
@@ -3042,6 +3046,62 @@ def _reshape_core(
         
         return df
     
+    # "Main" logic
+    #TODO: Testing
+
+    if verbose:
+        print('-' * 50)
+        print('Beginning data reshape process.')
+        print('-' * 50)
+
+    iter_input = 0
+    while True:
+        if iter_input == 0:
+            operations = input('Select operations to perform on DataFrame, or "Q" to abort:\n'
+                            '1. Drop columns (features)\n'
+                            '2. Drop rows (instances) with missingness in specific columns\n'
+                            '3. Drop rows (instances) with a generalized degree-of-population\n'
+                            'Q. Abort\n'
+                            '-> ')
+            if verbose:
+                print('Operations will be performed in ascending order. Take note of future thresholds based on DataFrame size.')
+        else:
+            operations = input('-> ')
+
+        valid_ops = set('123Q')
+        input_ops = set(operations)
+        invalid_ops = input_ops - valid_ops
+
+        if invalid_ops:
+            print(f'Invalid input. Please enter a combination of {valid_ops}.')
+            iter_input += 1
+            continue
+        
+        if 'q' in operations.lower():
+            print('Aborting reshape operation. Input DataFrame not modified.\n')
+            break
+
+        if '1' in operations:
+            if verbose:
+                print('Dropping columns.\n')
+            # Call column drop function
+            df = drop_columns(df, features_to_reshape)
+
+        if '2' in operations:
+            if verbose:
+                print('Dropping rows with missingness in specific columns.\n')
+            # Call column-based row removal function
+            df = column_based_row_remove(df, features_to_reshape)
+
+        if '3' in operations:
+            if verbose:
+                print('Dropping rows with generalized degree-of-population.\n')
+            # Call row-based row removal function
+            threshold = input('Provide a decimal-percent threshold by which to remove DataFrame rows: ')
+            df = row_based_row_remove(df, threshold, verbose)
+        
+        break
+
     return df
 
 # #-------New OOP-----------------------------------
