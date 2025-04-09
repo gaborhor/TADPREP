@@ -77,7 +77,7 @@ def df_info(df: pd.DataFrame, verbose: bool = True) -> None:
     _df_info_core(df, verbose)
 
 
-def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
+def reshape(df: pd.DataFrame, features_to_reshape: list[str] | None = None, verbose: bool = True) -> pd.DataFrame:
     """
     Interactively reshapes the input DataFrame according to user specification.
 
@@ -87,6 +87,8 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     ----------
     df : pandas.DataFrame
         The DataFrame to be reshaped
+    features_to_reshape : list[str] | None, default=None
+        Optional list of features to reshape. If None, the method will default to all features.
     verbose : bool, default=True
         Controls whether detailed process information is displayed
 
@@ -111,7 +113,7 @@ def reshape(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     if df.empty:
         raise ValueError('Input DataFrame is empty')
 
-    return _reshape_core(df, verbose)
+    return _reshape_core(df, features_to_reshape, verbose)
 
 
 def find_outliers(df: pd.DataFrame, method: str = 'iqr', threshold: float = None, verbose: bool = True) -> dict:

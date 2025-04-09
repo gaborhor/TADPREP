@@ -2762,6 +2762,11 @@ def _reshape_core(
         print(f'Beginning data reshape process. \nInput data of {df.shape[0]} instances x {df.shape[1]} features.')
         print('-' * 50)  # Visual separator
 
+    ## If user-provided features are not provided, default to all features
+    if not features_to_reshape:
+        print('No features provided for reshaping. Defaulting to all features.')
+        features_to_reshape = df.columns.tolist()
+
     ## Helper func to identify current level of row-based missingness by threshold
     # Default threshold is 25% "real" values
     def rows_missing_by_thresh(df: pd.Dataframe, threshold: float = 0.25) -> int:
