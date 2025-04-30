@@ -2,8 +2,8 @@ import pandas as pd
 from .core.transforms import (
     _df_info_core,
     _reshape_core,
-    _find_outliers_core,
-    _find_corrs_core,
+    # _find_outliers_core,
+    # _find_corrs_core,
     _subset_core,
     _rename_and_tag_core,
     _feature_stats_core,

@@ -90,7 +90,9 @@ df_raw = pd.read_csv(r"C:\Users\gabor\Desktop\code\TADPREP\data\sample_data_spar
 # print(df_interact)
 ##Seems all ok!
 
-
+## testing _reshape_core method
+df_reshape = tp.reshape(df_raw)
+print(df_reshape)
 
 # Testing rename_and_tag method
 # df_renamed = tp.rename_and_tag(df_raw, verbose=False, tag_features=False)
